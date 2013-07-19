@@ -3,9 +3,11 @@ Class for reading and writing Xively feeds / channels.
   
 ### Usage
 Creating the Xively client:
+	
 	client <- Xively.Client("YOUR_API_KEY");
 	
 Push data to a feed:
+	
 	// Create a channel and assign a value
 	tempChannel <- Xively.Channel("Temperature");
 	tempChannel.Set(current_temperature);
@@ -17,6 +19,7 @@ Push data to a feed:
 	client.Put(feed);
 
 Get data from a feed:
+	
 	// Create a channel
 	tempChannel <- Xively.Channel("Temperature");
 	
