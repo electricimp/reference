@@ -41,17 +41,17 @@ class IR_receiver {
 	/* Receiver Thresholds in us. Inter-pulse times < THRESH_0 are zeros, 
 	 * while times > THRESH_0 but < THRESH_1 are ones, and times > THRESH_1 
 	 * are either the end of a pulse train or the start pulse at the beginning of a code */
-	THRESH_0					= 1000;
-	THRESH_1					= 2000;
+	THRESH_0					= 600;
+	THRESH_1					= 1500;
 
 	/* IR Receive Timeouts
 	 * IR_RX_DONE is the max time to wait after a pulse before determining that the 
 	 * pulse train is complete and stopping the reciever. */
-	IR_RX_DONE					= 6000; // us
+	IR_RX_DONE					= 4000; // us
 
 	/* IR_RX_TIMEOUT is an overall timeout for the receive loop. Prevents the device from
 	 * locking up if the IR signal continues to oscillate for an unreasonable amount of time */
-	IR_RX_TIMEOUT 				= 1000; // ms
+	IR_RX_TIMEOUT 				= 1500; // ms
 
 	/* The receiver is disabled between codes to prevent firing the callback multiple times (as 
 	 * most remotes send the code multiple times per button press). IR_RX_DISABLE determines how
@@ -76,8 +76,11 @@ class IR_receiver {
 	 * so it must be defined before the constructor.
 	 */
 	function receive() {
+
 		// Code is stored as a string of 1's and 0's as the pulses are measured.
-		local newcode = "";
+		local newcode = array(256);
+		local index = 0;
+
 		local last_state = rx_pin.read();
 		local duration = 0;
 
@@ -95,7 +98,7 @@ class IR_receiver {
 			/* determine if pin has changed state since last read
 			 * get a timestamp in case it has; we don't want to wait for code to execute before getting the
 			 * timestamp, as this will make the reading less accurate. */
-			state = hardware.pin2.read();
+			state = rx_pin.read();
 			now = hardware.micros();
 
 			if (state == last_state) {
@@ -112,13 +115,12 @@ class IR_receiver {
 			if (state != IR_IDLE_STATE) {
 				// the low time just ended. Measure it and add to the code string
 				duration = now - last_change_time;
+				
 				if (duration < THRESH_0) {
-					newcode += "0";
+					newcode[index++] = 0;
 				} else if (duration < THRESH_1) {
-					newcode += "1";
-				} else {
-					// this was the start pulse; ignore
-				}
+					newcode[index++] = 1;
+				} 
 			}
 
 			last_state = state;
@@ -129,14 +131,14 @@ class IR_receiver {
 		}
 
 		// codes have to end with a 1, effectively, because of how they're sent
-		newcode += "1";
+		newcode[index++] = 1;
 
 		// codes are sent multiple times, so disable the receiver briefly before re-enabling
 		disable();
 		imp.wakeup(IR_RX_DISABLE, enable.bindenv(this));
 
-		//server.log("Got new IR Code ("+newcode.len()+"): "+newcode);
-		agent.send(agent_callback, newcode);
+		local result = stringify(newcode, index);
+		agent.send(agent_callback, result);
 	}
 
 	/* 
@@ -198,6 +200,14 @@ class IR_receiver {
 
 	function disable() {
 		rx_pin.configure(DIGITAL_IN);
+	}
+
+	function stringify(data, len) {
+		local result = "";
+		for (local i = 0; i < len; i++) {
+			result += format("%d",data[i]);
+		}
+		return result;
 	}
 }
 

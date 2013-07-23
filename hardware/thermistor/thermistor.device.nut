@@ -25,7 +25,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 /*
  * simple NTC thermistor
  *
- * Assumes thermistor is the high side of a resistive divider.
+ * Assumes thermistor is the high side of a resistive divider unless otherwise specified in constructor.
  * Low-side resistor is of the same nominal resistance as the thermistor
  */
 class thermistor {
@@ -41,7 +41,9 @@ class thermistor {
 	p_therm 		= null;
 	points_per_read = null;
 
-	constructor(pin, b, t0, r, points = 10) {
+	high_side_therm = null;
+
+	constructor(pin, b, t0, r, points = 10, _high_side_therm = true) {
 		this.p_therm = pin;
 		this.p_therm.configure(ANALOG_IN);
 
@@ -50,6 +52,8 @@ class thermistor {
 		this.t0_therm = t0 * 1.0;
 		this.r0_therm = r * 1.0;
 		this.points_per_read = points * 1.0;
+
+		this.high_side_therm = _high_side_therm;
 	}
 
 	// read thermistor in Kelvin
@@ -62,7 +66,13 @@ class thermistor {
 		}
 		local vdda = (vdda_raw / points_per_read);
 		local v_therm = (vtherm_raw / points_per_read) * (vdda / 65535.0);
-		local r_therm = r0_therm / ( (vdda / v_therm) - 1 );
+		
+		if (high_side_therm) {
+			local r_therm = (vdda - v_therm) * (r0_therm / v_therm);
+		} else {
+			local r_therm = r0_therm / ((vdda / v_therm) - 1);
+		}
+
 		local ln_therm = math.log(r0_therm / r_therm);
 		local t_therm = (t0_therm * b_therm) / (b_therm - t0_therm * ln_therm);
 		return t_therm;
