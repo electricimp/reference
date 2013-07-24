@@ -297,6 +297,17 @@ class PCD8544_LCD {
         clearScreen();
     }
     
+    // Handler for loading preformatted bytes from the agent
+    function displayFrame(updateRequest) {
+        server.log("Receiving data!");
+        updateRequest.data.resize(byteCount);    // Make sure the blob is the right size
+        write(updateRequest.data);               // Write the data to the screen
+        if (updateRequest.isFresh) {             // If the data is fresh, flash the backlight
+            backlightFlash();
+            backlight(0.5, BACKLIGHT_DURATION);  // 50% brightness for BACKLIGHT_DURATION seconds
+        }
+    }
+    
     function displayText(textString) {
         local currentWord = blob(); // Build each word into a blob
         local wordArray = [];       // Store those blobs in a word array
@@ -391,21 +402,11 @@ if (hardware.wakereason() == WAKEREASON_POWER_ON || hardware.wakereason() == WAK
     screen.displayText("Electric Imp");
 }
 
-// Handler for loading preformatted bytes from the agent
-function loadFrame(updateRequest) {
-    server.log("Receiving data!");
-    updateRequest.data.resize(screen.byteCount);    // Make sure the blob is the right size
-    screen.write(updateRequest.data);               // Write the data to the screen
-    if (updateRequest.isFresh) {                    // If the data is fresh, flash the backlight
-        screen.backlightFlash();
-        screen.backlight(0.5, BACKLIGHT_DURATION);  // 50% brightness for 5 seconds
-    }
-}
-
 screen.command(screen.DEFAULT_CONFIG);
 
 // Must use bindenv() to set correct scope
 agent.on("newText", screen.displayText.bindenv(screen));
+agent.on("newFrame", screen.displayFrame.bindenv(screen));
 
 agent.send("getUpdate", nv.currentText);
 //imp.wakeup(10, function() { imp.onidle(function () { server.sleepfor(SLEEP_DURATION) }); });
