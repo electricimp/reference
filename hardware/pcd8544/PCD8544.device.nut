@@ -18,7 +18,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 // Sleep duration in seconds
-const SLEEP_DURATION = 60;
+// DISABLED BY DEFAULT - uncomment the last line to sleep
+const SLEEP_DURATION = 300;
 const BACKLIGHT_DURATION = 10;
 
 // -----------------------------------------------------------------------------
@@ -172,33 +173,41 @@ class PCD8544_LCD {
     lite = null;
     rst = null;
     dc = null;
+    cs = null;
     
     // Constructor
-    constructor(screenWidth, screenHeight, spiBus, litePin, rstPin, dcPin) {
+    constructor(screenWidth, screenHeight, spiBus, litePin, rstPin, dcPin, csPin) {
         width = screenWidth;
         height = screenHeight;
-        this.byteCount = width * height / 8;
-        this.spi = spiBus;
-        this.lite = litePin;
-        this.rst = rstPin;
-        this.dc = dcPin;
+        byteCount = width * height / 8;
+        spi = spiBus;
+        lite = litePin;
+        rst = rstPin;
+        dc = dcPin;
+        cs = csPin;
         
         // Pin configuration
         spi.configure(SIMPLEX_TX | MSB_FIRST | CLOCK_IDLE_LOW, 4000);
         dc.configure(DIGITAL_OUT); // High for data, low for command
         dc.write(0);
+        cs.configure(DIGITAL_OUT); // Chip Select (active-low)
+        cs.write(1);
     }
     
     // Send a command string
     function command(c) {
         dc.write(0);   // data/command line set to command
+        cs.write(0);    // Select PCD8544
         spi.write(c);   // write the command string
+        cs.write(1);    // Deselect PCD8544
         dc.write(1);   // data/command line set back to data
     }
     
     // Write data followed by a NOP (required for the last byte to display properly)
     function write(data) {
-        hardware.spi257.write(data);
+        cs.write(0);    // Select PCD8544
+        spi.write(data);
+        cs.write(1);    // Deselect PCD8544
         command("\x00");    // NOP
     }
     
@@ -206,7 +215,9 @@ class PCD8544_LCD {
     function clearScreen() {
         command("\x80\x40"); // Reset X and Y addresses to 0
         local clr = blob(byteCount);
+        cs.write(0);    // Select PCD8544
         spi.write(clr);
+        cs.write(1);    // Deselect PCD8544
         command("\x00");    // NOP
     }
     
@@ -275,9 +286,11 @@ class PCD8544_LCD {
         command("\x0D");  // Inverse display mode
         imp.sleep(0.2);
         clearScreen();
+        cs.write(0);    // Select PCD8544
         for (local i = 0; i < 127; i+=1) {  // Write a bunch of vertical lines
             write("\x00\x00\x00\xFF");
         }
+        cs.write(1);    // Deselect PCD8544
         imp.sleep(0.2);
         command("\x0C");  // Normal display mode
         imp.sleep(0.2);
@@ -289,10 +302,12 @@ class PCD8544_LCD {
     function scan() {
         clearScreen();
         command("\x80\x40"); // Set X/Y addresses to zero
+        cs.write(0);    // Select PCD8544
         for (local i = 0; i < 504; i++) {
             write("\xFF");
             imp.sleep(0.003);
         }
+        cs.write(1);    // Deselect PCD8544
         command("\x00");    // NOP
         clearScreen();
     }
@@ -390,7 +405,7 @@ class PCD8544_LCD {
 
 // Configure a new instance of the class
 // Arguments: width, height, spiBus, litePin, rstPin, dcPin
-screen <- PCD8544_LCD(84, 48, hardware.spi257, hardware.pin1, hardware.pin2, hardware.pin8);
+screen <- PCD8544_LCD(84, 48, hardware.spi257, hardware.pin1, hardware.pin2, hardware.pin8, hardware.pin9);
 
 // Reset the screen and run a test if the imp is cold booting or has new code
 if (hardware.wakereason() == WAKEREASON_POWER_ON || hardware.wakereason() == WAKEREASON_NEW_SQUIRREL) {
@@ -404,10 +419,13 @@ if (hardware.wakereason() == WAKEREASON_POWER_ON || hardware.wakereason() == WAK
 
 screen.command(screen.DEFAULT_CONFIG);
 
+imp.configure("Nokia 5110 LCD", [], []);
+
 // Must use bindenv() to set correct scope
 agent.on("newText", screen.displayText.bindenv(screen));
 agent.on("newFrame", screen.displayFrame.bindenv(screen));
 
 agent.send("getUpdate", nv.currentText);
-//imp.wakeup(10, function() { imp.onidle(function () { server.sleepfor(SLEEP_DURATION) }); });
 
+// UNCOMMENT THE FOLLOWING LINE TO ENABLE SLEEP!
+//imp.wakeup(15, function() { imp.onidle(function () { server.sleepfor(SLEEP_DURATION) }); });
