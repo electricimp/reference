@@ -1,4 +1,4 @@
-#MAX31855
+#MAX31855 (Thermocouple)
 
 Driver class for reading data from [Adafruit MAX31855](http://www.adafruit.com/products/269) breakout board via SPI.
 
