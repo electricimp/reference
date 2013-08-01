@@ -58,7 +58,7 @@ class Xively.Client {
 	 *   An updated XivelyFeed object on success
 	 *   null on failure
 	 *****************************************/
-	function Xively::Get(feed){
+	function Get(feed){
 		local url = "https://api.xively.com/v2/feeds/" + feed.FeedID + ".json";
 		local headers = { "X-ApiKey" : ApiKey, "User-Agent" : "xively-Imp-Lib/1.0" };
 		local request = http.get(url, headers);
