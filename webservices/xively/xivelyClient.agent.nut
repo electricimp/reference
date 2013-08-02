@@ -22,14 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-Xively <- {};	// this makes a 'namespace'
+Xively <- {};    // this makes a 'namespace'
 
 class Xively.Client {
 	ApiKey = null;
 	triggers = [];
 
 	constructor(apiKey) {
-		this.ApiKey = _apiKey;
+		this.ApiKey = apiKey;
 	}
 	
 	/*****************************************
@@ -130,6 +130,6 @@ class Xively.Channel {
     }
     
     function ToJson() { 
-    	http.jsonencode({id = this.id, current_value = this.current_value }); 
+    	return http.jsonencode({id = this.id, current_value = this.current_value }); 
     }
 }
