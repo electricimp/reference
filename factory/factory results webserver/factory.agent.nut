@@ -2,9 +2,10 @@ const HTML=@"<html lang='en'>
               <head>
                 <script src='http://ajax.googleapis.com/ajax/libs/jquery/1.10.1/jquery.js'></script>
                 <script type='text/javascript'>
-                    deviceID = 'gII-ITUCrYZo' //put your device id here
-                    urlResults = document.url + deviceID + '/txData'
-                    //urlResults = document.url + 'gII-ITUCrYZo/txData'
+                    
+                    //url to your agent data path
+                    urlResults = window.location + '/txData'
+                    
                     // AJAX Error Handler
                    function delay(jqXHR, textStatus, errorThrown){
                        //document.getElementById('powerLabel').innerHTML = textStatus + ' Delaying...';
@@ -33,11 +34,9 @@ const HTML=@"<html lang='en'>
                           return;
                     }
                       
-                      $.ajax({ type:'GET', url: 'http://staging-agent.electricimp.com/gII-ITUCrYZo/txData', 
+                      $.ajax({ type:'GET', url: urlResults, 
                           success: pubResults,
-                          //complete: poll, 
                           error: delay, 
-                          //beforeSend: ajaxBeforeSend,
                           timeout: 60000
                       });
                       return true;
