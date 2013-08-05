@@ -22,14 +22,14 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-Xively <- {};	// this makes a 'namespace'
+Xively <- {};  // this makes a 'namespace'
 
 class Xively.Client {
 	ApiKey = null;
 	triggers = [];
 
 	constructor(apiKey) {
-		this.ApiKey = _apiKey;
+		this.ApiKey = apiKey;
 	}
 	
 	/*****************************************
@@ -58,7 +58,7 @@ class Xively.Client {
 	 *   An updated XivelyFeed object on success
 	 *   null on failure
 	 *****************************************/
-	function Xively::Get(feed){
+	function Get(feed){
 		local url = "https://api.xively.com/v2/feeds/" + feed.FeedID + ".json";
 		local headers = { "X-ApiKey" : ApiKey, "User-Agent" : "xively-Imp-Lib/1.0" };
 		local request = http.get(url, headers);
@@ -130,6 +130,6 @@ class Xively.Channel {
     }
     
     function ToJson() { 
-    	http.jsonencode({id = this.id, current_value = this.current_value }); 
+    	return http.jsonencode({id = this.id, current_value = this.current_value }); 
     }
 }
