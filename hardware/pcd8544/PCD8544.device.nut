@@ -157,7 +157,8 @@ class PCD8544_LCD {
 
     // Configuration string: Extended instruction mode, Operating voltage (contrast),
     // temperature coefficient, bias voltage, normal instruction mode, normal display mode
-    // Good values for op voltage are around 0xB0. Go higher if the image is washed out, lower if too dark
+
+    // Good values for op voltage (second byte) are around 0xB0. Go higher if the image is washed out, lower if too dark
     static DEFAULT_CONFIG = "\x21\xB6\x04\x13\x20\x0C";
     
     static SPACE_WIDTH = 3;
