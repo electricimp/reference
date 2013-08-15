@@ -151,6 +151,11 @@ class PCD8544_LCD {
     // Tested on the "Nokia 5110" LCD screen from adafruit:
     // http://www.adafruit.com/products/338
     
+    // Wiring notes:
+    // If you're using the Adafruit LCD breakout board,
+    // you must add a 100k pull-down resistor between CLK and GND
+    // and a 100k pull-up resistor between RST and VCC.
+    
     // Causes backlight to fade out after a brief delay and enables WiFi powersave mode
     // Set to 1 for battery power, 0 otherwise
     static BATTERY_POWER = 1;
@@ -393,7 +398,7 @@ class PCD8544_LCD {
             imageData.writen('\x00', 'b');
         }
         // Write data to screen
-        screen.write(imageData);
+        write(imageData);
         if (textString != nv.currentText) {
             screen.backlightFlash();
             screen.backlight(0.5, BACKLIGHT_DURATION); // 50% brightness for 5 seconds
