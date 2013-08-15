@@ -152,12 +152,7 @@ class PCD8544_LCD {
     // http://www.adafruit.com/products/338
     
     // Wiring notes:
-<<<<<<< HEAD
     // There must be a 100k pull-down resistor between CLK and GND
-=======
-    // If you're using the Adafruit LCD breakout board,
-    // you must add a 100k pull-down resistor between CLK and GND
->>>>>>> 3f1772322c808c7fc56c3dc5551cf851e0e4d475
     // and a 100k pull-up resistor between RST and VCC.
     
     // Causes backlight to fade out after a brief delay and enables WiFi powersave mode
