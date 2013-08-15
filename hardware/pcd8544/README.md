@@ -10,3 +10,6 @@ This class, by itself, can display a text string using a built-in font. It can b
 For examples (such as web-based text input and image display) visit https://github.com/electricimp/examples/ and navigate to the 'pcd8544' directory
 
 The driver chip datasheet can be found at http://www.nxp.com/documents/data_sheet/PCD8544_1.pdf
+
+NOTES:
+There must be a 100k pull-down resistor between CLK and GND, and a 100k pull-up resistor between RST and VCC.
