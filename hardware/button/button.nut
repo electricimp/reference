@@ -4,6 +4,8 @@
 // ---------------------------------------------------------------------------- 
  
 class button{
+    static NORMALLY_HIGH = 1;
+    static NORMALLY_LOW  = 0;
     _pin             = null;
 	_pull            = null;
     _polarity        = null;
@@ -12,7 +14,7 @@ class button{
 
 	constructor(pin, pull, polarity, pressCallback, releaseCallback){
 		_pin             = pin;               //Unconfigured IO pin, eg hardware.pin2
-		_pull            = pull;              //DIGITAL_IN_PULLDOWN, DIGITAL_IN or DIGITAL_IN_PULLUP
+        _pull            = pull;              //DIGITAL_IN_PULLDOWN, DIGITAL_IN or DIGITAL_IN_PULLUP
 		_polarity        = polarity;          //Normal button state, ie 1 if button is pulled up and the button shorts to GND
 		_pressCallback   = pressCallback;     //Function to call on a button press (may be null)
 		_releaseCallback = releaseCallback;   //Function to call on a button release (may be null)
@@ -39,6 +41,9 @@ class button{
 	}
 }
 
-
-b1 <- button(hardware.pin1, DIGITAL_IN_PULLUP, 1, function(){server.log("Button 1 Pressed")}, function(){server.log("Button 1 released");} );
+//Example Instantiation
+b1 <- button(hardware.pin1, DIGITAL_IN_PULLUP, button.NORMALLY_HIGH,
+            function(){server.log("Button 1 Pressed")},
+            function(){server.log("Button 1 released")}
+            );
 
