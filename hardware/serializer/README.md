@@ -11,9 +11,9 @@ The "serializer" class has three core static functions for serializing any seria
 
 The functions are all static so there is no need to instantiate the class. Simply call like so:
 
-> local obj = { "Hello": "world", "count": 123 };
-> local bl = serializer.serialize(obj);
-> // *bl* now contains the serialized object.
-> local obj2 = serializer.deserialize(bl);
-> // *obj2* === *obj* 
+> local obj = { "Hello": "world", "count": 123 };    
+> local bl = serializer.serialize(obj);    
+> // *bl* now contains the serialized object.    
+> local obj2 = serializer.deserialize(bl);    
+> // *obj2* === *obj*     
 
