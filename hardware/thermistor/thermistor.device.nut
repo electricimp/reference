@@ -66,11 +66,12 @@ class thermistor {
 		}
 		local vdda = (vdda_raw / points_per_read);
 		local v_therm = (vtherm_raw / points_per_read) * (vdda / 65535.0);
-		
+	
+		local r_therm = 0;	
 		if (high_side_therm) {
-			local r_therm = (vdda - v_therm) * (r0_therm / v_therm);
+			r_therm = (vdda - v_therm) * (r0_therm / v_therm);
 		} else {
-			local r_therm = r0_therm / ((vdda / v_therm) - 1);
+			r_therm = r0_therm / ((vdda / v_therm) - 1);
 		}
 
 		local ln_therm = math.log(r0_therm / r_therm);
