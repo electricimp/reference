@@ -1,5 +1,5 @@
 // Code by forums user bodinegl
-// with a tiny bit of cleanup from beardedinventor
+// with a tiny bit of help from beardedinventor
 
 function print(x) {
     server.log(x);
