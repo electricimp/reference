@@ -45,14 +45,20 @@ class Firebase {
         database = _database;
         authkey = _authkey;
         agentid = http.agenturl().slice(-12);
+        headers = {"Content-Type": "application/json"};
+		set_path(_path);
+    }
+    
+    
+    // ........................................................................
+	function set_path(_path) {
 		if (!_path) {
 			_path = "agents/" + agentid;
 		}
         url = "https://" + database + ".firebaseIO.com/" + _path + ".json?auth=" + authkey;
-        headers = {"Content-Type": "application/json"};
-    }
-    
-    
+	}
+
+
     // ........................................................................
     function write(data, callback = null) {
     
