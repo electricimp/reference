@@ -131,7 +131,7 @@ class Firebase {
     // ........................................................................
     function remove(callback = null) {
         http.httpdelete(url, headers).sendasync(function(res) {
-            if (res.statuscode != 204) {
+            if (res.statuscode != 200) {
                 if (callback) callback(res);
                 else server.log("Delete: Firebase response: " + res.statuscode + " => " + res.body)
             } else {
