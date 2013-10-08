@@ -1,7 +1,7 @@
 const html_graph = @"<html>
   <head>
     <script type=""text/javascript"" src=""https://www.google.com/jsapi""></script>
-    <script type='text/javascript' src='http://code.jquery.com/jquery-latest.js'></script>
+    <script type='text/javascript' src='https://code.jquery.com/jquery-latest.js'></script>
     <script type=""text/javascript"">
       google.load(""visualization"", ""1"", {packages: ['corechart', 'controls']});
       
@@ -79,20 +79,20 @@ const html_graph = @"<html>
         drawVisualization(d);
     });  
     
- 
-    
+    ChartRx = false;
+    PendingReq = false;
     function record(){
 
         if ($('#button').html() == 'Start'){
-        
-
+            ChartRx = false;
+            PendingReq = true;
             $('#button').html('Stop')
             $.ajax({ 
                 type:'POST', 
                 url: window.location +'/startscope', 
                 data: '',
-                //success: ajaxGetState,
-                timeout: 30000,
+                success: updateChart,
+                timeout: 60000,
                 error: (function(err){
                     console.log(err);
                 	console.log('Error parsing device info from imp');
@@ -102,29 +102,46 @@ const html_graph = @"<html>
         }
         else{
             $('#button').html('Start')
-            $.ajax({ 
-                type:'GET', 
-                url: window.location + '/stopscope', 
-                data: '',
-                success: updateChart,
-                timeout: 30000,
-                error: (function(err){
-                    console.log(err);
-                    console.log('Error parsing device info from imp');
-                	return;
-                })
-            });
+            if(!ChartRx){
+                $.ajax({ 
+                    type:'POST', 
+                    url: window.location + '/stopscope', 
+                    data: '',
+                    success: updateChart,
+                    timeout: 10000,
+                    error: (function(err){
+                        console.log(err);
+                        console.log('Error parsing device info from imp');
+                    	return;
+                    })
+                });
+            }
         }
         
     }
+    
     function updateChart(transport){
-      drawVisualization(JSON.parse(transport.slice(0,-3) + ""]""));
+        // if ($('#button').html() == 'Start'){
+        //     $('#button').html('Stop')
+        // }
+        // else{
+        //     $('#button').html('Start')
+        // }
+        if (PendingReq){
+            $('#button').html('Start');
+        }
+        chartdata = transport.chart;
+        hexdata = transport.hexdata;
+        drawVisualization(JSON.parse(""["" + chartdata.slice(0,-2) + ""]"") );
+        $('#hdata').html(hexdata)
+        ChartRx = true;
+        PendingReq = false;
     }
     //
     </script>
   </head>
-  <body>
-    Hex from Sample %s<br/>
+  <body> 
+    <div>Hex from Sample %s<br/><p id=""hdata""><p><div>
     Ideal hex if input   %s<br/>
     <button type=""button"" id=""button"" onclick=""record()"">Start</button>
     <div id=""dashboard"" style='width: 100%%'>
@@ -159,6 +176,7 @@ server.log("Download the data at " + http.agenturl() + "/blinkup.csv");
 
 // Variable to persist Response object for sending data back page via AJAX
 RESPONSE <- [];
+ChartRequest <- false;
 
 http.onrequest(function(request, response) {
   server.log("HTTP access");
@@ -172,13 +190,15 @@ http.onrequest(function(request, response) {
     response.send(200, dataHex);
   } else if (request.path == "/startscope") {
       //Tell scope to start
-      device.send("scopeRunning", 1);
-    response.header("Content-Type", "text/plain");
-    response.send(200, "Started");
+        device.send("scopeRunning", 1);
+        RESPONSE = response;
+        ChartRequest = true;
+    // response.header("Content-Type", "text/plain");
+    // response.send(200, "Started");
   } else if (request.path == "/stopscope") {
       //tell scope to stop
     device.send("scopeRunning", 0);
-    RESPONSE = response;
+    // RESPONSE = response;
     //response.header("Content-Type", "text/plain");
     //response.send(200, "Stopped");      
   } else if (request.path == "/compare") {
@@ -213,11 +233,11 @@ function receiveData(blinkupData) {
   data.writeblob(blinkupData.buffer);
   server.log("Received buffer of length " + blinkupData.buffer.len());
   
-  //Send Data to page
-    clearOldData();
-    generateGraph();
-    RESPONSE.header("Content-Type", "text/plain");
-    RESPONSE.send(200, "[" + graphString + "]"); 
+//   //Send Data to page
+//     clearOldData();
+//     generateGraph();
+//     RESPONSE.header("Content-Type", "text/plain");
+//     RESPONSE.send(200, "[" + graphString + "]"); 
 }
  
 function updateState(config) {
@@ -245,12 +265,24 @@ function generateStoredDataPoints()
     //initial data analysis
     findMinMax();
     generateHex();
+
     // Compute chart width
     chartWidth = (data.len().tofloat() / 2.0 / sampleRate.tofloat()) * PIXELS_PER_SECOND;  
+    
+    //generate graph
+    clearOldData();
+    generateGraph();
+    
+    local payload = {};
+    payload.hexdata <- dataHex;
+    payload.chart <-  graphString;
+    // send chart to pending response.
+    RESPONSE.header("Content-Type", "application/json");
+    // RESPONSE.send(200, http.jsonencode("[" + graphString + "]"); 
+    RESPONSE.send(200, http.jsonencode(payload)); 
 }
  
 function generateGraph() {
-  
   // Add data to a 2D array
   graphString = "";//"['Sample', 'Value'], ";
   local i = 0.0;
@@ -261,7 +293,13 @@ function generateGraph() {
     i++;
   }
   server.log(format("Graph generated with %i values: ", data.len()/2));
-  server.log(graphString);
+  //server.log(graphString);
+//   if(ChartRequest){
+//     server.log("sending chart data")
+//     RESPONSE.header("Content-Type", "text/plain");
+//     RESPONSE.send(200, "[" + graphString + "]"); 
+//     ChartRequest = false;
+//   }
 }
  
 // Convert hex string to an integer
@@ -732,4 +770,4 @@ function generateHex() {
 }
  
 device.on("data", receiveData);
-device.on("state", updateState)
+device.on("state", updateState);
