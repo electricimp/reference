@@ -1,15 +1,36 @@
-// E-Ink Display
+/*
+Copyright (C) 2013 electric imp, inc.
 
-// Add "device" tag to logs to differentiate from agent logs
-function log(msg) {
-    server.log("EPD-IMP: " + msg);
-}
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
+and associated documentation files (the "Software"), to deal in the Software without restriction, 
+including without limitation the rights to use, copy, modify, merge, publish, distribute, 
+sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
+furnished to do so, subject to the following conditions:
 
+The above copyright notice and this permission notice shall be included in all copies or substantial 
+portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE 
+AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+*/
+
+/* 
+ * Epaper Device Firmware
+ * Tom Byrne
+ * tom@electricimp.com
+ * 10/9/2013
+ */
+
+// SPI Clock Rate in kHz
+const SPICLK = 30000;
 
 class epaper {
     /*
-     * class to drive epaper display
-     * http://repaper.org
+     * class to drive Pervasive Displays epaper display
+     * see http://repaper.org
      */
 
     WIDTH           = null;
@@ -35,7 +56,7 @@ class epaper {
         this.HEIGHT = height;
         this.PIXELS = this.WIDTH * this.HEIGHT;
         this.BYTESPERSCREEN = this.PIXELS / 4;
-        this.stageTime = 480
+        this.stageTime = 480;
 
         // verify the display dimensions and quit if they're bogus
         switch (this.WIDTH) {
@@ -71,7 +92,7 @@ class epaper {
         // As it turns out, the ePaper display is content with 4 MHz to 12 MHz, all of which are ok with the flash
         // Furthermore, the display seems to work just fine at 15 MHz.
         this.spi = spi;
-        log("Display Running at: " + this.spiOff() + " kHz");
+        server.log("Display Running at: " + this.spiOff() + " kHz");
 
         this.epd_cs_l = epd_cs_l;
         this.epd_cs_l.configure(DIGITAL_OUT);
@@ -114,7 +135,7 @@ class epaper {
 
     // enable SPI
     function spiOn() {
-        local freq = this.spi.configure(CLOCK_IDLE_HIGH | MSB_FIRST, 7500);
+        local freq = this.spi.configure(CLOCK_IDLE_HIGH | MSB_FIRST, SPICLK);
         this.spi.write("\x00");
         imp.sleep(0.00001);
         return freq;
@@ -122,7 +143,7 @@ class epaper {
 
     // disable SPI
     function spiOff() {
-        local freq = this.spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, 7500);
+        local freq = this.spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, SPICLK);
         this.spi.write("\x00");
         imp.sleep(0.00001);
         return freq;
@@ -148,12 +169,12 @@ class epaper {
     }
 
     function start() {
-        log("Powering On EPD.");
+        server.log("Powering On EPD.");
 
         /* POWER-ON SEQUENCE ------------------------------------------------*/
 
         // make sure SPI is low to avoid back-powering things through the SPI bus
-        this.spiOff();
+        this.spiOn();
 
         // Make sure signals start unasserted (rest, panel-on, discharge, border, cs)
         this.rst_l.write(0);
@@ -187,12 +208,9 @@ class epaper {
 
         // Wait for screen to be ready
         while (busy.read()) {
-            log("Waiting for COG Driver to Power On...");
+            server.log("Waiting for COG Driver to Power On...");
             imp.sleep(0.005);
         }
-        
-        // turn SPI "on" (switch to clock idle high)
-        this.spiOn();
 
         // Channel Select
         switch(this.WIDTH) {
@@ -267,13 +285,13 @@ class epaper {
         // "Output enable to disable" (docs grumble grumble)
         this.writeEPD(0x02, 0x24);
 
-        log("COG Driver Initialized.");
+        server.log("COG Driver Initialized.");
     }
 
 
     // Power off COG Driver
     function stop() {
-        log("Powering Down EPD");
+        server.log("Powering Down EPD");
 
         // Write a dummy frame and dummy line
         local dummyScreen = blob(BYTESPERSCREEN);
@@ -304,7 +322,7 @@ class epaper {
         this.writeEPD(0x05, 0x02);
 
         // discharge
-        this.writeEPD(0x04, 0x0c);
+        writeEPD(0x04, 0x0c);
 
         imp.sleep(0.120);
 
@@ -338,12 +356,12 @@ class epaper {
         this.epd_cs_l.write(0);
 
         // send discharge pulse
-        log("Discharging Rails");
+        server.log("Discharging Rails");
         this.discharge.write(1);
         imp.sleep(0.15);
         this.discharge.write(0);
 
-        log("Display Powered Down.");
+        server.log("Display Powered Down.");
     }
 
     // draw a line on the screen
@@ -414,7 +432,6 @@ class epaper {
     // repet drawing for the temperature compensated stage time
     function drawScreenCompensated(screenData) {
         local stageTime = this.stageTime * this.temperatureToFactor(this.getTemp());
-        log("drawScreenCompensated t = " + stageTime + " ms");
         local start_time = hardware.millis();
         while (stageTime > 0) {
             this.drawScreen(screenData);
@@ -459,7 +476,7 @@ class epaper {
     function clear() {
         // We don't know what's on the screen, so just clear it
         // draw the screen white first
-        log("Clearing Screen");
+        server.log("Clearing Screen");
         this.fillScreen(0xAA);
         // draw the screen black
         this.fillScreen(0xFF);
@@ -495,65 +512,98 @@ class epaper {
 }
 
 /* REGISTER AGENT CALLBACKS -------------------------------------------------*/
-agent.on("image", function(imageData) {
-    log("Got new image data from Agent. Height = " + imageData.height + " px, Width = " + imageData.width + " px.");
-    log("Drawing Screen");
+agent.on("start", function(data) {
     display.start();
-    display.clear();
-    display.drawScreenCompensated(imageData.data);
+});
+
+agent.on("stop", function(data) {
     display.stop();
 });
 
+agent.on("wht", function(data) {
+    display.fillScreen(0xAA);
+});
+
+agent.on("blk", function(data) {
+    display.fillScreen(0xFF);
+});
+
+agent.on("newImgStart", function(data) {
+    //server.log("Device got new image start.");
+    display.start();
+    // agent sends the inverted version of the current image first
+    display.drawScreenCompensated(data);
+    // white out the screen second
+    display.fillScreen(0xAA);
+    // signal we're ready for the new image data, sent inverted first
+    //server.log("Device Ready for new image inverted.");
+    agent.send("readyForNewImgInv",0);
+});
+
+agent.on("newImgInv", function(data) {
+    //server.log("Device got new image inverted.");
+    display.drawScreenCompensated(data);
+    //server.log("Device ready for new image normal.");
+    agent.send("readyForNewImgNorm",0);
+});
+
+agent.on("newImgNorm", function(data) {
+    //server.log("Device got new image normal.");
+    display.drawScreenCompensated(data);
+    display.stop();
+    server.log("Done Drawing New Image.");
+})
+
 agent.on("clear", function(val) {
-    log("Agent asked to clear screen. Clearing.");
+    server.log("Force-clearing screen.");
     display.start();
     display.clear();
     display.stop();
+});
+
+/* The device requests its own parameters from the agent upon startup.
+ * This handler finishes initializing the device when the agent responds with these parameters.
+ */
+agent.on("params_res", function(res) {
+    /*
+     * display dimensions
+     *
+     * Standard sizes from repaper.org:
+     * 1.44" = 128 x 96  px
+     * 2.0"  = 200 x 96  px
+     * 2.7"  = 264 x 176 px
+     */
+
+    // Pin configuration
+    // epd_cs_l    <- hardware.pin1;   // EPD Chip Select (active-low)
+    // MISO        <- hardware.pin2;   // SPI interface
+    // SCLK        <- hardware.pin5;   // SPI interface
+    // busy        <- hardware.pin6;   // Busy input
+    // MOSI        <- hardware.pin7;   // SPI interface
+    // tempsense   <- hardware.pin8;   // Temperature sensor
+    // pwm         <- hardware.pin9;   // PWM (200kHz, 50% duty cycle)
+    // rst_l       <- hardware.pinA;   // Reset (active-low)
+    // panel       <- hardware.pinB;   // Panel On
+    // discharge   <- hardware.pinC;   // Discharge
+    // border      <- hardware.pinD;   // Border Control
+    // flash_cs_l  <- hardware.pinE;   // Flash Chip Select (active low)
+
+    // ePaper(WIDTH, HEIGHT, SPI_IFC, EPD_CS_L, BUSY, TEMPSENSE, PWM, RESET, PANEL_ON, DISCHARGE, BORDER, FLASH_CS_L)
+    display <- epaper(res.width, res.height, hardware.spi257, hardware.pin1, hardware.pin6, hardware.pin8,
+        hardware.pin9, hardware.pinA, hardware.pinB, hardware.pinC, hardware.pinD);
+
+    server.log("Device Started, free memory: " + imp.getmemoryfree());
+    server.log("Display is " + display.WIDTH + " x " + display.HEIGHT + " px (" + display.BYTESPERSCREEN + " bytes).");
+    server.log(format("Temperature: %.2f C", display.getTemp()));
+    server.log("Ready.");
 });
 
 /* RUNTIME BEGINS HERE ------------------------------------------------------*/
-
-/*
- * display dimensions
- *
- * Standard sizes from repaper.org:
- * 1.44" = 128 x 96  px
- * 2.0"  = 200 x 96  px
- * 2.7"  = 264 x 176 px
- */
-const displayWidth  = 264;
-const displayHeight = 176;
-
-// Pin configuration
-// epd_cs_l    <- hardware.pin1;   // EPD Chip Select (active-low)
-// MISO        <- hardware.pin2;   // SPI interface
-// SCLK        <- hardware.pin5;   // SPI interface
-// busy        <- hardware.pin6;   // Busy input
-// MOSI        <- hardware.pin7;   // SPI interface
-// tempsense   <- hardware.pin8;   // Temperature sensor
-// pwm         <- hardware.pin9;   // PWM (200kHz, 50% duty cycle)
-// rst_l       <- hardware.pinA;   // Reset (active-low)
-// panel       <- hardware.pinB;   // Panel On
-// discharge   <- hardware.pinC;   // Discharge
-// border      <- hardware.pinD;   // Border Control
-// flash_cs_l  <- hardware.pinE;   // Flash Chip Select (active low)
-
-// ePaper(WIDTH, HEIGHT, SPI_IFC, EPD_CS_L, BUSY, TEMPSENSE, PWM, RESET, PANEL_ON, DISCHARGE, BORDER, FLASH_CS_L)
-display <- epaper(displayWidth, displayHeight, hardware.spi257, hardware.pin1, hardware.pin6, hardware.pin8,
-    hardware.pin9, hardware.pinA, hardware.pinB, hardware.pinC, hardware.pinD);
 
 // deactivate the FLASH chip
 flash_cs_l <- hardware.pinE;
 flash_cs_l.configure(DIGITAL_OUT);
 flash_cs_l.write(1);
 
-log("Classes instantiated, memory: " + imp.getmemoryfree());
-log("Display is " + display.WIDTH + " x " + display.HEIGHT + " px (" + display.BYTESPERSCREEN + " bytes).");
-
-log(format("Temperature: %.2f C", display.getTemp()));
-
-display.start();
-display.clear();
-display.stop();
-
-log("Ready.");
+// ask the agent to remind us what we are so we can finish initialization.
+agent.send("params_req",0);
