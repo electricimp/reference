@@ -1,9 +1,5 @@
 // Code by forums user bodinegl
-// with a tiny bit of help from beardedinventor
-
-function print(x) {
-    server.log(x);
-}
+// with a tiny bit of cleanup from beardedinventor
 
 function left_rotate(x, n) { 
     // this has to handle signed integers
@@ -154,9 +150,7 @@ function blobpad(s,n) {
 }
 
 function hmac_sha1(key, message) {
-
     local _key;
-
     if ( key.len() > 64 ) {
         _key = blobpad(sha1(key),64);
     }
@@ -194,11 +188,11 @@ class TwitterClient {
         this.accessSecret = _accessSecret;
     }
     
-    function fmthex(s) {
+    function fmthex(str) {
         local h = ""
-        for(local i=0;i<s.len();i++) h+=format("%02x", s[i]);
+        foreach(s in str) h+=format("%02x", s);
         return h
-    }       
+    }
     
     function validChar(c) {
         if (c >= 48 && c <= 57) return true;    // numbers
