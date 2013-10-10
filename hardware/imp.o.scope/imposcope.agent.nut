@@ -82,7 +82,7 @@ const html_graph = @"<html>
     ChartRx = false;
     PendingReq = false;
     function record(){
-
+    
         if ($('#button').html() == 'Start'){
             ChartRx = false;
             PendingReq = true;
@@ -92,10 +92,10 @@ const html_graph = @"<html>
                 url: window.location +'/startscope', 
                 data: '',
                 success: updateChart,
-                timeout: 60000,
+                timeout: 120000,
                 error: (function(err){
                     console.log(err);
-                	console.log('Error parsing device info from imp');
+                    console.log('Error parsing device info from imp');
                 	return;
                 })
             });
@@ -119,7 +119,7 @@ const html_graph = @"<html>
         }
         
     }
-    
+    var chartdata = """";
     function updateChart(transport){
         // if ($('#button').html() == 'Start'){
         //     $('#button').html('Stop')
@@ -130,14 +130,52 @@ const html_graph = @"<html>
         if (PendingReq){
             $('#button').html('Start');
         }
-        chartdata = transport.chart;
+        
+        chartdata = JSON.parse(""["" + transport.chart.slice(0,-2) + ""]"")
         hexdata = transport.hexdata;
-        drawVisualization(JSON.parse(""["" + chartdata.slice(0,-2) + ""]"") );
+        
+        drawVisualization(chartdata);
         $('#hdata').html(hexdata)
         ChartRx = true;
         PendingReq = false;
     }
-    //
+    
+        // window.onresize = function(event) {
+        //     if (chartdata == """"){
+        //         drawVisualization([]);
+        //     }
+        //     else
+        //     {
+        //         drawVisualization(chartdata);
+        //     }
+        // }
+
+    var rtime = new Date(1, 1, 2000, 12,00,00);
+    var timeout = false;
+    var delta = 200;
+    $(window).resize(function() {
+        rtime = new Date();
+        if (timeout === false) {
+            timeout = true;
+            setTimeout(resizeend, delta);
+        }
+    });
+    
+    function resizeend() {
+        if (new Date() - rtime < delta) {
+            setTimeout(resizeend, delta);
+        } else {
+            timeout = false;
+            if (chartdata == """"){
+                drawVisualization([]);
+            }
+            else
+            {
+                drawVisualization(chartdata);
+            }
+        }               
+    }
+
     </script>
   </head>
   <body> 
@@ -150,6 +188,7 @@ const html_graph = @"<html>
     </div>
     <p>Download this data as a CSV <a href=""%s/blinkup.csv"">here</a>.</p>
     <p>%s</p>
+    <p>Download this data as a C Array <a href=""%s/exportc.txt"">here</a>.</p>
   </body>
 </html>";
  
@@ -158,8 +197,9 @@ const PIXELS_PER_SECOND = 500;  // Number of pixels
 data <- blob();     // Received blinkup data
 dataCSV <- "";
 dataHex <- "";
+dataC <- "";
 hexTable <- [];
-graphString <- "";
+graphString <- blob(200000);
 idealGraphString <- "";
 sampleRate <- 0;
 chartWidth <- 0;
@@ -209,11 +249,20 @@ http.onrequest(function(request, response) {
     extraHtmlData += "ImpScope Data: " + generateReadableHex(split(dataHex, ":")) + "<br/>";
     response.send(200, format(html_graph, additionalGraphDataColumns,idealGraphString, chartWidth, 
         chartWidth + 100, dataHex, inputHexString, chartWidth + 100, http.agenturl(), extraHtmlData));
+   } 
+   else if (request.path == "/exportc.txt")
+   {
+      server.log("exportC.txt");
+      generateC();
+      response.header("Content-Type", "text/plain");
+      response.send(200, dataC);
+      
    } else {
 //    if (data.len()) {
         clearOldData();
-        generateGraph();
-      response.send(200, format(html_graph, additionalGraphDataColumns,graphString, dataHex, "",  http.agenturl(), extraHtmlData));
+        //generateGraph();
+        generateGraphBlob();
+      response.send(200, format(html_graph, additionalGraphDataColumns,graphString.tostring(), dataHex, "",  http.agenturl(), extraHtmlData,http.agenturl()));
 //    }    
   }
 });
@@ -221,7 +270,7 @@ http.onrequest(function(request, response) {
 function clearOldData()
 {
     idealGraphString = "";
-    graphString = "";
+    graphString = blob(200000);
     dataCSV = "";
     additionalGraphDataColumns = "";
     extraHtmlData = "";
@@ -262,35 +311,79 @@ function generateStoredDataPoints()
     valueMin = 4095;
     valueMax = 0;
  
+    server.log("Free Memory:" + imp.getmemoryfree())
+ 
     //initial data analysis
     findMinMax();
+    //server.log("Find Min Max - Free Memory:" + imp.getmemoryfree())
+    
+    // comment out generateHex if using 960Hz sampling (runs out of memory)
     generateHex();
-
+    //server.log("Generate Hex - Free Memory:" + imp.getmemoryfree())
+    
     // Compute chart width
     chartWidth = (data.len().tofloat() / 2.0 / sampleRate.tofloat()) * PIXELS_PER_SECOND;  
+    //server.log("Chart Width - Free Memory:" + imp.getmemoryfree())
     
     //generate graph
     clearOldData();
-    generateGraph();
+    //server.log("Clear old data - Free Memory:" + imp.getmemoryfree())
     
-    local payload = {};
-    payload.hexdata <- dataHex;
-    payload.chart <-  graphString;
+    generateGraphBlob();
+    //server.log("Generate Graph - Free Memory:" + imp.getmemoryfree())
+    
+    local payload = { hexdata = "", chart = ""};
+    payload.hexdata = dataHex;
+    payload.chart = format("%s",graphString.tostring());
+    //local s1= "" + graphString.tostring();
+    //payload.chart   = s1;
     // send chart to pending response.
+    //server.log("Before Response.send - Free Memory:" + imp.getmemoryfree())
     RESPONSE.header("Content-Type", "application/json");
     // RESPONSE.send(200, http.jsonencode("[" + graphString + "]"); 
+    //server.log(http.jsonencode(payload));
     RESPONSE.send(200, http.jsonencode(payload)); 
+    //clearOldData();
+    //server.log("After Clear old data - Free Memory:" + imp.getmemoryfree())
 }
  
-function generateGraph() {
+// function generateGraph() {
+//   // Add data to a 2D array
+//   graphString = "";//"['Sample', 'Value'], ";
+//   local i = 0.0;
+//   for (local j = 0; j < data.len(); j+=2) {
+//     local value = (data[j] >> 4) | (data[j+1] << 4);
+//     value = (value / 4095.0) * 3.3;   // Scale and convert to voltage
+//     graphString += format("[%.3f, %f], ", i / sampleRate, value);
+//     i++;
+//     if (j%100 == 0){
+//         server.log("Generate Graph Func mem: " + imp.getmemoryfree() + "len ")
+//     }
+//   }
+//   server.log(format("Graph generated with %i values: ", data.len()/2));
+  //server.log(graphString);
+//   if(ChartRequest){
+//     server.log("sending chart data")
+//     RESPONSE.header("Content-Type", "text/plain");
+//     RESPONSE.send(200, "[" + graphString + "]"); 
+//     ChartRequest = false;
+//   }
+//}
+ 
+ function generateGraphBlob() {
   // Add data to a 2D array
-  graphString = "";//"['Sample', 'Value'], ";
+  graphString = blob(200000);//"['Sample', 'Value'], ";
+  
   local i = 0.0;
-  for (local j = 0; j < data.len(); j+=2) {
+  local s = data.len();
+  for (local j = 0; j < s; j+=2) {
     local value = (data[j] >> 4) | (data[j+1] << 4);
     value = (value / 4095.0) * 3.3;   // Scale and convert to voltage
-    graphString += format("[%.3f, %f], ", i / sampleRate, value);
+    graphString.writestring(format("[%.3f, %f], ", i / sampleRate, value));
     i++;
+    if (j%100 == 0){
+        server.log("Generate Graph Func mem: " + imp.getmemoryfree())
+    }
   }
   server.log(format("Graph generated with %i values: ", data.len()/2));
   //server.log(graphString);
@@ -450,8 +543,8 @@ function generateReadableHex(hexArr) {
 }
  
 function generateIdealGraph(hexString) {
-    //Explode the hex string
-    //generate the graph
+  //Explode the hex string
+  //generate the graph
   local hexs = split(hexString, ":");
   
   //local startTime = startSampleOfBlinkup / sampleRate;
@@ -590,6 +683,25 @@ function generateCSV() {
   }
   server.log("CSV generated.");
 }
+ 
+function generateC() {
+    server.log("generateC");
+    dataC = "const sample[] = {";
+    local i = 0.0;
+    for (local j = 0; j < data.len(); j++) {
+            //server.log(j + " " + k);
+            dataC += format("0x%04X",data[j])
+            //server.log(format("0x%04X",data[j]));
+            if (j < data.len()-1){
+                dataC+=",";
+            }
+            if ((j+1)%16==0){
+                dataC += "\n"
+            }
+        }
+    dataC+="};"
+    server.log(dataC);
+} 
  
 enum BlinkState {
   NotStarted = 0,
