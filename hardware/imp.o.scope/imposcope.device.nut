@@ -3,7 +3,7 @@ imp.enableblinkup(false);
 // Will display a graph or something
  
 // Constants & Globals
-const SAMPLE_RATE = 480;  // Sample rate in hertz
+const SAMPLE_RATE = 960;  // Sample rate in hertz
 const DURATION = 20;      // Sampling duration in seconds
 blinkupData <- {length = 0, buffer = blob()};   // Data to be sent
 sampling <- 0;            // Sampling flag
