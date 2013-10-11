@@ -132,10 +132,10 @@ const html_graph = @"<html>
         }
         
         chartdata = JSON.parse(""["" + transport.chart.slice(0,-2) + ""]"")
-        hexdata = transport.hexdata;
+ 
         
         drawVisualization(chartdata);
-        $('#hdata').html(hexdata)
+
         ChartRx = true;
         PendingReq = false;
     }
@@ -179,8 +179,6 @@ const html_graph = @"<html>
     </script>
   </head>
   <body> 
-    <div>Hex from Sample %s<br/><p id=""hdata""><p><div>
-    Ideal hex if input   %s<br/>
     <button type=""button"" id=""button"" onclick=""record()"">Start</button>
     <div id=""dashboard"" style='width: 100%%'>
         <div id=""chart"" style='width: 99%%; height: 300px;'></div>
@@ -196,9 +194,8 @@ const html_graph = @"<html>
 const PIXELS_PER_SECOND = 500;  // Number of pixels 
 data <- blob();     // Received blinkup data
 dataCSV <- "";
-dataHex <- "";
 dataC <- "";
-hexTable <- [];
+
 graphString <- blob(200000);
 idealGraphString <- "";
 sampleRate <- 0;
@@ -225,9 +222,6 @@ http.onrequest(function(request, response) {
     generateCSV();
     response.header("Content-Type", "application/octet-stream");
     response.send(200, dataCSV);
-  } else if (request.path == "/hex.txt") {
-    response.header("Content-Type", "text/plain");
-    response.send(200, dataHex);
   } else if (request.path == "/startscope") {
       //Tell scope to start
         device.send("scopeRunning", 1);
@@ -241,15 +235,7 @@ http.onrequest(function(request, response) {
     // RESPONSE = response;
     //response.header("Content-Type", "text/plain");
     //response.send(200, "Stopped");      
-  } else if (request.path == "/compare") {
-    clearOldData();
-    local inputHexString = request.query["IdealHex"];
-    generateIdealGraph(inputHexString);
-    extraHtmlData += "Input Hex Data: " + generateReadableHex(split(inputHexString, ":")) + "<br/>";    
-    extraHtmlData += "ImpScope Data: " + generateReadableHex(split(dataHex, ":")) + "<br/>";
-    response.send(200, format(html_graph, additionalGraphDataColumns,idealGraphString, chartWidth, 
-        chartWidth + 100, dataHex, inputHexString, chartWidth + 100, http.agenturl(), extraHtmlData));
-   } 
+  } 
    else if (request.path == "/exportc.txt")
    {
       server.log("exportC.txt");
@@ -262,7 +248,7 @@ http.onrequest(function(request, response) {
         clearOldData();
         //generateGraph();
         generateGraphBlob();
-      response.send(200, format(html_graph, additionalGraphDataColumns,graphString.tostring(), dataHex, "",  http.agenturl(), extraHtmlData,http.agenturl()));
+      response.send(200, format(html_graph, additionalGraphDataColumns,graphString.tostring(),   http.agenturl(), extraHtmlData,http.agenturl()));
 //    }    
   }
 });
@@ -305,8 +291,6 @@ function generateStoredDataPoints()
 {
     //reset stored data points
     dataCSV = "";
-    dataHex = "";
-    hexTable = [];
     startSampleOfBlinkup = 0;
     valueMin = 4095;
     valueMax = 0;
@@ -315,25 +299,16 @@ function generateStoredDataPoints()
  
     //initial data analysis
     findMinMax();
-    //server.log("Find Min Max - Free Memory:" + imp.getmemoryfree())
-    
-    // comment out generateHex if using 960Hz sampling (runs out of memory)
-    generateHex();
-    //server.log("Generate Hex - Free Memory:" + imp.getmemoryfree())
     
     // Compute chart width
     chartWidth = (data.len().tofloat() / 2.0 / sampleRate.tofloat()) * PIXELS_PER_SECOND;  
-    //server.log("Chart Width - Free Memory:" + imp.getmemoryfree())
     
     //generate graph
     clearOldData();
-    //server.log("Clear old data - Free Memory:" + imp.getmemoryfree())
-    
     generateGraphBlob();
-    //server.log("Generate Graph - Free Memory:" + imp.getmemoryfree())
     
-    local payload = { hexdata = "", chart = ""};
-    payload.hexdata = dataHex;
+    local payload = { chart = ""};
+
     payload.chart = format("%s",graphString.tostring());
     //local s1= "" + graphString.tostring();
     //payload.chart   = s1;
@@ -395,282 +370,6 @@ function generateStoredDataPoints()
 //   }
 }
  
-// Convert hex string to an integer
-function hexToInteger(hex)
-{
-    local result = 0;
-    local shift = hex.len() * 4;
- 
-    // For each digit..
-    for(local d=0; d<hex.len(); d++)
-    {
-        local digit;
- 
-        // Convert from ASCII Hex to integer
-        if(hex[d] >= 0x61)
-            digit = hex[d] - 0x57;
-        else if(hex[d] >= 0x41)
-             digit = hex[d] - 0x37;
-        else
-             digit = hex[d] - 0x30;
- 
-        // Accumulate digit
-        shift -= 4;
-        result += digit << shift;
-    }
- 
-    return result;
-}
- 
-function doubleHexToBinary (doubleHex)
-{
-//  local firstHexAsInt = hexToInteger(doubleHex.slice(0,0));
-//  local secondHexAsInt = hexToInteger(doubleHex.slice(1,1));  
-  local binArr = [false, false, false, false, false, false, false, false];
-  for (local hexSpot = 0; hexSpot < 2; hexSpot++)
-  {
-    local intVal = hexToInteger(doubleHex.slice(hexSpot, hexSpot+1));
-    //server.log(format("hex: %s to int %d", doubleHex.slice(hexSpot, hexSpot+1), intVal));
-    for (local boolSpot = 0; boolSpot < 4; boolSpot++)
-    {
-      binArr[3 - boolSpot + hexSpot * 4] = ((intVal >> boolSpot) & 1) == 0x01 ? true : false ;
-      //server.log(format("Int: %d bool:%s", (intVal >> boolSpot), ((intVal >> boolSpot) & 1) == 0x01 ? "true" : "false"));
-    }
-  }
- 
-  return binArr;
-}
- 
-function generateReadableHex(hexArr) {
-    local readableString = "";
-    local blinkState = true;
-    local ssidLength = 0;
-    local passStarted = false;
-    local passLength = 0;
-    local enrolment05 = false;
-    local enrolment10 = false;
-    local enrolmentLoc = 9999;
-    local siteId = false;
-    local tokenId = false;
-    for (local i = 0; i < hexArr.len(); i++)
-    {
-        local hex = hexArr[i];
-        if (i < 8) {
-            if (hex != "AA") {
-                readableString += " Start Blink (8xAA) Fail, ";
-                blinkState = false;
-            }
-        } else if (i == 8) {
-           if (hex != "2A") {
-                readableString += " Start Blink (1x2A) Fail, ";
-                blinkState = false;
-            }
-        } else if (i == 9) {
-            if (blinkState)
-                readableString += "Start Blink Success, ";
-                
-            local intVal = hexToInteger(hex.slice(0, 1)) * 16 + hexToInteger(hex.slice(1, 2));
-            readableString += "Length: " + intVal + ", ";
-        } else if (i == 10) {
-            if (hex == "01") {
-                readableString += "SSID: ";
-            } else if (hex == "03") {
-                readableString += "WPS: ";
-            } else if (hex == "07") {
-                readableString += "RESET ";
-                enrolment05 = true;
-                enrolment10 = true;
-                enrolmentLoc = i + 1 - 16;
-            } else if (hex == "04") {
-                readableString += "FIRMWARE ";
-                enrolment05 = true;
-                enrolment10 = true;
-                enrolmentLoc = i + 1 - 16;
-            }
-            
-        } else if (i == 11) {
-            ssidLength = hexToInteger(hex.slice(0, 1)) * 16 + hexToInteger(hex.slice(1, 2));
-        } else if (i > 11 && i < 12 + ssidLength) {
-            local intVal = hexToInteger(hex.slice(0, 1)) * 16 + hexToInteger(hex.slice(1, 2));
-            readableString += format("%c", intVal);
-        } else if (i == 12 + ssidLength) {
-            if (hex == "06") { //Found a password
-                readableString += " WifiPass: ";
-                passStarted = true; //Set to 1 so we hit the length byet
-            } else if (hex == "05") {
-                readableString += " NoPass, Enrol Start, ";
-                enrolment05 = true;
-            } else {
-                readableString += " Error at wifipass or enrol start, ";
-            }
-        } else if (passStarted && i == 12 + ssidLength + 1) {
-            local intVal = hexToInteger(hex.slice(0, 1)) * 16 + hexToInteger(hex.slice(1, 2));
-            passLength = intVal;     
-        } else if (passStarted && i < 12 + ssidLength + 2 + passLength) {
-            local intVal = hexToInteger(hex.slice(0, 1)) * 16 + hexToInteger(hex.slice(1, 2));
-            readableString += format("%c", intVal);
-        } else if (passStarted) {
-            //We should have a 05 here as the password is done
-            passStarted = false;            
-            if (hex == "05") {
-                readableString += " Enrol Start, ";
-                enrolment05 = true;
-            } else {
-                readableString += " Error at enrol start:" + hex + ", ";
-            }
-        } else if (enrolment05 && ! enrolment10) {
-            if (hex != "10") {
-                readableString += " Enrol (0x10) error, ";
-            }  else {
-                enrolment10 = true;
-            }            
-            enrolmentLoc = i + 1;
-            readableString += " siteId: ";
-        } else if (enrolment05 && enrolment10 && i < enrolmentLoc + 8) {
-            readableString += hex;
-        } else if (enrolment05 && enrolment10 && i == enrolmentLoc + 8) {
-            readableString += " , tokenId: " + hex;
-        } else if (enrolment05 && enrolment10 && i < enrolmentLoc + 16) {
-            readableString += hex;
-        } else if (enrolment05 && enrolment10 && i == enrolmentLoc + 16) {
-            readableString += " , CRC: " + hex;
-        } else  {
-            readableString += hex;
-        }
-    }
-    
-    return readableString;
-}
- 
-function generateIdealGraph(hexString) {
-  //Explode the hex string
-  //generate the graph
-  local hexs = split(hexString, ":");
-  
-  //local startTime = startSampleOfBlinkup / sampleRate;
-  additionalGraphDataColumns = "data.addColumn({type:'string', role:'annotation'});\n"
-  additionalGraphDataColumns += "data.addColumn('number','Ideal');\n"
-  additionalGraphDataColumns += "data.addColumn({type:'string', role:'annotation'});\n"
-  /*idealGraphString += format("[%.3f, %f], ", 0, valueMin);
-  local runTime = startTime;
-  for (local i = 0; i < hexs.len(); i++)
-  {
-    local binary = doubleHexToBinary(hexs[i]);
-    for (local binSpot = 0; binSpot < 16; binSpot++)
-    {
-      local value = (valueMin / 4095.0) * 3.3;;
-      if (binary[binSpot] == 1)
-        value = (valueMax / 4095.0) * 3.3;   // Scale and convert to voltage
-      idealGraphString += format("[%.3f, %f], ", runTime + 0.01, value);
-      idealGraphString += format("[%.3f, %f], ", runTime + 1.0 / 60.0, value);
-      runTime + 1.0 / 60.0;
-    }
-  }*/
- 
- 
-  local i = 0.0;
-  local switchPoint = 0;//startSampleOfBlinkup;
-  local samplesPerTick = sampleRate / 60.0; //Samples per bit
-  
-  local idealValue = valueMin;
-  local binarySpot = 8;
-  local hexSpot = 0;
-  local binary = null;
-  local tickSpot = 0;
-  local annotation = null;
-  local hexTableSpot = 0;
-  local nextHexTableSample = 0;
-  local sampledAnnotation = null;
-  if (hexTable.len() > 0) {
-      nextHexTableSample = hexTable[0].sample;
-  }
-  
-//   if (startSampleOfBlinkup * 2 + 1 > data.len() - 1)
-//   {
-//       server.log("Sample past data? sample:%d, data:%d", startSampleOfBlinkup, data.len());
-//   }
-  
-  local startJ = startSampleOfBlinkup * 2;
-  startJ = startJ.tointeger()
-  
-  //Loop through the data to create the graph string
-  for (local j = startJ; j < data.len(); j+=2) {
-    //If we have just passed a hex sample, make annotation
-    if (j / 2 > nextHexTableSample)
-    {
-        //Make sure we have at least one annotation
-        if (hexTable.len() > 0)
-            sampledAnnotation = hexTable[hexTableSpot].hex;
-            
-        //If there was no data, insert a n! symbol
-        if (sampledAnnotation == null)
-            sampledAnnotation = "n!";
-            
-         //server.log("HTSpot:" + hexTableSpot + " sample: " + j / 2 + " annot: " + sampledAnnotation + " hexSpotSample: " + hexTable[hexTableSpot].sample);
-        //Advance to the next spot in the annotation table
-        hexTableSpot++;
-        if (hexTable.len() > hexTableSpot) {    
-            nextHexTableSample = hexTable[hexTableSpot].sample;
-        } else {
-            nextHexTableSample = 999999999;
-        }
-    }
-  
-    // If we have gone through 8 bits, it's time to grab more
-    // data from the input string
-    if (binarySpot == 8)
-    {        
-        binary = doubleHexToBinary(hexs[hexSpot]);
-        if (hexSpot > 0)
-            annotation = hexs[hexSpot - 1];
-        //server.log(format("Processing spot: %s with Binary0: %s 1: %s", hexs[hexSpot], (binary[0]) ? "0" : "1", (binary[1]) ? "0" : "1"));
-        binarySpot = 0;
-        hexSpot++;
-    }
-    
-    if (hexSpot >= hexs.len())
-    {
-        binarySpot = 0;
-        hexSpot = 0;
-        switchPoint = 9999999;
-        idealValue = 0;
-    }
-    
-    if (i > switchPoint) {
-        if (binary[binarySpot])    
-            idealValue = valueMax;
-        else
-            idealValue = valueMin;
-        binarySpot++;
-        tickSpot++;
-        switchPoint = (samplesPerTick * tickSpot);// + startSampleOfBlinkup;        
-    }
- 
-    if (j + 1 > data.len() - 1) {
-        server.log("Sample past data during for? sample:%d, data:%d", startSampleOfBlinkup, data.len());
-    }
-    /*server.log("j:" + j + " len:" + data.len());
-    local t1 = data[j];
-    local t2 = data[j + 1]; */
-    
-    local value = (data[j] >> 4) | (data[j+1] << 4);
-    value = (value / 4095.0) * 3.3;   // Scale and convert to voltage
-    if (annotation != null && sampledAnnotation != null)
-        idealGraphString += format("[%.3f, %f, '%s', %f, '%s'], ", i / sampleRate, value, sampledAnnotation, (idealValue / 4095.0) * 3.3, annotation);
-    else if (annotation != null)
-        idealGraphString += format("[%.3f, %f, null, %f, '%s'], ", i / sampleRate, value, (idealValue / 4095.0) * 3.3, annotation);
-    else if (sampledAnnotation != null)
-        idealGraphString += format("[%.3f, %f, '%s', %f, null], ", i / sampleRate, value, sampledAnnotation, (idealValue / 4095.0) * 3.3);
-    else
-        idealGraphString += format("[%.3f, %f, null, %f, null], ", i / sampleRate, value, (idealValue / 4095.0) * 3.3);
-        
-    sampledAnnotation = null;
-    annotation = null;
-    i++;
-  }
-  server.log(format("Ideal graph generated"));
-}
- 
  
 function generateCSV() {
   dataCSV = "Time (s),Value,\n";
@@ -730,156 +429,6 @@ function findMinMax()
   }
 }
  
-//Go through the raw data and generate a hex interpretation of the data
-// Store the result as a string in dataHex and in a table hexTable
-function generateHex() {
-  dataHex = "";
- 
-  local hysteresisDiff = (valueMax - valueMin) * 0.25;
-  local changePointWhenHigh = valueMax - hysteresisDiff;
-  local changePointWhenLow = valueMin + hysteresisDiff;
-  
- 
-  local lastBool = true;
-  local timeSinceChange = 0.0;
-  local timePerBit = 1.0/60.0;
-  local timePerSample = 1.0 / sampleRate;
-  local blinkState = BlinkState.NotStarted;
-  local centerTime = 0; //This is the time calculated as the center of the first high
-  local nextBitTime = 0; //Time to grab the next bit
-  local hexValue = 0;
-  local hexBitSet = 0;
-  local possibleStart = 0;
-  local foundFirstAA = false;
-  local secondLowSampleSpot = 0;
-  local lastValue = 0.0;
-  server.log("Found Min:" + valueMin + " Max:" + valueMax);
-  server.log("High Change:" + changePointWhenHigh + " Low Change: " + changePointWhenLow);
-  //hexTable.append({"sample": 0, "hex":format("%02X", 0x00)});
-  for (local j = 0; j < data.len(); j+=2) {
-    local value = (data[j] >> 4) | (data[j+1] << 4);
-    local delta = value - lastValue;
-    //if delta is > 0, we are going up else going down
-    local time = j / 2.0 / sampleRate;
-    local didChange = false;
-    local currentBool = false;
-    if (lastBool == false) {
-      if (value > changePointWhenLow && delta > 0.09) {
-        didChange = true;
-        currentBool = true;
-        timeSinceChange = 0.0;
-      } else {
-        currentBool = false;
-        timeSinceChange += timePerSample;
-      }
-    } else {
-      if (value < changePointWhenHigh && delta < -0.09) {
-        didChange = true;
-        currentBool = false;
-        timeSinceChange = 0.0;
-      } else {
-        currentBool = true;
-        timeSinceChange += timePerSample;
-      }
-    }
- 
-    
-    if (blinkState == BlinkState.NotStarted) {
-        //if (time < 3)
-        //server.log("Time: " + time + " currentBool:" + currentBool + " lbool: " + lastBool + " didChange:" + didChange + " timeSinceChange: " + timeSinceChange);
-        if (currentBool == false && timeSinceChange > 0.1) {
-            blinkState = BlinkState.LongLow;            
-            server.log("Going to long low at time " + time);
-        }
-    } else if (blinkState == BlinkState.LongLow) {
-        if (didChange && currentBool == true) {
-            blinkState = BlinkState.FirstHigh;
-            centerTime = time;
-            server.log("Going to first high at time " + time);
-            startSampleOfBlinkup = j / 2.0;
-            hexValue = hexValue<<1 | 0x01;
-            hexBitSet++;            
-        }
-    } else if (blinkState == BlinkState.FirstHigh) {
-        //If we hi for longer than 1/60th of a second, something is wrong
-        if (timeSinceChange > 1.0/40.0) {
-            blinkState = BlinkState.NotStarted;
-            server.log("We've been high to long, reset");
-            timeSinceChange = 0.0;
-            hexBitSet = 0;
-            hexValue = 0;
-        } else if (didChange && currentBool == false) {
-            secondLowSampleSpot = j;
-            blinkState = BlinkState.Going;
-            //This time is not actually the center of the bit, but 3/4 through the bit
-            // this will hopefully allow the signal to be more stable at this point
-            centerTime = centerTime + timePerBit * 0.70;//(time - centerTime) / 2.0;
-            nextBitTime = centerTime + timePerBit * 2.0;
-            hexValue = hexValue<<1; 
-            hexBitSet++;
-            server.log("Going to going at time "+ time);
-        }
-    } else if (blinkState == BlinkState.Going) {
-        if (time > nextBitTime) {
-            //Grab the bit
-            nextBitTime += timePerBit;
-            if (currentBool == true) {
-                hexValue = hexValue<<1 | 0x01;
-            } else {
-                hexValue = hexValue<<1;        
-            }
-            hexBitSet++;
-        }
-    }
-    
-    
-    if (hexBitSet == 8) {
-        if (! foundFirstAA)
-        {
-            //Lets be more rebust and check for an AA pattern
-            if (hexValue == 0xAA)
-            {
-                foundFirstAA = true;
-            } else
-            {
-                j = secondLowSampleSpot + 2;
-                currentBool == false;
-                timeSinceChange = 0.0;                        
-                blinkState = BlinkState.LongLow;            
-                server.log("Resetting on bad AA: " + format("%02X:", hexValue) + " at time: " + time);
-                hexBitSet = 0;
-                hexValue = 0;
-            }
-        }
-        
-        if (foundFirstAA)
-        {
-            dataHex += format("%02X:", hexValue);
-            hexTable.append({"sample": j / 2, "hex":format("%02X", hexValue)});            
-            hexValue = 0;
-            hexBitSet = 0;            
-        }
- 
-    }
-    
-    lastBool = currentBool;
-    lastValue = value;
-    
-//
-//enum BlinkState {
-//  NotStarted = 0,
-//  LongLow,
-//  FirstHigh,
-//  FirstLow,
-//  Going,
-//  Ended
-//}
-    
-  }
- 
- 
-  //server.log("Hex generated.");
-}
  
 device.on("data", receiveData);
 device.on("state", updateState);
