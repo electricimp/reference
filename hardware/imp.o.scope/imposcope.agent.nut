@@ -194,9 +194,8 @@ const html_graph = @"<html>
 const PIXELS_PER_SECOND = 500;  // Number of pixels 
 data <- blob();     // Received blinkup data
 dataCSV <- "";
-dataC <- "";
-
-graphString <- blob(200000);
+dataCblob <- blob(154000);
+graphString <- blob(20000);
 idealGraphString <- "";
 sampleRate <- 0;
 chartWidth <- 0;
@@ -241,7 +240,7 @@ http.onrequest(function(request, response) {
       server.log("exportC.txt");
       generateC();
       response.header("Content-Type", "text/plain");
-      response.send(200, dataC);
+      response.send(200, format("%s",dataCblob.tostring()));
       
    } else {
 //    if (data.len()) {
@@ -256,7 +255,8 @@ http.onrequest(function(request, response) {
 function clearOldData()
 {
     idealGraphString = "";
-    graphString = blob(200000);
+    graphString = blob(20000);
+    dataCblob  = blob(153600)
     dataCSV = "";
     additionalGraphDataColumns = "";
     extraHtmlData = "";
@@ -347,18 +347,18 @@ function generateStoredDataPoints()
  
  function generateGraphBlob() {
   // Add data to a 2D array
-  graphString = blob(200000);//"['Sample', 'Value'], ";
+  graphString = blob(20000);//"['Sample', 'Value'], ";
   
   local i = 0.0;
   local s = data.len();
   for (local j = 0; j < s; j+=2) {
-    local value = (data[j] >> 4) | (data[j+1] << 4);
-    value = (value / 4095.0) * 3.3;   // Scale and convert to voltage
-    graphString.writestring(format("[%.3f, %f], ", i / sampleRate, value));
-    i++;
-    if (j%100 == 0){
-        server.log("Generate Graph Func mem: " + imp.getmemoryfree())
+    if (j%10==0){
+        local value = (data[j] >> 4) | (data[j+1] << 4);
+        value = (value / 4095.0) * 3.3;   // Scale and convert to voltage
+        graphString.writestring(format("[%.3f, %f], ", i / sampleRate, value));
+        i++;
     }
+    
   }
   server.log(format("Graph generated with %i values: ", data.len()/2));
   //server.log(graphString);
@@ -384,22 +384,25 @@ function generateCSV() {
 }
  
 function generateC() {
+    dataCblob = blob(153600)
     server.log("generateC");
-    dataC = "const sample[] = {";
+    
+    dataCblob.writestring("const sample[] = {");
+
     local i = 0.0;
     for (local j = 0; j < data.len(); j++) {
             //server.log(j + " " + k);
-            dataC += format("0x%04X",data[j])
+            dataCblob.writestring(format("0x%04X",data[j]));
             //server.log(format("0x%04X",data[j]));
             if (j < data.len()-1){
-                dataC+=",";
+                dataCblob.writestring(",");
             }
             if ((j+1)%16==0){
-                dataC += "\n"
+                dataCblob.writestring("\n");
             }
         }
-    dataC+="};"
-    server.log(dataC);
+    dataCblob.writestring("};")
+    //server.log(dataC);
 } 
  
 enum BlinkState {
