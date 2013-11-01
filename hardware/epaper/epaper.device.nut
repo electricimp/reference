@@ -135,7 +135,7 @@ class epaper {
 
     // enable SPI
     function spiOn() {
-        local freq = this.spi.configure(CLOCK_IDLE_HIGH | MSB_FIRST, SPICLK);
+        local freq = this.spi.configure(CLOCK_IDLE_HIGH | MSB_FIRST | CLOCK_2ND_EDGE, SPICLK);
         this.spi.write("\x00");
         imp.sleep(0.00001);
         return freq;
@@ -143,7 +143,7 @@ class epaper {
 
     // disable SPI
     function spiOff() {
-        local freq = this.spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, SPICLK);
+        local freq = this.spi.configure(CLOCK_IDLE_LOW | MSB_FIRST | CLOCK_2ND_EDGE, SPICLK);
         this.spi.write("\x00");
         imp.sleep(0.00001);
         return freq;
