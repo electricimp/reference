@@ -25,91 +25,35 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
  * 10/21/2013
  */
 
-class SX1505 {
-    
-    i2cPort = null;
-    i2cAddress = null;
-    alertpin = null;
-    // callback functions {pin,callback}
-    callbacks = {};
-    
-    // I/O Expander internal registers
-    REGDATA     = 0x00;
-    REGDIR      = 0x01;
-    REGPULLUP   = 0x02;
-    REGPULLDN   = 0x03;
-    REGINTMASK  = 0x05;
-    REGSNSHI    = 0x06;
-    REGSNSLO    = 0x07;
-    REGINTSRC   = 0x08;
-    REGEVNTSTS  = 0x09;
-    REGPLDMODE  = 0x10;
-    REGPLDTBL0  = 0x11;
-    REGPLDTBL1  = 0x12;
-    REGPLDTBL2  = 0x13;
-    REGPLDTBL3  = 0x14;
-    REGPLDTBL4  = 0x15;
-    
-    function decode_callback() {
-        //server.log("Decoding Callback");
-        if (!alertpin.read()) {
-            local irqPinMask = this.readReg(REGINTSRC);
-            /*
-            server.log(format("REGINTSRC:  0x%02x",irqPinMask));
-            server.log(format("REGDATA:    0x%02x",this.readReg(REGDATA)));
-            server.log(format("REGDIR:     0x%02x",this.readReg(REGDIR)));
-            server.log(format("REGPULLUP:  0x%02x",this.readReg(REGPULLUP)));
-            server.log(format("REGPULLDN:  0x%02x",this.readReg(REGPULLDN)));
-            server.log(format("REGINTMASK: 0x%02x",this.readReg(REGINTMASK)));
-            server.log(format("REGSNSHI:   0x%02x",this.readReg(REGSNSHI)));
-            server.log(format("REGSNSLO:   0x%02x",this.readReg(REGSNSLO)));
-            server.log(format("REGEVNTSTTS:0x%02x",this.readReg(REGEVNTSTS)));
-            */
-            clearAllIrqs();
-            callbacks[irqPinMask]();   
-        }
+class SX150x{
+    //Private variables
+    _i2c       = null;
+    _addr      = null;
+    _callbacks = null;
+
+    //Pass in pre-configured I2C since it may be used by other devices
+    constructor(i2c, address = 0x40) {
+        _i2c  = i2c;
+        _addr = address;  //8-bit address
+        _callbacks = [];
     }
-    
-    constructor(port, address, alertpin) {
-        try {
-            i2cPort = port;
-            i2cPort.configure(CLOCK_SPEED_100_KHZ);
-            this.alertpin = alertpin;
-        } catch (err) {
-            server.error("Error configuring I2C for I/O Expander: "+err);
-        }
-        
-        // 7-bit addressing
-        i2cAddress = address << 1;
-        
-        // configure alert pin to figure out which callback needs to be called
-        if (alertpin) {
-            alertpin.configure(DIGITAL_IN_PULLUP,decode_callback.bindenv(this));
-        }
-        
-        // clear all IRQs just in case
-        clearAllIrqs();
-    }
-    
+
     function readReg(register) {
-        local data = i2cPort.read(i2cAddress, format("%c", register), 1);
+        local data = _i2c.read(_addr, format("%c", register), 1);
         if (data == null) {
-            server.error("I2C Read Failure");
+            server.error("I2C Read Failure. Device: "+_addr+" Register: "+register);
             return -1;
         }
         return data[0];
     }
     
     function writeReg(register, data) {
-        i2cPort.write(i2cAddress, format("%c%c", register, data));
+        _i2c.write(_addr, format("%c%c", register, data));
     }
     
     function writeBit(register, bitn, level) {
-        //server.log("made it to writebit");
         local value = readReg(register);
-        //server.log(format("writebit got 0x%x",value));
         value = (level == 0)?(value & ~(1<<bitn)):(value | (1<<bitn));
-        //server.log(format("writing back 0x%x",value));
         writeReg(register, value);
     }
     
@@ -118,89 +62,207 @@ class SX1505 {
         value = (value & ~mask) | (data & mask);
         writeReg(register, value);
     }
-    // set or clear a selected GPIO pin, 0-15
+
+    // set or clear a selected GPIO pin, 0-16
     function setPin(gpio, level) {
-        writeBit(REGDATA, gpio, level ? 1 : 0);
+        writeBit(bank(gpio).REGDATA, gpio % 8, level ? 1 : 0);
     }
+
     // configure specified GPIO pin as input(0) or output(1)
     function setDir(gpio, output) {
-        //server.log("made it to setDir");
-        writeBit(REGDIR, gpio, output ? 0 : 1);
+        writeBit(bank(gpio).REGDIR, gpio % 8, output ? 0 : 1);
     }
+
     // enable or disable internal pull up resistor for specified GPIO
     function setPullUp(gpio, enable) {
-        //server.log("made it to setPullUp");
-        writeBit(REGPULLUP, gpio, enable ? 0 : 1);
+        writeBit(bank(gpio).REGPULLUP, gpio % 8, enable ? 0 : 1);
     }
+    
+    // enable or disable internal pull down resistor for specified GPIO
+    function setPullUp(gpio, enable) {
+        writeBit(bank(gpio).REGPULLDN, gpio % 8, enable ? 0 : 1);
+    }
+
     // configure whether specified GPIO will trigger an interrupt
     function setIrqMask(gpio, enable) {
-        writeBit(REGINTMASK, gpio, enable ? 0 : 1);
+        writeBit(bank(gpio).REGINTMASK, gpio % 8, enable ? 0 : 1);
     }
+
+    // clear interrupt on specified GPIO
+    function clearIrq(gpio) {
+        writeBit(bank(gpio).REGINTMASK, gpio % 8, 1);
+    }
+
+    // get state of specified GPIO
+    function getPin(gpio) {
+        return ((readReg(bank(gpio).REGDATA) & (1<<(gpio%8))) ? 1 : 0);
+    }
+
+    //configure which callback should be called for each pin transition
+    function setCallback(gpio, callback){
+        _callbacks.insert(gpio,callback);
+    }
+
+    function callback(){
+        local irq = getIrq();
+        clearAllIrqs();
+        for (local i = 0; i < 16; i++){
+            if ( (irq & (1 << i)) && (typeof _callbacks[i] == "function")){
+                _callbacks[i]();
+            }
+        }
+    }
+}
+
+class SX1505 extends SX150x{
+    // I/O Expander internal registers
+    BANK_A = {  REGDATA    = 0x00
+                REGDIR     = 0x01
+                REGPULLUP  = 0x02
+                REGPULLDN  = 0x03
+                REGINTMASK = 0x05
+                REGSNSHI   = 0x06
+                REGSNSLO   = 0x07
+                REGINTSRC  = 0x08
+            }
+
+    constructor(i2c, address=0x20){
+        base.constructor(i2c, address);
+        _callbacks.resize(8,null);
+        this.clearAllIrqs();
+    }
+    
+    function bank(gpio){ return BANK_A; }
+
+    // configure whether edges trigger an interrupt for specified GPIO
+    function setIrqEdges( gpio, rising, falling) {
+        local mask = 0x03 << ((gpio & 3) << 1);
+        local data = (2*falling + rising) << ((gpio & 3) << 1);
+        writeMasked(gpio >= 4 ? BANK_A.REGSNSHI : BANK_A.REGSNSLO, data, mask);
+    }
+
+    function clearAllIrqs() {
+        writeReg(BANK_A.REGINTSRC,0xff);
+    }
+    
+    function getIrq(){
+        return (readReg(BANK_A.REGINTSRC) & 0xFF);
+    }
+}
+
+class SX1506 extends SX150x{
+    // I/O Expander internal registers
+    static BANK_A = {   REGDATA    = 0x01,
+                        REGDIR     = 0x03,
+                        REGPULLUP  = 0x05,
+                        REGPULLDN  = 0x07,
+                        REGINTMASK = 0x09,
+                        REGSNSHI   = 0x0B,
+                        REGSNSLO   = 0x0D,
+                        REGINTSRC  = 0x0F}
+
+    static BANK_B = {   REGDATA    = 0x00,
+                        REGDIR     = 0x02,
+                        REGPULLUP  = 0x04,
+                        REGPULLDN  = 0x06,
+                        REGINTMASK = 0x08,
+                        REGSNSHI   = 0x0A,
+                        REGSNSLO   = 0x0C,
+                        REGINTSRC  = 0x0E}
+
+    constructor(i2c, address=0x20){
+        base.constructor(i2c, address);
+        _callbacks.resize(16,null);
+        this.clearAllIrqs();
+    }
+
+    function bank(gpio){
+        return (gpio > 7) ? BANK_A : BANK_B;
+    }
+
     // configure whether edges trigger an interrupt for specified GPIO
     function setIrqEdges( gpio, rising, falling) {
         local mask = 0x03 << ((gpio & 3) << 1);
         local data = (2*falling + rising) << ((gpio & 3) << 1);
         writeMasked(gpio >= 4 ? REGSNSHI : REGSNSLO, data, mask);
     }
-    // clear interrupt on specified GPIO
-    function clearIrq(gpio) {
-        writeBit(REGINTMASK, gpio, 1);
-    }
+
     function clearAllIrqs() {
-        writeReg(REGINTSRC,0xff);
+        writeReg(BANK_A.REGINTSRC,0xff);
+        writeReg(BANK_B.REGINTSRC,0xff);
     }
-    
-    // get state of specified GPIO
-    function getPin(gpio) {
-        return ((readReg(REGDATA) & (1<<gpio)) ? 1 : 0);
+
+    function getIrq(){
+        return ((readReg(BANK_B.REGINTSRC) & 0xFF) << 8) & (readReg(BANK_A.REGINTSRC) & 0xFF);
     }
 }
 
-class expGpio extends SX1505 {
+//Class to allow using an IO on an Expander just like an Imp pin
+class ExpGPIO{
+    _expander = null;  //Instance of an Expander class
+    _gpio     = null;  //Pin number of this GPIO pin
     
-    // pin number of this GPIO pin
-    gpio = null;
-    // imp pin to throw interrupt on, if configured
-    alertpin = null;
-    
-    constructor(port, address, gpio, alertpin = null) {
-        base.constructor(port, address, alertpin);
-        this.gpio = gpio;
+    constructor(expander, gpio) {
+        _expander = expander;
+        _gpio     = gpio;
     }
     
-    function configure(mode, callback = null) {
+    //Optional initial state (defaults to 0 just like the imp)
+    function configure(mode, callback = null, initialstate=0) {
         // set the pin direction and configure the internal pullup resistor, if applicable
+        _expander.setPin(_gpio,initialstate);
         if (mode == DIGITAL_OUT) {
-            base.setDir(gpio,1);
-            base.setPullUp(gpio,0);
+            _expander.setDir(_gpio,1);
+            _expander.setPullUp(_gpio,0);
         } else if (mode == DIGITAL_IN) {
-            base.setDir(gpio,0);
-            base.setPullUp(gpio,0);
-            //server.log("GPIO Expander Pin "+gpio+" Configured");
+            _expander.setDir(_gpio,0);
+            _expander.setPullUp(_gpio,0);
         } else if (mode == DIGITAL_IN_PULLUP) {
-            base.setDir(gpio,0);
-            base.setPullUp(gpio,1);
+            _expander.setDir(_gpio,0);
+            _expander.setPullUp(_gpio,1);
         }
         
         // configure the pin to throw an interrupt, if necessary
         if (callback) {
-            base.setIrqMask(gpio,1);
-            base.setIrqEdges(gpio,1,1);
-            
-            // add this callback to the base's callbacks table
-            base.callbacks[(0xff & (0x01 << gpio))] <- callback;
-            //server.log("GPIO Expander Callback added to table");
+            _expander.setIrqMask(_gpio,1);
+            _expander.setIrqEdges(_gpio,1,1);
+            _expander.setCallback(_gpio,callback);            
         } else {
-            base.setIrqMask(gpio,0);
-            base.setIrqEdges(gpio,0,0);
+            _expander.setIrqMask(_gpio,0);
+            _expander.setIrqEdges(_gpio,0,0);
+            _expander.setCallback(_gpio,null);
         }
     }
     
-    function write(state) {
-        base.setPin(gpio,state);
-    }
+    function write(state) { _expander.setPin(_gpio,state); }
     
-    function read() {
-        return base.getPin(gpio);
-    }
+    function read() { return _expander.getPin(_gpio); }
 }
+
+
+//----------------------------------------------------------------------------------
+//
+//  Example Code
+//
+//----------------------------------------------------------------------------------
+
+//Initialize the I2C bus
+i2c <- hardware.i2c89;
+i2c.configure(CLOCK_SPEED_100_KHZ);
+
+// Initialize an 8-channel I2C I/O Expander (SX1505)
+ioexp <- SX1505(i2c,0x40);    // instantiate I/O Expander
+
+// Imp Pin configuration
+ioexp_int_l     <- hardware.pin1;   // I/O Expander Alert (Active Low)
+
+//Make GPIO instances for each IO on the expander
+btn1            <- ExpGPIO(ioexp, 4);     // User Button 1 (GPIO 4)
+btn2            <- ExpGPIO(ioexp, 5);     // User Button 2 (GPIO 5)
+
+//Initialize the interrupt Pin
+ioexp_int_l.configure(DIGITAL_IN_PULLUP, ioexp.callback.bindenv(ioexp))
+
+// Configure the Two buttons
+btn1.configure(DIGITAL_IN_PULLUP, function(){server.log("Button 1:"+btn1.read())});
+btn2.configure(DIGITAL_IN_PULLUP, function(){server.log("Button 2:"+btn2.read())});
