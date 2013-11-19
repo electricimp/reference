@@ -193,7 +193,7 @@ class SX1506 extends SX150x{
     }
 
     function getIrq(){
-        return ((readReg(BANK_B.REGINTSRC) & 0xFF) << 8) & (readReg(BANK_A.REGINTSRC) & 0xFF);
+        return ((readReg(BANK_B.REGINTSRC) & 0xFF) << 8) | (readReg(BANK_A.REGINTSRC) & 0xFF);
     }
 }
 
