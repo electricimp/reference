@@ -18,11 +18,11 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
 */
 
 /* 
- * Tom Buttner
+ * Tom Byrne
  * tom@electricimp.com
  */
 
- /*
+/*
  * Generic Class to learn IR Remote Control Codes 
  * Useful for:
  * 		- TV Remotes
@@ -33,25 +33,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SO
  * For more information on Differential Pulse Position Modulation, see
  * http://learn.adafruit.com/ir-sensor
  *
- * Input: 
- *
  */
 class IR_receiver {
+    /* Note that the receive loops runs at about 160 us per iteration */
 
 	/* Receiver Thresholds in us. Inter-pulse times < THRESH_0 are zeros, 
 	 * while times > THRESH_0 but < THRESH_1 are ones, and times > THRESH_1 
 	 * are either the end of a pulse train or the start pulse at the beginning of a code */
-	THRESH_0					= 600;
-	THRESH_1					= 1500;
+	THRESH_0					= 800;  // us (~5 iterations)
+	THRESH_1					= 1800; // us (~11 iterations)
 
 	/* IR Receive Timeouts
 	 * IR_RX_DONE is the max time to wait after a pulse before determining that the 
 	 * pulse train is complete and stopping the reciever. */
-	IR_RX_DONE					= 4000; // us
-
-	/* IR_RX_TIMEOUT is an overall timeout for the receive loop. Prevents the device from
-	 * locking up if the IR signal continues to oscillate for an unreasonable amount of time */
-	IR_RX_TIMEOUT 				= 1500; // ms
+	IR_RX_DONE					= 5000; // us
 
 	/* The receiver is disabled between codes to prevent firing the callback multiple times (as 
 	 * most remotes send the code multiple times per button press). IR_RX_DISABLE determines how
@@ -81,14 +76,16 @@ class IR_receiver {
 		local newcode = array(256);
 		local index = 0;
 
+        local state = 0; // dummy value; will be set again before being used
 		local last_state = rx_pin.read();
 		local duration = 0;
 
-		local start = hardware.millis();
-		local last_change_time = hardware.micros();
-
-		local state = 0;
+		local start = hardware.micros();
+		local last_change_time = start;
 		local now = start;
+		
+		local times = array(256);
+		local timesIndex = 0;
 
 		/* 
 		 * This loop runs much faster with while(1) than with a timeout check in the while condition
@@ -104,6 +101,7 @@ class IR_receiver {
 			if (state == last_state) {
 				// last state change was over IR_RX_DONE ago; we're done with code; quit.
 				if ((now - last_change_time) > IR_RX_DONE) {
+				    server.log((now-last_change_time));
 					break;
 				} else {
 					// no state change; go back to the top of the while loop and check again
@@ -118,8 +116,10 @@ class IR_receiver {
 				
 				if (duration < THRESH_0) {
 					newcode[index++] = 0;
+                    //times[timesIndex++] = duration;
 				} else if (duration < THRESH_1) {
 					newcode[index++] = 1;
+                    //times[timesIndex++] = duration;
 				} 
 			}
 
@@ -139,6 +139,13 @@ class IR_receiver {
 
 		local result = stringify(newcode, index);
 		agent.send(agent_callback, result);
+        
+        /*
+        for (local i = 0; i < timesIndex; i++) {
+            server.log(format("%d: Duration: %d us (%d)",i,times[i],newcode[i]));
+            imp.sleep(0.01);
+        }
+        */
 	}
 
 	/* 
@@ -158,12 +165,10 @@ class IR_receiver {
 	 * 			shorter than THRESH_1 will result in a 1 being received. Gaps longer than THRESH_1 are ignored.
 	 *		_ir_rx_done: (integer) time in microseconds to wait for the next pulse before determining that the end
 	 * 			of a pulse train has been reached. 
-	 *		_ir_rx_timeout: (integer) max time in milliseconds to listen to a new code. Prevents lock-up if the 
-	 *			IR signal oscillates for an unreasonable amount of time.
-	 * 		_ir_rx_disable: (integer) time in seconds to disable the receiver after successfully receiving a code.
+	 * 	    _ir_rx_disable: (integer) time in seconds to disable the receiver after successfully receiving a code.
 	 */
 	constructor(_rx_pin, _rx_idle_state, _agent_callback, _thresh_0 = null, _thresh_1 = null,
-		_ir_rx_done = null, _ir_rx_timeout = null, _ir_rx_disable = null) {
+		_ir_rx_done = null, _ir_rx_disable = null) {
 		this.rx_pin = _rx_pin;
 		rx_pin.configure(DIGITAL_IN, receive.bindenv(this));
 
@@ -185,10 +190,6 @@ class IR_receiver {
 			IR_RX_DONE = _ir_rx_done;
 		}
 
-		if (_ir_rx_timeout) {
-			IR_RX_TIMEOUT = _ir_rx_timeout;
-		}
-
 		if (_ir_rx_disable) {
 			IR_RX_DISABLE = _ir_rx_disable;
 		}
@@ -203,6 +204,7 @@ class IR_receiver {
 	}
 
 	function stringify(data, len) {
+	    server.log("Stringifying Data Len: "+len);
 		local result = "";
 		for (local i = 0; i < len; i++) {
 			result += format("%d",data[i]);
@@ -212,7 +214,8 @@ class IR_receiver {
 }
 
 /* RUNTIME STARTS HERE ------------------------------------------------------*/
-imp.configure("IR Receiver",[],[]);
 
-// instatiate an IR receiver and supply it with the name of the agent callback to call on a new code
+imp.configure("Sana",[],[]);
+
+// instantiate an IR receiver and supply it with the name of the agent callback to call on a new code
 learn <- IR_receiver(hardware.pin2, 1, "newcode");
