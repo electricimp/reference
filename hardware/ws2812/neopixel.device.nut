@@ -34,7 +34,7 @@ class neoPixels {
     // but does not write it to the pixel strip
     function clearFrame() {
       for (local p = 0; p < frameSize; p++) writePixel(p,0,0,0);
-      for (local i = 0; i < 40; i++) frame.writen(0x00,'c');
+      for (local i = 0; i < 20; i++) frame.writen(0x00,'c');
     }
     
     // writes the frame buffer to the pixel strip
