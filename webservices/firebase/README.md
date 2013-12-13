@@ -10,4 +10,4 @@ The Firebase Streaming functionality is not yet finalized, **and is subject to c
 
 Examples
 ========
-See the [Examples](./examples) folder for a simple implementation using the Firebase class. 
+See the [Example](./example) folder for a simple implementation using the Firebase class. 
