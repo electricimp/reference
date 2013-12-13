@@ -1,3 +1,6 @@
+const FIREBASE_URL = ""
+const FIREBASE_AUTH = ""
+
 const NEWLINE = "\n";
 
 class Firebase {
@@ -231,7 +234,7 @@ class Firebase {
     /************ Private Functions (DO NOT CALL FUNCTIONS BELOW) ************/
     // Builds a url to send a request to
     function _buildUrl(path) {
-        local url = FIREBASE_URL + path + ".json";
+        local url = this.baseUrl + path + ".json";
         if (auth != null) url = url + "?auth=" + auth;
         return url;
     }
@@ -325,3 +328,25 @@ class Firebase {
         if (key in callbacks) callbacks[key](callbackData);
     }
 }
+
+firebase <- Firebase(FIREBASE_URL, null);
+
+firebase.on("/",function(data) {
+    if ("led" in data) device.send("led", data.led.tointeger());
+});
+
+firebase.on("/led", function(state) {
+    device.send("led", state);
+});
+
+firebase.stream("/", true);
+
+firebase.read("/led", function(data) {
+    server.log("led: " + data);
+})
+
+device.on("toggleLed", function(nullData) {
+    local value = 1;
+    if ("led" in firebase.data) value = 1 - firebase.data.led.tointeger();
+    firebase.write("/led", value);
+});
