@@ -145,7 +145,6 @@ class Xively.Location {
     function ToJson() { 
         local json = http.jsonencode({ "location": {disposition = this.disposition, name = this.name,
         exposure = this.exposure, domain = this.domain, ele = this.ele, lat = this.lat, lon = this.lon}});
-        //server.log(json);
         return json;
     }
 }
