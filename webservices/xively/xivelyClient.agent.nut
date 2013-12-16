@@ -22,14 +22,15 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-Xively <- {};  // this makes a 'namespace'
+Xively <- {};    // this makes a 'namespace'
 
 class Xively.Client {
-	ApiKey = null;
-	triggers = [];
+    ApiKey = null;
+    triggers = null;
 
 	constructor(apiKey) {
 		this.ApiKey = apiKey;
+        this.triggers = [];
 	}
 	
 	/*****************************************
@@ -48,11 +49,17 @@ class Xively.Client {
 
 		return request.sendsync();
 	}
-	
+    	function PutLocation(location){
+		local url = "https://api.xively.com/v2/feeds/" + location.FeedID + ".json";
+		local headers = { "X-ApiKey" : ApiKey, "Content-Type":"application/json", "User-Agent" : "Xively-Imp-Lib/1.0" };
+		local request = http.put(url, headers, location.ToJson());
+
+		return request.sendsync();
+	}	
 	/*****************************************
 	 * method: GET
 	 * IN:
-	 *   feed: a XivelyFeed we fulling from
+	 *   feed: a XivelyFeed we are pulling from
 	 *   ApiKey: Your Xively API Key
 	 * OUT:
 	 *   An updated XivelyFeed object on success
@@ -111,18 +118,50 @@ class Xively.Feed{
         return json;
     }
 }
-
+class Xively.Location {
+    FeedID = null;
+    disposition = null;
+    name = null;
+    exposure = null;
+    domain = null;
+    ele = null;
+    lat = null;
+    lon = null;
+    
+    constructor(feedID)
+    {
+        this.FeedID = feedID;
+    }
+    function GetFeedID() { return FeedID; }
+    
+    function Set(disposition, name, exposure, domain, ele, lat, lon) {
+        this.disposition = disposition;
+        this.name = name;
+        this.exposure = exposure;
+        this.domain = domain;
+        this.ele = ele;
+        this.lat = lat;
+        this.lon = lon;
+    }
+    function ToJson() { 
+        local json = http.jsonencode({ "location": {disposition = this.disposition, name = this.name,
+        exposure = this.exposure, domain = this.domain, ele = this.ele, lat = this.lat, lon = this.lon}});
+        return json;
+    }
+}
 class Xively.Channel {
     id = null;
     current_value = null;
+    mytag = "";
     
     constructor(_id)
     {
         this.id = _id;
     }
     
-    function Set(value) { 
-    	this.current_value = value; 
+    function Set(value, tag) { 
+    	this.current_value = value;
+        this.mytag = tag;
     }
     
     function Get() { 
