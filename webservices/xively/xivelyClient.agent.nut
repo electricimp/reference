@@ -58,7 +58,7 @@ class Xively.Client {
 	/*****************************************
 	 * method: GET
 	 * IN:
-	 *   feed: a XivelyFeed we fulling from
+	 *   feed: a XivelyFeed we are pulling from
 	 *   ApiKey: Your Xively API Key
 	 * OUT:
 	 *   An updated XivelyFeed object on success
