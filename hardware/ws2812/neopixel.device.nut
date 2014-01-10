@@ -24,10 +24,10 @@ class neoPixels {
         frame.seek(p*30);
         local i = 0;
         
-        // release 26:
-        for (i = 0 ; i < 10; i++) frame.writen(bits[g*10 + i],'c');
-        for (i = 0 ; i < 10; i++) frame.writen(bits[r*10 + i],'c');
-        for (i = 0 ; i < 10; i++) frame.writen(bits[b*10 + i],'c');
+        g *= 10; b *= 10; r *= 10;
+        frame.writestring(bits.slice(g, g+10));
+        frame.writestring(bits.slice(b, b+10));
+        frame.writestring(bits.slice(r, r+10));    
     }
     
     // clears the frame buffer
