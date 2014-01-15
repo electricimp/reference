@@ -22,6 +22,13 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+//Custom Characters
+//8 custom characters can be created and stored.
+//Use this website to create characters: http://www.quinapalus.com/hd44780udg.html
+//degree <- [0xe,0xa,0xe,0x0,0x0,0x0,0x0, 0x0]; //This is the "degree" symbol.
+
+LCD_SETCGRAMADDR <- 0x40;
+
 class SerLCD {
     port = null;
     lines = null;
@@ -60,6 +67,24 @@ class SerLCD {
         foreach(i, char in string) {
             port.write(char);
         }
+    }
+    
+    function createChar(location, charmap) {
+        location -=1;
+        location &0x07;
+        for (local i = 0; i<8; i++) {
+            command(LCD_SETCGRAMADDR | (location << 3) | i);
+            port.write(charmap[i]);
+        }
+    }
+    
+    function printCustomChar(num) {
+        port.write(num-1);
+    }
+    
+    function command(value) {
+        port.write(0xFE);
+        port.write(value);
     }
     
     function start() {
