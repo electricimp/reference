@@ -15,6 +15,8 @@
  * - To remove a key from the datastore, call PersistantData.remove("someKey")
  * - At anytime, you can call PersistantData.refresh() to pull down the latest
  *   version of agent's datastore.
+ * - To clear out the datastore, use PersistantData.clear()
+ *   - This is the equivalent of server.save({});
  * 
  * NOTE: If you use the PersistantData static class, you should *NEVER* call
  * server.save() or server.load(). Additionally, you should *NEVER* directly
@@ -33,7 +35,7 @@ PersistantData <- {
     return _data[key];
   }
   
-  function save(key, value) {
+  function set(key, value) {
     _checkData();
     _data[key] <- value;
     server.save(_data);
@@ -51,6 +53,12 @@ PersistantData <- {
     _data <- server.load();
   }
   
+  function clear() {
+    server.save({});
+    refresh();
+  }
+
+
   /***** Private - do not call below *****/
   _data = null
 
@@ -59,12 +67,10 @@ PersistantData <- {
   }
 }
 
-// Examples:
-// clear out saved data to start fresh
-// Note: You should NEVER call server.save() if you're using PersistantData.
-// We call it here, before doing anything else, so that we know exactlly what
-// will be in the datastore for our tests
-server.save({});
+/********** Examples / Tests **********/
+
+// Clear out data so we know the state of our datastore
+PersistantData.clear();
 
 // test should be null since the table is empty
 server.log("hasKey('test'): " + PersistantData.hasKey("test"));
