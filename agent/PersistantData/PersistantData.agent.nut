@@ -11,7 +11,7 @@
  * - To get the value of data stored with a particular key, call
  *   PersistantData.get("someKey")
  *   - If the key does not exist in the datastore, it will return null
- * - To save data with a key, call PersistantData.save("someKey", value)  
+ * - To save data with a key, call PersistantData.set("someKey", value)  
  * - To remove a key from the datastore, call PersistantData.remove("someKey")
  * - At anytime, you can call PersistantData.refresh() to pull down the latest
  *   version of agent's datastore.
@@ -76,7 +76,7 @@ PersistantData.clear();
 server.log("hasKey('test'): " + PersistantData.hasKey("test"));
 
 // save some data
-PersistantData.save("test", 123);
+PersistantData.set("test", 123);
 server.log("save('test', 123)");
 // hasKey("test") should return true
 server.log("hasKey('test'): " + PersistantData.hasKey("test"));
