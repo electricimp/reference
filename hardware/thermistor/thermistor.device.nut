@@ -43,6 +43,10 @@ class thermistor {
 
 	high_side_therm = null;
 
+	// pin - a pin configured as ANALOG_IN
+	// b - the beta value
+	// t0 - the thermistors nominal temperature (in kelvin)
+	// r - the nominal resistance of the thermistor (if you're using a 10kΩ resistor, this should be 10000)
 	constructor(pin, b, t0, r, points = 10, _high_side_therm = true) {
 		this.p_therm = pin;
 		this.p_therm.configure(ANALOG_IN);

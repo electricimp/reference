@@ -231,7 +231,7 @@ class Firebase {
     /************ Private Functions (DO NOT CALL FUNCTIONS BELOW) ************/
     // Builds a url to send a request to
     function _buildUrl(path) {
-        local url = FIREBASE_URL + path + ".json";
+        local url = baseUrl + path + ".json";
         if (auth != null) url = url + "?auth=" + auth;
         return url;
     }
