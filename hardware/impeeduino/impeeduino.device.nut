@@ -20,9 +20,21 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
+
+
+This code was modified slightly to work with the Electric Imp Shield 
+from SparkFun: https://www.sparkfun.com/products/11401
+The reset control was inverted and status LEDs re-routed but everything else was the same.
+Zomg thank you Aron: http://forums.electricimp.com/discussion/comment/7904
+
+Two hardware modifications are required:
+
+* Cut two RX/TX traces to 8/9 on the back of the Imp Shield then solder blob to 0/1
+* Wire from P1 of Imp to RST on shield.
+
 */
 
-imp.configure("Impeeduino", [], []);
+//imp.configure("Impeeduino", [], []); //Deprecated
 server.log("Device started, impee_id " + hardware.getimpeeid() + " and mac = " + imp.getmacaddress() );
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -33,10 +45,10 @@ SERIAL.configure(115200, 8, PARITY_NONE, 1, NO_CTSRTS);
 // Drive pin1 high for reset
 RESET <- hardware.pin1;
 RESET.configure(DIGITAL_OUT);
-RESET.write(0);
+RESET.write(1); //Leave Arduino in normal (non-reset) state
 
-// Pin 2 is the red LED
-ACTIVITY <- hardware.pin2;
+// Pin 9 is the yellow LED on the 
+ACTIVITY <- hardware.pin9;
 ACTIVITY.configure(DIGITAL_OUT);
 ACTIVITY.write(1);
 
@@ -82,7 +94,7 @@ const STK_PROG_FUSE       = 0x62;  // 'b'
 const STK_PROG_LOCK       = 0x63;  // 'c'
 const STK_PROG_PAGE       = 0x64;  // 'd'
 const STK_PROG_FUSE_EXT   = 0x65;  // 'e'
-const STK_READ_FLASH      = 0x70; // 'p'
+const STK_READ_FLASH      = 0x70;  // 'p'
 const STK_READ_DATA       = 0x71;  // 'q'
 const STK_READ_FUSE       = 0x72;  // 'r'
 const STK_READ_LOCK       = 0x73;  // 's'
@@ -169,11 +181,11 @@ function execute(command = null, param = null, response_length = 100, response_t
         send_buffer = format("%c%c%c", command, param, CRC_EOP);
     }
     
-    // server.log("Sending: " + HEXDUMP(send_buffer));
+    //server.log("Sending: " + HEXDUMP(send_buffer));
     SERIAL.write(send_buffer);
     
     local resp_buffer = SERIAL_READ(response_length+2, response_timeout);
-    // server.log("Received: " + HEXDUMP(resp_buffer));
+    //server.log("Received: " + HEXDUMP(resp_buffer));
     
     assert(resp_buffer != null);
     assert(resp_buffer.tell() >= 2);
@@ -228,14 +240,18 @@ function bounce(callback = null) {
     
     // Bounce the reset pin
     server.log("Bouncing the Arduino reset pin");
+
     imp.wakeup(0.5, function() {
-        ACTIVITY.write(0);
-        RESET.write(1);
+        ACTIVITY.write(0); //Turn on LED
+
+        RESET.write(0); //Reset Arduino
+
         imp.wakeup(0.2, function() {
-            RESET.write(0);
+            RESET.write(1); //Return reset to high, bootloader on Arduino now begins
             imp.wakeup(0.3, function() {
                 check_duino();
-                ACTIVITY.write(1);
+
+                ACTIVITY.write(1); //Turn off LED
                 
                 if (callback) callback();
             });
@@ -245,6 +261,8 @@ function bounce(callback = null) {
 
 //------------------------------------------------------------------------------------------------------------------------------
 function burn(program) {
+    //server.log("Here");
+    
     bounce(function() {
         server.log("Burning hex program to Arduino");
         foreach (line in program) {
@@ -256,7 +274,6 @@ function burn(program) {
     
     })
 }
-
 
 //------------------------------------------------------------------------------------------------------------------------------
 bounce(function() {
