@@ -11,7 +11,7 @@ The FT800 is underlying hardware for the [Gameduino 2](http://excamera.com/sphin
 This class requires a SPI interface and three GPIO pins to use. In the example, the device is connected to an Electric Imp breakout board as follows
 
 | Imp Pin | EVE Pin | Purpose |
-|-----------------------------|
+|---------|---------|---------|
 |   Pin1  | SCK     | SPI Clock |
 |   Pin2  | PD#     | Power Down, Active Low |
 |   Pin5  | INT#    | Interrupt, Active Low |
