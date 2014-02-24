@@ -64,7 +64,7 @@ function loop() {
 
     // increment to next pixel
     i++;
-    if (i > 255) i = 0;
+    if (i > NUMPIXELS) i = 0;
     
     // clear the frame, set pixel red, then write to pixelstrip
     pixels.clearFrame();
