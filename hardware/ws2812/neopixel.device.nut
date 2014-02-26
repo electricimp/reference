@@ -69,13 +69,27 @@ class neoPixels {
         frame.writestring(bits.slice(b, b+BYTESPERCOLOR));    
     }
     
-    // clears the frame buffer
+    // Clears the frame buffer (with an optional color)
     // but does not write it to the pixel strip
-    function clearFrame() {
-      for (local p = 0; p < frameSize; p++) frame.writestring(clearString);
-      frame.writen(0x00,'c');
+    // color is an array of the form [r, g, b]
+    function clearFrame(color = null) {
+        local colorString = clearString;
+        if (color) {
+            // Get the color string
+            colorString = blob(BYTESPERPIXEL);
+            local r = color[0] * BYTESPERCOLOR;
+            local g = color[1] * BYTESPERCOLOR;
+            local b = color[2] * BYTESPERCOLOR;
+            colorString.writestring(bits.slice(g, g+BYTESPERCOLOR));
+            colorString.writestring(bits.slice(r, r+BYTESPERCOLOR));
+            colorString.writestring(bits.slice(b, b+BYTESPERCOLOR));
+        }        
+
+        frame.seek(0);
+        for (local p = 0; p < frameSize; p++) frame.writestring(colorString.tostring());
+        frame.writen(0x00,'c');
     }
-    
+
     // writes the frame buffer to the pixel strip
     // ie - this function changes the pixel strip
     function writeFrame() {
@@ -97,11 +111,14 @@ function loop() {
 
     // increment to next pixel
     i++;
-    if (i > NUMPIXELS) i = 0;
-    
-    // clear the frame, set pixel red, then write to pixelstrip
-    pixels.clearFrame();
+    if (i > NUMPIXELS) { 
+        server.log(imp.getmemoryfree());
+        i = 0;
+    }
+    // fill the frame (with blue), set pixel red, then write to pixelstrip
+    pixels.clearFrame([0,0,255]);
     pixels.writePixel(i, [255, 0, 0]);
+    pixels.writeFrame();
 }
 
 loop();
