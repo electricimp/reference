@@ -111,10 +111,8 @@ function loop() {
 
     // increment to next pixel
     i++;
-    if (i > NUMPIXELS) { 
-        server.log(imp.getmemoryfree());
-        i = 0;
-    }
+    if (i > NUMPIXELS) i = 0;
+
     // fill the frame (with blue), set pixel red, then write to pixelstrip
     pixels.clearFrame([0,0,255]);
     pixels.writePixel(i, [255, 0, 0]);
