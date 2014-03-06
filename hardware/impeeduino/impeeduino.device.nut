@@ -114,20 +114,23 @@ function HEXDUMP(buf, len = null) {
 function SERIAL_READ(len = 100, timeout = 300) {
     
     local rxbuf = blob(len);
-    local writen = rxbuf.writen.bindenv(rxbuf);
+    local write = rxbuf.writen.bindenv(rxbuf);
     local read = SERIAL.read.bindenv(SERIAL);
     local hw = hardware;
     local ms = hw.millis.bindenv(hw);
     local started = ms();
     
-    LINK.write(0);
+    local charsRead = 0;
+    LINK.write(0); //Turn LED on
     do {
         local ch = read();
         if (ch != -1) {
-            writen(ch, 'b')
+            write(ch, 'b')
+            charsRead++;
+            if(charsRead == len) break;
         }
     } while (ms() - started < timeout);
-    LINK.write(1);    
+    LINK.write(1); //Turn LED off
     
     // Clean up any extra bytes
     while (SERIAL.read() != -1);
