@@ -3,5 +3,3 @@ Squirrel class for controlling single-wire-based LED pixels and strips such as [
 
 #Hardware Configuration
 Pin 7 -> Din
-
-**NOTE: This class will not work unless your impOS is on version 26.0 or newer (current public release is 25.2)**
