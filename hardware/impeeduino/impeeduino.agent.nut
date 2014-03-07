@@ -72,7 +72,12 @@ function hextoint(str) {
     return hex;
 }
 
-function dump_data_buffer(data, program, addr) {
+
+const ARDUINO_BLOB_SIZE = 128;
+
+//------------------------------------------------------------------------------------------------------------------------------
+// Pushes the data blob onto the program array, padding it if required
+function dump_data_buffer(data, program, addr, pad = true) {
     
     local tell = data.tell();
     data.seek(0)
@@ -80,12 +85,17 @@ function dump_data_buffer(data, program, addr) {
     local program_line = {};
     program_line.addr <- addr / 2; // Address space is 16-bit
     program_line.data <- data.readblob(tell);
-
-    server.log(format("0x%04X  len = 0x%02X", program_line.addr*2, program_line.data.len()));
-    program.push(program_line);
-    
     data.seek(0)
     
+    // Pad the data with nulls. This is for the odd case that the boundaries don't line up as expected
+    if (pad) {
+        while (program_line.data.len() < data.len()) {
+            program_line.data.writen(0, 'b');
+        }
+    }
+    
+    // server.log(format("0x%04X  len = 0x%02X", program_line.addr*2, program_line.data.len()));
+    program.push(program_line);
     return program_line.data.len();
 }
 
@@ -95,11 +105,11 @@ function dump_data_buffer(data, program, addr) {
 function program(hex) {
     
     try {
-        const MAX_BLOB_SIZE = 128;
         
         local program = [];
-        local data = blob(MAX_BLOB_SIZE);
-        local use_addr = 0, next_addr = 0;
+        local data = blob(ARDUINO_BLOB_SIZE);
+        local use_addr = 0;  // The address of the start of the blob
+        local next_addr = 0; // The expected address of the next blob
     
         local newhex = split(hex, ": ");
         for (local l = 0; l < newhex.len(); l++) {
@@ -111,23 +121,23 @@ function program(hex) {
                 local checksum = hextoint(line.slice(-2));
                 
                 if (type != 0) continue;
-                server.log(format(":%02x %04X", len, addr))
+                // server.log(format(":%02x %04X", len, addr))
                 
                 // Are we at the expected address?
                 if (addr != next_addr) {
                     // We should dump out data buffer now
-                    // I doubt this will work unless the boundaries line up perfectly
                     dump_data_buffer(data, program, use_addr);
                     next_addr = use_addr = addr;
                 }
                 
+                // Grab each of the data bytes
                 for (local i = 8, j = 0; i < 8+(len*2); i+=2, j++) {
                     local datum = hextoint(line.slice(i, i+2));
                     data.writen(datum, 'b')
                     next_addr++;
                     
                     // Have we filled our data buffer?
-                    if (data.tell() >= MAX_BLOB_SIZE) {
+                    if (data.tell() >= ARDUINO_BLOB_SIZE) {
                         use_addr += dump_data_buffer(data, program, use_addr);
                     }
                 }
@@ -136,7 +146,7 @@ function program(hex) {
 
         // Have we got orphaned data in our buffer?
         if (data.tell() > 0) {
-            dump_data_buffer(data, program, use_addr);
+            dump_data_buffer(data, program, use_addr, false);
         }
 
         // All finished, send it
