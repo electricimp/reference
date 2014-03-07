@@ -25,9 +25,12 @@ THE SOFTWARE.
 
 server.log("Agent started, URL is " + http.agenturl());
 
+const MAX_PROGRAM_SIZE = 0x20000;
+const ARDUINO_BLOB_SIZE = 128;
+program <- null;
+
 
 //------------------------------------------------------------------------------------------------------------------------------
-hex <- "";
 html <- @"<HTML>
 <BODY>
 
@@ -73,44 +76,37 @@ function hextoint(str) {
 }
 
 
-const ARDUINO_BLOB_SIZE = 128;
-
 //------------------------------------------------------------------------------------------------------------------------------
-// Pushes the data blob onto the program array, padding it if required
-function dump_data_buffer(data, program, addr, pad = true) {
-    
-    local tell = data.tell();
-    data.seek(0)
-    
-    local program_line = {};
-    program_line.addr <- addr / 2; // Address space is 16-bit
-    program_line.data <- data.readblob(tell);
-    data.seek(0)
-    
-    // Pad the data with nulls. This is for the odd case that the boundaries don't line up as expected
-    if (pad) {
-        while (program_line.data.len() < data.len()) {
-            program_line.data.writen(0, 'b');
+// Breaks the program into chunks and sends it to the device
+function send_program() {
+    if (program != null && program.len() > 0) {
+        local addr = 0;
+        local pline = {};
+        local max_addr = program.len();
+        
+        device.send("burn", {first=true});
+        while (addr < max_addr) {
+            program.seek(addr);
+            pline.data <- program.readblob(ARDUINO_BLOB_SIZE);
+            pline.addr <- addr / 2; // Address space is 16-bit
+            device.send("burn", pline)
+            addr += pline.data.len();
         }
+        device.send("burn", {last=true});
     }
-    
-    // server.log(format("0x%04X  len = 0x%02X", program_line.addr*2, program_line.data.len()));
-    program.push(program_line);
-    return program_line.data.len();
-}
-
+}        
 
 //------------------------------------------------------------------------------------------------------------------------------
 // Parse the hex into an array of blobs
-function program(hex) {
+function parse_hex(hex) {
     
     try {
         
-        local program = [];
-        local data = blob(ARDUINO_BLOB_SIZE);
-        local use_addr = 0;  // The address of the start of the blob
-        local next_addr = 0; // The expected address of the next blob
-    
+        // Prepare a large buffer for the entire program
+        program = blob(MAX_PROGRAM_SIZE);
+        for (local i = 0; i < MAX_PROGRAM_SIZE; i++) program.writen(0, 'b');
+        
+        local max_tell = 0;
         local newhex = split(hex, ": ");
         for (local l = 0; l < newhex.len(); l++) {
             local line = strip(newhex[l]);
@@ -121,42 +117,28 @@ function program(hex) {
                 local checksum = hextoint(line.slice(-2));
                 
                 if (type != 0) continue;
-                // server.log(format(":%02x %04X", len, addr))
-                
-                // Are we at the expected address?
-                if (addr != next_addr) {
-                    // We should dump out data buffer now
-                    dump_data_buffer(data, program, use_addr);
-                    next_addr = use_addr = addr;
-                }
-                
+
                 // Grab each of the data bytes
-                for (local i = 8, j = 0; i < 8+(len*2); i+=2, j++) {
+                program.seek(addr);
+                for (local i = 8; i < 8+(len*2); i+=2) {
                     local datum = hextoint(line.slice(i, i+2));
-                    data.writen(datum, 'b')
-                    next_addr++;
+                    program.writen(datum, 'b')
                     
-                    // Have we filled our data buffer?
-                    if (data.tell() >= ARDUINO_BLOB_SIZE) {
-                        use_addr += dump_data_buffer(data, program, use_addr);
-                    }
+                    // Keep track of where we are up to
+                    if (program.tell() > max_tell) max_tell = program.tell();
                 }
             }
         }
 
-        // Have we got orphaned data in our buffer?
-        if (data.tell() > 0) {
-            dump_data_buffer(data, program, use_addr, false);
-        }
-
-        // All finished, send it
-        if (program.len() > 0) {
-            device.send("burn", program)
-        }
+        // All finished, trim it down to size
+        program.seek(0);
+        program.resize(max_tell);
+        
+        // Now send it
+        send_program();
         
     } catch (e) {
         server.log(e)
-        return "";
     }
     
 }
@@ -174,7 +156,7 @@ http.onrequest(function (req, res) {
         if ("content-type" in req.headers) {
             if (req.headers["content-type"].len() >= 19
              && req.headers["content-type"].slice(0, 19) == "multipart/form-data") {
-                hex = parse_hexpost(req, res);
+                local hex = parse_hexpost(req, res);
                 if (hex == "") {
                     res.header("Location", http.agenturl());
                     res.send(302, "HEX file uploaded");
@@ -183,10 +165,9 @@ http.onrequest(function (req, res) {
                         res.header("Location", http.agenturl());
                         res.send(302, "HEX file uploaded");                        
                         server.log("Programming completed")
-                        hex = "";
                     })
                     server.log("Programming started")
-                    program(hex);
+                    parse_hex(hex);
                 }
             } else if (req.headers["content-type"] == "application/json") {
                 local json = null;
@@ -221,16 +202,7 @@ http.onrequest(function (req, res) {
 //------------------------------------------------------------------------------------------------------------------------------
 // Handle the device coming online
 device.on("ready", function(ready) {
-    if (ready && hex != "") {
-        program(hex);
-    }
+    if (ready) send_program();
 });
 
 
-//------------------------------------------------------------------------------------------------------------------------------
-// Handle the device finishing
-device.on("done", function(done) {
-    if (done) {
-        hex = "";
-    }
-});

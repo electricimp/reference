@@ -227,42 +227,34 @@ function program_duino(address16, data) {
 
 
 //------------------------------------------------------------------------------------------------------------------------------
-function bounce(callback = null) {
+function bounce() {
     
     // Bounce the reset pin
     server.log("Bouncing the Arduino reset pin");
-    imp.wakeup(0.5, function() {
-        ACTIVITY.write(0);
-        RESET.write(1);
-        imp.wakeup(0.2, function() {
-            RESET.write(0);
-            imp.wakeup(0.3, function() {
-                check_duino();
-                ACTIVITY.write(1);
-                
-                if (callback) callback();
-            });
-        });
-    });
+    imp.sleep(0.5);
+    ACTIVITY.write(0);
+    RESET.write(1);
+    imp.sleep(0.2);
+    RESET.write(0);
+    imp.sleep(0.3);
+    check_duino();
+    ACTIVITY.write(1);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------
-function burn(program) {
-    bounce(function() {
-        server.log("Burning hex program to Arduino");
-        foreach (line in program) {
-            program_duino(line.addr, line.data);
-        }
-        // execute(STK_LEAVE_PROGMODE, null, 0);
+function burn(pline) {
+    if ("first" in pline) {
+        server.log("Starting to burn");
+        bounce();
+    } else if ("last" in pline) {
         server.log("Done!")
         agent.send("done", true);
-    
-    })
+    } else {
+        program_duino(pline.addr, pline.data);
+    }
 }
 
 
 //------------------------------------------------------------------------------------------------------------------------------
-bounce(function() {
-    agent.on("burn", burn);
-    agent.send("ready", true);
-})
+agent.on("burn", burn);
+agent.send("ready", true);
