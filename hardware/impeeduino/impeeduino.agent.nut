@@ -1,7 +1,7 @@
 /*
 The MIT License (MIT)
 
-Copyright (c) 2013 Electric Imp
+Copyright (c) 2014 Electric Imp
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -94,7 +94,7 @@ function dump_data_buffer(data, program, addr) {
 // Parse the hex into an array of blobs
 function program(hex) {
     
-    // try {
+    try {
         const MAX_BLOB_SIZE = 128;
         
         local program = [];
@@ -131,8 +131,6 @@ function program(hex) {
                         use_addr += dump_data_buffer(data, program, use_addr);
                     }
                 }
-                
-                
             }
         }
 
@@ -146,10 +144,10 @@ function program(hex) {
             device.send("burn", program)
         }
         
-    // } catch (e) {
-    //     server.log(e)
-    //     return "";
-    // }
+    } catch (e) {
+        server.log(e)
+        return "";
+    }
     
 }
 
