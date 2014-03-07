@@ -22,7 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-imp.configure("Impeeduino", [], []);
+
 server.log("Device started, impee_id " + hardware.getimpeeid() + " and mac = " + imp.getmacaddress() );
 
 //------------------------------------------------------------------------------------------------------------------------------
@@ -119,7 +119,7 @@ function SERIAL_READ(len = 100, timeout = 300) {
     local hw = hardware;
     local ms = hw.millis.bindenv(hw);
     local started = ms();
-    
+
     local charsRead = 0;
     LINK.write(0); //Turn LED on
     do {
@@ -131,7 +131,7 @@ function SERIAL_READ(len = 100, timeout = 300) {
         }
     } while (ms() - started < timeout);
     LINK.write(1); //Turn LED off
-    
+
     // Clean up any extra bytes
     while (SERIAL.read() != -1);
     

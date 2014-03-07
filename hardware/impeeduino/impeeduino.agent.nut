@@ -22,6 +22,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
+
 server.log("Agent started, URL is " + http.agenturl());
 
 
@@ -51,13 +52,6 @@ function parse_hexpost(req, res) {
     local hstart = bindex + boundary.len();
     local bstart = req.body.find("\r\n\r\n", hstart) + 4;
     local fstart = req.body.find("\r\n\r\n--" + boundary + "--", bstart);
-    /*
-    server.log("Boundary = " + boundary);
-    server.log("Headers start at = " + hstart);
-    server.log("Body start at = " + bstart);
-    server.log("Body finished at = " + fstart);
-    */
-    
     return req.body.slice(bstart, fstart);
 }
 
@@ -65,21 +59,34 @@ function parse_hexpost(req, res) {
 //------------------------------------------------------------------------------------------------------------------------------
 // Parses a hex string and turns it into an integer
 function hextoint(str) {
-
-    if (typeof str == "integer") {
-        if (str >= '0' && str <= '9') {
-            return (str - '0');
+    local hex = 0x0000;
+    foreach (ch in str) {
+        local nibble;
+        if (ch >= '0' && ch <= '9') {
+            nibble = (ch - '0');
         } else {
-            return (str - 'A' + 10);
+            nibble = (ch - 'A' + 10);
         }
-    } else {
-        switch (str.len()) {
-            case 2:
-                return (hextoint(str[0]) << 4) + hextoint(str[1]);
-            case 4:
-                return (hextoint(str[0]) << 12) + (hextoint(str[1]) << 8) + (hextoint(str[2]) << 4) + hextoint(str[3]);
-        }
+        hex = (hex << 4) + nibble;
     }
+    return hex;
+}
+
+function dump_data_buffer(data, program, addr) {
+    
+    local tell = data.tell();
+    data.seek(0)
+    
+    local program_line = {};
+    program_line.addr <- addr / 2; // Address space is 16-bit
+    program_line.data <- data.readblob(tell);
+
+    server.log(format("0x%04X  len = 0x%02X", program_line.addr*2, program_line.data.len()));
+    program.push(program_line);
+    
+    data.seek(0)
+    
+    return program_line.data.len();
 }
 
 
@@ -87,60 +94,62 @@ function hextoint(str) {
 // Parse the hex into an array of blobs
 function program(hex) {
     
-    try {
+    // try {
+        const MAX_BLOB_SIZE = 128;
+        
         local program = [];
-        local program_line = null;
-        local data = blob(128);
+        local data = blob(MAX_BLOB_SIZE);
+        local use_addr = 0, next_addr = 0;
     
         local newhex = split(hex, ": ");
         for (local l = 0; l < newhex.len(); l++) {
             local line = strip(newhex[l]);
             if (line.len() > 10) {
                 local len = hextoint(line.slice(0, 2));
-                local addr = hextoint(line.slice(2, 6)) / 2; // Address space is 16-bit
+                local addr = hextoint(line.slice(2, 6));
                 local type = hextoint(line.slice(6, 8));
-                if (type != 0) continue;
-                for (local i = 8; i < 8+(len*2); i+=2) {
-                    local datum = hextoint(line.slice(i, i+2));
-                    data.writen(datum, 'b')
-                }
                 local checksum = hextoint(line.slice(-2));
                 
-                // server.log(format("%s => %04X", line.slice(2, 6), addr))
-                local tell = data.tell();
+                if (type != 0) continue;
+                server.log(format(":%02x %04X", len, addr))
                 
-                data.seek(0)
-                if (program_line == null) {
-                    program_line = {};
-                    program_line.len <- tell;
-                    program_line.addr <- addr;
-                    program_line.data <- data.readblob(tell);
-                } else {
-                    program_line.len = tell;
-                    program_line.data = data.readblob(tell);
+                // Are we at the expected address?
+                if (addr != next_addr) {
+                    // We should dump out data buffer now
+                    // I doubt this will work unless the boundaries line up perfectly
+                    dump_data_buffer(data, program, use_addr);
+                    next_addr = use_addr = addr;
                 }
                 
-                if (tell == data.len()) {
-                    program.push(program_line);
-                    program_line = null;
-                    data.seek(0);
+                for (local i = 8, j = 0; i < 8+(len*2); i+=2, j++) {
+                    local datum = hextoint(line.slice(i, i+2));
+                    data.writen(datum, 'b')
+                    next_addr++;
+                    
+                    // Have we filled our data buffer?
+                    if (data.tell() >= MAX_BLOB_SIZE) {
+                        use_addr += dump_data_buffer(data, program, use_addr);
+                    }
                 }
+                
+                
             }
         }
-        
-        // Add whatever is left
-        if (program_line != null) {
-            program.push(program_line);
-            program_line = null;
-            data.seek(0);
+
+        // Have we got orphaned data in our buffer?
+        if (data.tell() > 0) {
+            dump_data_buffer(data, program, use_addr);
+        }
+
+        // All finished, send it
+        if (program.len() > 0) {
+            device.send("burn", program)
         }
         
-        device.send("burn", program)
-        
-    } catch (e) {
-        server.log(e)
-        return "";
-    }
+    // } catch (e) {
+    //     server.log(e)
+    //     return "";
+    // }
     
 }
 
@@ -148,13 +157,15 @@ function program(hex) {
 //------------------------------------------------------------------------------------------------------------------------------
 // Handle the agent requests
 http.onrequest(function (req, res) {
+    // return res.send(400, "Bad request");
     // server.log(req.method + " to " + req.path)
     if (req.method == "GET") {
         res.send(200, html);
     } else if (req.method == "POST") {
 
         if ("content-type" in req.headers) {
-            if (req.headers["content-type"].slice(0, 19) == "multipart/form-data") {
+            if (req.headers["content-type"].len() >= 19
+             && req.headers["content-type"].slice(0, 19) == "multipart/form-data") {
                 hex = parse_hexpost(req, res);
                 if (hex == "") {
                     res.header("Location", http.agenturl());
@@ -169,7 +180,31 @@ http.onrequest(function (req, res) {
                     server.log("Programming started")
                     program(hex);
                 }
+            } else if (req.headers["content-type"] == "application/json") {
+                local json = null;
+                try {
+                    json = http.jsondecode(req.body);
+                } catch (e) {
+                    server.log("JSON decoding failed for: " + req.body);
+                    return res.send(400, "Invalid JSON data");
+                }
+                local log = "";
+                foreach (k,v in json) {
+                    if (typeof v == "array" || typeof v == "table") {
+                        foreach (k1,v1 in v) {
+                            log += format("%s[%s] => %s, ", k, k1, v1.tostring());
+                        }
+                    } else {
+                        log += format("%s => %s, ", k, v.tostring());
+                    }
+                }
+                server.log(log)
+                return res.send(200, "OK");
+            } else {
+                return res.send(400, "Bad request");
             }
+        } else {
+            return res.send(400, "Bad request");
         }
     }
 })
