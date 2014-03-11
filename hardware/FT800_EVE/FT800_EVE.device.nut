@@ -1558,12 +1558,12 @@ int_pin <- hardware.pin5;
 spi <- hardware.spi189;
 spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, 4000);
 
-/* Beginning of execution */
 display <- FT800(spi, cs_l_pin, pd_l_pin, int_pin);
 display.power_down(function() {
     // initialize display
     server.log("Powered Down");
     
+    // power-up takes some time so it is done asynchronously
     display.power_up(function() {
         display.init();
         display.config();
