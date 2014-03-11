@@ -51,6 +51,19 @@ Please use the following cade conventions in your Squirrel:
 - Class/Table methods and properties that should not be externally referenced should be prefaced with an underscore 
   - e.g. ```function _privateMethod() {```
 
+File Headers
+------------
+Your code files should include the following:
+
+- Copyright notice
+- What license it falls under
+- Link to license
+
+```
+// Copyright (c) 2013 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+```
 
 License
 =======
