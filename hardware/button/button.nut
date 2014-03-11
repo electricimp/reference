@@ -1,9 +1,10 @@
-// ----------------------------------------------------------------------------  
-// Name: Button
-// Purpose: Show the right way to debounce a button press
-// ---------------------------------------------------------------------------- 
+// Copyright (c) 2013 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+//
+// Description: Debounced button press with callbacks
  
-class button{
+class Button{
     static NORMALLY_HIGH = 1;
     static NORMALLY_LOW  = 0;
     _pin             = null;
@@ -40,10 +41,3 @@ class button{
         _pin.configure(_pull, debounce.bindenv(this)); 
     }
 }
-
-//Example Instantiation
-b1 <- button(hardware.pin1, DIGITAL_IN_PULLUP, button.NORMALLY_HIGH,
-            function(){server.log("Button 1 Pressed")},
-            function(){server.log("Button 1 released")}
-            );
-
