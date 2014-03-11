@@ -1,6 +1,9 @@
-# Xively Electric Imp Sample Code
-Class for reading and writing Xively feeds / channels. 
-  
+# Xively Library
+This class wraps [Xively's public API](https://xively.com/dev/docs/api/), which allows you to push and get time-series data, as well as configure callbacks that can be triggered through Xively's triggers.
+
+# Contributors
+- [Matt Haines](https://twitter.com/beardedinventor)
+
 ### Usage
 Creating the Xively client:
 	
@@ -17,7 +20,7 @@ Push data to a feed:
 	
 	// Update Xively
 	client.Put(feed);
-
+		
 Get data from a feed:
 	
 	// Create a channel
