@@ -2,10 +2,24 @@ SPI Flash Driver Class
 ==============================
 This class wraps some of the functionality of a NOR FLASH with a SPI interface. This class was developed for use in the [Lala Reference Design](http://electricimp.com/docs/hardware/resources/reference-designs/lala/), which uses an [MX25L3206EM2I-12G](http://www.mxic.com.tw/Lists/DataSheet/Attachments/1616/MX25L3206E,%203V,%2032Mb,%20v1.5.pdf) 32 Mbit SPI FLASH from Macronix.
 
+Contributors
+===================================
+Tom Byrne
 
+Usage
+===================================
 
-License
-=======
-All code in this repository (unless otherwise specificed in the file) is licensed under the MIT License.
+```
+// configure hardware before passing to constructor
+spi     <- hardware.spi257;
+spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, 15000);
+cs_l    <- hardware.pin8;
+cs_l.configure(DIGITAL_OUT);
+cs_l.write(1);
 
-See [LICENSE.md](/LICENSE.md) for more information.
+// instantiate class
+flash <- SpiFlash(spi, cs_l)
+
+// clear memory
+flash.chipErase();
+```
