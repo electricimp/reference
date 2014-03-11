@@ -1,33 +1,6 @@
-/*
-Copyright (C) 2014 electric imp, inc.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
-and associated documentation files (the "Software"), to deal in the Software without restriction, 
-including without limitation the rights to use, copy, modify, merge, publish, distribute, 
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial 
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE 
-AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-/* Example FTDI FT800 "Driver Class"
- * For more information on the FT800, see:
- * http://www.ftdichip.com/Support/Documents/ProgramGuides/FT800%20Programmers%20Guide.pdf
- * 
- * You may also want to view the GameDuino library for Arduino, which uses the FT800
- * http://excamera.com/sphinx/gameduino2/
- * http://excamera.com/files/gd2book_v0.pdf
- * 
- * tom@electricimp.com
- * 2/11/2014 
- */
+// Copyright (c) 2013 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
 
 const RAM_CMD              = 1081344;
 const RAM_DL               = 1048576;
@@ -291,13 +264,7 @@ const FT_DispPCLK          = 5;
 const FT_DispSwizzle       = 0;
 const FT_DispPCLKPol       = 1;
 
-/*
-    function end() {
-        return (33<<24);
-    }
-*/
-
-class ft800 {
+class FT800 {
     cp_ptr          = 0;
     freespace       = 0;
     debug           = 0;
@@ -1592,7 +1559,7 @@ spi <- hardware.spi189;
 spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, 4000);
 
 /* Beginning of execution */
-display <- ft800(spi, cs_l_pin, pd_l_pin, int_pin);
+display <- FT800(spi, cs_l_pin, pd_l_pin, int_pin);
 display.power_down(function() {
     // initialize display
     server.log("Powered Down");

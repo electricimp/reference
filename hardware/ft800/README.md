@@ -1,11 +1,9 @@
 Partial Driver for FT800 Embedded Video Engine
 ===================================
 
-Author: [Tom Byrne](https://github.com/tombrew/)
-
 Driver class for a [FTDI FT800 Embedded Video Engine](http://www.ftdichip.com/Support/Documents/ProgramGuides/FT800%20Programmers%20Guide.pdf).
 
-The FT800 is underlying hardware for the [Gameduino 2](http://excamera.com/sphinx/gameduino2/).
+The FT800 is underlying hardware for the [Gameduino 2](http://excamera.com/sphinx/gameduino2/). You may wish to review the [Gameduino 2 Cookbook](http://excamera.com/files/gd2book_v0.pdf).
 
 ## Hardware Setup
 This class requires a SPI interface and three GPIO pins to use. In the example, the device is connected to an Electric Imp breakout board as follows
