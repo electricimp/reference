@@ -5,3 +5,4 @@ Driver for the TI TMP102 and TMP112 Digital Temperature Sensors. Communicates wi
 
 Usage
 ===================================
+```
