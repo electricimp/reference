@@ -44,7 +44,7 @@ class Firebase {
          
         if (onError == null) onError = _defaultErrorHandler.bindenv(this);
         local request = http.get(_buildUrl(path), streamingHeaders);
-        server.log(_buildUrl(path));
+
         this.streamingRequest = request.sendasync(
 
             function(resp) {
@@ -70,8 +70,10 @@ class Firebase {
                 //try {
                     server.log("MessageString: " + messageString);
                     local message = _parseEventMessage(messageString);
-                    local changedRoot = _setData(message);
-                    _findAndExecuteCallback(message.path, changedRoot);
+                    if (message) {
+                        local changedRoot = _setData(message);
+                        _findAndExecuteCallback(message.path, changedRoot);
+                    }
                 //} catch(ex) {
                     // if an error occured, invoke error handler
                     //onError([{ message = "Squirrel Error - " + ex, code = -1 }]);
@@ -253,6 +255,7 @@ class Firebase {
         // get the event
         local eventLine = lines[0];
         local event = eventLine.slice(7);
+        if(event.tolower() == "keep-alive") return null;
         
         // get the data
         local dataLine = lines[1];
