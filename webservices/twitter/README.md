@@ -2,6 +2,8 @@ Twitter Search
 ===============
 This is a basic class that allows you to search Twitter's new v1.1 API.
 
+These classes are incomplete and need to be refactored into a single class
+
 ## Usage
 Searching twitter has never been easier, simply call the search() function with your query. The query can be a hashtag (e.g. #iot), a user (e.g. @electricimp) or a phrase (e.g. hello world).
 

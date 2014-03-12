@@ -1,33 +1,14 @@
-/*
-The MIT License (MIT)
+// Copyright (c) 2014 Jason Snell
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
 
-Copyright (c) 2013 Jason Snell
+//--------------------------------------------------------------------------------
+// Custom Characters
+// 8 custom characters can be created and stored.
+// Use this website to create characters: http://www.quinapalus.com/hd44780udg.html
+// degree <- [0xe,0xa,0xe,0x0,0x0,0x0,0x0,0x0]; //This is the "degree" symbol.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in
-all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-THE SOFTWARE.
-*/
-
-//Custom Characters
-//8 custom characters can be created and stored.
-//Use this website to create characters: http://www.quinapalus.com/hd44780udg.html
-//degree <- [0xe,0xa,0xe,0x0,0x0,0x0,0x0, 0x0]; //This is the "degree" symbol.
-
-LCD_SETCGRAMADDR <- 0x40;
+const LCD_SETCGRAMADDR = 0x40;
 
 class SerLCD {
     port = null;
@@ -128,20 +109,3 @@ class SerLCD {
     }
 }
 
-// Register with the server
-imp.configure("Serial Display", [], []);
-
-// Configure the UART port
-local port0 = hardware.uart57
-port0.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS);
-
-// Boot!
-server.log("booting!");
-
-// Allocate and start a screen
-screen <- SerLCD(port0);
-screen.clear_screen();
-screen.start();
-
-screen.set0("Hello"); // Write the first line
-screen.set1("World"); // Write the second line
