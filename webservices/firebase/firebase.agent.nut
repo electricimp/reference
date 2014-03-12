@@ -1,8 +1,7 @@
-const NEWLINE = "\n";
-
 class Firebase {
     // General
-    baseUrl = null;             // base url of your Firebase
+    baseUrl = null;             // Firebase base url
+    firebase = null;            // the name of your firebase
     auth = null;                // Auth key (if auth is enabled)
     
     // For REST calls:
@@ -21,8 +20,9 @@ class Firebase {
      *      baseURL - the base URL to your Firebase (https://username.firebaseio.com)
      *      auth - the auth token for your Firebase
      **************************************************************************/
-    constructor(_baseUrl, _auth) {
-        this.baseUrl = _baseUrl;
+    constructor(_firebase, _auth) {
+        this.firebase = _firebase;
+        this.baseUrl = "https://" + firebase + ".firebaseio.com";
         this.auth = _auth;
         this.data = {}; 
         this.callbacks = {};
@@ -44,6 +44,7 @@ class Firebase {
          
         if (onError == null) onError = _defaultErrorHandler.bindenv(this);
         local request = http.get(_buildUrl(path), streamingHeaders);
+        server.log(_buildUrl(path));
         this.streamingRequest = request.sendasync(
 
             function(resp) {
@@ -57,9 +58,8 @@ class Firebase {
                     if("location" in resp.headers) {
                         // set new location
                         local location = resp.headers["location"];
-                        local p = location.find(path);
+                        local p = location.find(".firebaseio.com")+16;
                         this.baseUrl = location.slice(0, p);
-
                         stream(path, autoReconnect, onError);
                         return;
                     }
@@ -232,7 +232,9 @@ class Firebase {
     // Builds a url to send a request to
     function _buildUrl(path) {
         local url = baseUrl + path + ".json";
-        if (auth != null) url = url + "?auth=" + auth;
+        url += "?ns=" + firebase;
+        if (auth != null) url = url + "&auth=" + auth;
+        
         return url;
     }
 
@@ -246,7 +248,7 @@ class Firebase {
     // parses event messages
     function _parseEventMessage(text) {
         // split message into parts
-        local lines = split(text, NEWLINE);
+        local lines = split(text, "\n");
         
         // get the event
         local eventLine = lines[0];
@@ -325,3 +327,9 @@ class Firebase {
         if (key in callbacks) callbacks[key](callbackData);
     }
 }
+
+// https://yourfirebase.firebaseio.com
+const FIREBASENAME = "yourfirebase";
+const FIREBASEAUTH = "yourauth";
+
+firebase <- Firebase(FIREBASENAME, FIREBASEAUTH);
