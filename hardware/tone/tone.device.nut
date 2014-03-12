@@ -1,3 +1,9 @@
+// Copyright (c) 2013 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
+
+// -------------------------------------------------------------------------
 const NOTE_REST = 0
 const NOTE_B0 = 31
 const NOTE_C1 = 33
@@ -89,6 +95,9 @@ const NOTE_CS8 = 4435
 const NOTE_D8 = 4699
 const NOTE_DS8 = 4978
 
+// -------------------------------------------------------------------------
+// This timer class may be out of date. For the latest version see the electricimp/examples github repository.
+// 
 class timer {
 
     cancelled = false;
@@ -177,6 +186,8 @@ class timer {
     }
 }
 
+
+// -------------------------------------------------------------------------
 class Tone {
     pin = null;
     playing = null;
@@ -215,6 +226,8 @@ class Tone {
     }
 }
 
+
+// -------------------------------------------------------------------------
 class Song {
     tone = null;
     song = null;
@@ -261,22 +274,3 @@ class Song {
     }
 }
 
-// 1 = full note, 2 = half note, 4 = quarter note, ...
-Scale <- [
-    { note = NOTE_C7, duration = 4 },
-    { note = NOTE_CS7, duration = 4 },
-    { note = NOTE_D7, duration = 4 },
-    { note = NOTE_DS7, duration = 4 },
-    { note = NOTE_E7, duration = 4 },
-    { note = NOTE_F7, duration = 4 },
-    { note = NOTE_FS7, duration = 4 },
-    { note = NOTE_G7, duration = 4 },
-    { note = NOTE_GS7, duration = 4 },
-    { note = NOTE_A7, duration = 4 },
-    { note = NOTE_AS7, duration = 4 },
-    { note = NOTE_B7, duration = 4 }
-];
-
-Piezo <- Tone(hardware.pin8);
-scale <- Song(Piezo, Scale);
-scale.Play();

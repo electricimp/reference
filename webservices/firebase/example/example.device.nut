@@ -1,3 +1,7 @@
+// Copyright (c) 2013 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
 led <- hardware.pin9;
 led.configure(DIGITAL_OUT);
 led.write(0);
