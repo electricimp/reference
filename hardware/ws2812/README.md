@@ -11,7 +11,7 @@ Some example hardware that uses the WS2812 or WS2812B:
 #Hardware Configuration
 The WS2812 and WS2812B require a 5V power supply. Each pixel can draw up to 60 mA when displaying white in full brightness, so be sure to size your power supply appropriately. Undersized power supplies can cause glitching, or failure to produce any light at all.
 
-| Imp Pin | WS2812 Pin |
-| --- |
+| Imp Pin            | WS2812 Pin      |
+|--------------------|-----------------|
 | Pin7 (SPI257 MOSI) | Data In ("Din") |
 
