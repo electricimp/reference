@@ -93,6 +93,7 @@ function getTemp() {
 	    "id" : id,
 	    "temp" : format("%.2f",myThermistor.read_f())
 	}
+	server.log("Temp: "+datapoint.temp);
 	agent.send("data",datapoint);
 }
 
