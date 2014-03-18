@@ -242,13 +242,31 @@ function bounce() {
 }
 
 //------------------------------------------------------------------------------------------------------------------------------
+function scan_serial() {
+    local ch = null;
+    local str = "";
+    do {
+        ch = SERIAL.read();
+        if (ch != -1 && ch != 0) {
+            str += format("%c", ch);
+        }
+    } while (ch != -1);
+    
+    if (str.len() > 0) {
+        server.log("Serial: " + str);
+    }
+}
+
+//------------------------------------------------------------------------------------------------------------------------------
 function burn(pline) {
     if ("first" in pline) {
         server.log("Starting to burn");
+        SERIAL.configure(115200, 8, PARITY_NONE, 1, NO_CTSRTS);
         bounce();
     } else if ("last" in pline) {
         server.log("Done!")
         agent.send("done", true);
+        SERIAL.configure(115200, 8, PARITY_NONE, 1, NO_CTSRTS, scan_serial);
     } else {
         program_duino(pline.addr, pline.data);
     }
@@ -258,3 +276,4 @@ function burn(pline) {
 //------------------------------------------------------------------------------------------------------------------------------
 agent.on("burn", burn);
 agent.send("ready", true);
+SERIAL.configure(115200, 8, PARITY_NONE, 1, NO_CTSRTS, scan_serial);
