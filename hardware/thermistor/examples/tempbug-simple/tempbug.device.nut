@@ -1,5 +1,5 @@
 // Copyright (C) 2014 electric imp, inc.
-// TempBug Example Device Code
+// TempBug Simple Example Device Code
  
 /* GLOBALS and CONSTANTS -----------------------------------------------------*/
 
