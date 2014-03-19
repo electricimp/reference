@@ -1,13 +1,12 @@
-/* WS2812 "Neopixel" LED Driver
- * Copyright (C) 2014 Electric Imp, inc.
- *
- * Uses SPI to emulate 1-wire
- * http://learn.adafruit.com/adafruit-neopixel-uberguide/advanced-coding
- *
- */
+// WS2812 "Neopixel" LED Driver
+// Copyright (C) 2014 Electric Imp, inc.
+//
+// Uses SPI to emulate 1-wire
+// http://learn.adafruit.com/adafruit-neopixel-uberguide/advanced-coding
 
-/* This class requires the use of SPI257, which must be run at 7.5MHz 
- * to support neopixel timing. */
+
+// This class requires the use of SPI257, which must be run at 7.5MHz 
+// to support neopixel timing.
 const SPICLK = 7500; // kHz
 
 // This is used for timing testing only
@@ -101,7 +100,7 @@ class NeoPixels {
 
 /* RUNTIME STARTS HERE -------------------------------------------------------*/
 
-const NUMPIXELS = 64;
+const NUMPIXELS = 24;
 const DELAY = 0.025;
 
 spi <- hardware.spi257;
