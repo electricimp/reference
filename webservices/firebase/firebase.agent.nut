@@ -1,8 +1,9 @@
+// -----------------------------------------------------------------------------
 class Firebase {
     // General
-    baseUrl = null;             // Firebase base url
-    firebase = null;            // the name of your firebase
-    auth = null;                // Auth key (if auth is enabled)
+    baseUrl = null;         // Firebase base url
+    db = null;              // the name of your firebase
+    auth = null;            // Auth key (if auth is enabled)
     
     // For REST calls:
     defaultHeaders = { "Content-Type": "application/json" };
@@ -12,7 +13,7 @@ class Firebase {
     streamingRequest = null;    // The request object of the streaming request
     data = null;                // Current snapshot of what we're streaming
     callbacks = null;           // List of callbacks for streaming request
-    
+
     /***************************************************************************
      * Constructor
      * Returns: FirebaseStream object
@@ -20,9 +21,9 @@ class Firebase {
      *      baseURL - the base URL to your Firebase (https://username.firebaseio.com)
      *      auth - the auth token for your Firebase
      **************************************************************************/
-    constructor(_firebase, _auth) {
-        this.firebase = _firebase;
-        this.baseUrl = "https://" + firebase + ".firebaseio.com";
+    constructor(_db, _auth) {
+        this.db = _db;
+        this.baseUrl = "https://" + db + ".firebaseio.com";
         this.auth = _auth;
         this.data = {}; 
         this.callbacks = {};
@@ -48,7 +49,7 @@ class Firebase {
         this.streamingRequest = request.sendasync(
 
             function(resp) {
-                server.log("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
+                // server.log("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
                 // if we timed out and have autoreconnect set
                 if (resp.statuscode == 28 && autoReconnect) {
                     stream(path, autoReconnect, onError);
@@ -67,18 +68,21 @@ class Firebase {
             }.bindenv(this),
             
             function(messageString) {
-                //try {
-                    server.log("MessageString: " + messageString);
-                    local message = _parseEventMessage(messageString);
-                    if (message) {
-                        local changedRoot = _setData(message);
-                        _findAndExecuteCallback(message.path, changedRoot);
-                    }
-                //} catch(ex) {
-                    // if an error occured, invoke error handler
-                    //onError([{ message = "Squirrel Error - " + ex, code = -1 }]);
-                //}
+                // server.log("MessageString: " + messageString);
+                local message = _parseEventMessage(messageString);
+                if (message) {
+                    // Update the internal cache
+                    _updateCache(message);
+                    
+                    foreach (path,callback in callbacks) {
+                        // Check out every callback
+                        local change = _getDataFromPath(path, message.path, data);
+                        if (change == null) continue;
 
+                        // Call the matched callback
+                        callback(change.path, change.data);
+                    }
+                }
             }.bindenv(this)
             
         );
@@ -86,6 +90,7 @@ class Firebase {
         // Return true if we opened the stream
         return true;
     }
+    
 
     /***************************************************************************
      * Returns whether or not there is currently a stream open
@@ -116,10 +121,12 @@ class Firebase {
      *      nothing
      * Parameters:
      *      path     - the path of the node we're listending to (without .json)
-     *      callback - a callback function with one parameter (data) to be 
+     *      callback - a callback function with two parameters (id, data) to be 
      *                 executed when the data at path changes
      **************************************************************************/
     function on(path, callback) {
+        if (path.len() > 0 && path.slice(0, 1) != "/") path = "/" + path;
+        if (path.len() > 1 && path.slice(-1) == "/") path = path.slice(0, -1);
         callbacks[path] <- callback;
     }
     
@@ -139,13 +146,13 @@ class Firebase {
      function read(path, callback = null) {
         http.get(_buildUrl(path), defaultHeaders).sendasync(function(res) {
             if (res.statuscode != 200) {
-                server.log("Read: Firebase response: " + res.statuscode + " => " + res.body)
+                server.error("Read: Firebase response: " + res.statuscode + " => " + res.body)
             } else {
                 local data = null;
                 try {
                     data = http.jsondecode(res.body);
                 } catch (err) {
-                    server.log("Read: JSON Error: " + res.body);
+                    server.error("Read: JSON Error: " + res.body);
                     return;
                 }
                 if (callback) callback(data);
@@ -167,7 +174,7 @@ class Firebase {
     function push(path, data) {
         http.post(_buildUrl(path), defaultHeaders, http.jsonencode(data)).sendasync(function(res) {
             if (res.statuscode != 200) {
-                server.log("Push: Firebase response: " + res.statuscode + " => " + res.body)
+                server.error("Push: Firebase response: " + res.statuscode + " => " + res.body)
             }
         }.bindenv(this));
     }
@@ -187,7 +194,7 @@ class Firebase {
     function write(path, data) {
         http.put(_buildUrl(path), defaultHeaders, http.jsonencode(data)).sendasync(function(res) {
             if (res.statuscode != 200) {
-                server.log("Write: Firebase response: " + res.statuscode + " => " + res.body)
+                server.error("Write: Firebase response: " + res.statuscode + " => " + res.body)
             }
         }.bindenv(this));
     }
@@ -207,7 +214,7 @@ class Firebase {
     function update(path, data) {
         http.request("PATCH", _buildUrl(path), defaultHeaders, http.jsonencode(data)).sendasync(function(res) {
             if (res.statuscode != 200) {
-                server.log("Update: Firebase response: " + res.statuscode + " => " + res.body)
+                server.error("Update: Firebase response: " + res.statuscode + " => " + res.body)
             } 
         }.bindenv(this));
     }
@@ -225,7 +232,7 @@ class Firebase {
     function remove(path) {
         http.httpdelete(_buildUrl(path), defaultHeaders).sendasync(function(res) {
             if (res.statuscode != 200) {
-                server.log("Delete: Firebase response: " + res.statuscode + " => " + res.body)
+                server.error("Delete: Firebase response: " + res.statuscode + " => " + res.body)
             }
         });
     }
@@ -234,7 +241,7 @@ class Firebase {
     // Builds a url to send a request to
     function _buildUrl(path) {
         local url = baseUrl + path + ".json";
-        url += "?ns=" + firebase;
+        url += "?ns=" + db;
         if (auth != null) url = url + "&auth=" + auth;
         
         return url;
@@ -243,7 +250,7 @@ class Firebase {
     // Default error handler
     function _defaultErrorHandler(errors) {
         foreach(error in errors) {
-            server.log("ERROR " + error.code + ": " + error.message);
+            server.error("ERROR " + error.code + ": " + error.message);
         }
     }
 
@@ -270,69 +277,114 @@ class Firebase {
         return { "event": event, "path": path, "data": messageData };
     }
 
-    // Sets data and returns root of changed data
-    function _setData(message) {
+    // Updates the local cache
+    function _updateCache(message) {
         // base case - refresh everything
-        if (message.event == "put" && message.path =="/") {
-            data = (message.data != null) ? message.data : {};
+        if (message.event == "put" && message.path == "/") {
+            data = (message.data == null) ? {} : message.data;
             return data
         }
-        
+
         local pathParts = split(message.path, "/");
-        
+        local key = pathParts.len() > 0 ? pathParts[pathParts.len()-1] : null;
+
         local currentData = data;
         local parent = data;
-        
-        foreach(part in pathParts) {
-            parent=currentData;
+
+        // Walk down the tree following the path
+        foreach (part in pathParts) {
+            parent = currentData;
             
-            if (part in currentData) currentData = currentData[part];
-            else {
+            if (!(part in currentData)) {
                 currentData[part] <- {};
-                currentData = currentData[part];
             }
+            currentData = currentData[part];
         }
         
-        local key = pathParts.len() > 0 ? pathParts[pathParts.len()-1] : null;
-        
+        // Make the changes to the found branch
         if (message.event == "put") {
             if (message.data == null) {
-                if (key != null) delete parent[key];
-                else data = {};
-                return null;
-            }
-            else {
+                if (key != null) {
+                    delete parent[key];
+                } else {
+                    data = {};
+                }
+            } else {
                 if (key != null) parent[key] <- message.data;
                 else data[key] <- message.data;
             }
-        }
-        
-        if (message.event == "patch") {
+        } else if (message.event == "patch") {
             foreach(k,v in message.data) {
                 if (key != null) parent[key][k] <- v
                 else data[k] <- v;
             }
         }
         
-        return (key != null) ? parent[key] : data;
+        // Now clean up the tree, removing any orphans
+        _cleanTree(data);
     }
 
-    // finds and executes a callback after data changes
-    function _findAndExecuteCallback(path, callbackData) {
-        local pathParts = split(path, "/");
-        local key = "";
-        for(local i = pathParts.len() - 1; i >= 0; i--) {
-            key = "";
-            for (local j = 0; j <= i; j++) key = key + "/" + pathParts[j];
-            if (key in callbacks || key + "/" in callbacks) break;
+    // Cleans the tree by deleting any empty nodes
+    function _cleanTree(branch) {
+        foreach (k,subbranch in branch) {
+            if (typeof subbranch == "array" || typeof subbranch == "table") {
+                _cleanTree(subbranch)
+                if (subbranch.len() == 0) delete branch[k];
+            }
         }
-        if (key + "/" in callbacks) key = key + "/";
-        if (key in callbacks) callbacks[key](callbackData);
     }
+
+    // Steps through a path to get the contents of the table at that point
+    function _getDataFromPath(c_path, m_path, m_data) {
+        
+        // Make sure we are on the right branch
+        if (m_path.len() > c_path.len() && m_path.find(c_path) != 0) return null;
+            
+        // Walk to the base of the callback path
+        local new_data = m_data;
+        foreach (step in split(c_path, "/")) {
+            if (step == "") continue;
+            if (step in new_data) {
+                new_data = new_data[step];
+            } else {
+                new_data = null;
+                break;
+            }
+        }
+        
+        // Find the data at the modified branch but only one step deep at max
+        local changed_data = new_data;
+        local new_path = "";
+        if (m_path.len() > c_path.len()) {
+            // Only a subbranch has changed, pick the subbranch that has changed
+            local new_m_path = m_path.slice(c_path.len())
+            foreach (step in split(new_m_path, "/")) {
+                if (step == "") continue;
+                new_path = step;
+                if (step in changed_data) {
+                    changed_data = changed_data[step];
+                } else {
+                    changed_data = null;
+                }
+                break;
+            }
+        }
+
+        // Clean the path a bit
+        local slashes = 0;
+        for (local i = 0; i < new_path.len(); i++) {
+            if (new_path[i] == '/') slashes++;
+            else break;
+        }
+        if (slashes > 0) new_path = new_path.slice(slashes);
+
+        return { path = new_path, data = changed_data };
+    }
+    
 }
 
-// https://yourfirebase.firebaseio.com
-const FIREBASENAME = "yourfirebase";
-const FIREBASEAUTH = "yourauth";
 
-firebase <- Firebase(FIREBASENAME, FIREBASEAUTH);
+const FIREBASENAME = "yourfirebase";
+const FIREBASESECRET = "yoursecret";
+
+firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
