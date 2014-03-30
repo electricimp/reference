@@ -39,7 +39,7 @@ class NeoPixels {
     constructor(_spi, _frameSize) {
         this.spi = _spi;
         this.frameSize = _frameSize;
-        this.frame = blob(frameSize*27 + 1);
+        this.frame = blob(frameSize*24 + 1);
         
         // prepare the bits array and the clearblob blob
         initialize();
