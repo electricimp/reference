@@ -13,7 +13,7 @@ const SPICLK    = 7500; // kHz
 
 /* This class requires the use of SPI257, which must be run at 7.5MHz 
  * to support neopixel timing. */
-const SPICLK = 7500; // kHz
+const SPICLK = 3750; // kHz
 
 // This is used for timing testing only
 us <- hardware.micros.bindenv(hardware);
@@ -32,7 +32,7 @@ class NeoPixels {
     // copied in directly, instead of being built for each pixel - which makes the class faster.
     bits            = null;
     // Like bits, this blob holds the waveform to send the color [0,0,0], to clear pixels faster
-    clearblob       = blob(BYTESPERPIXEL);
+    clearblob       = blob(12);
     
     // private variables passed into the constructor
     spi             = null; // imp SPI interface (pre-configured)
