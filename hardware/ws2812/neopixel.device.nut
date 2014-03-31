@@ -1,4 +1,4 @@
-/* WS2812 "Neopixel" LED Driver
+ /* WS2812 "Neopixel" LED Driver
  * Copyright (C) 2014 Electric Imp, inc.
  *
  * Uses SPI to emulate 1-wire
@@ -27,7 +27,7 @@ class NeoPixels {
     // copied in directly, instead of being built for each pixel - which makes the class faster.
     bits            = null;
     // Like bits, this blob holds the waveform to send the color [0,0,0], to clear pixels faster
-    clearblob       = blob(24);
+    clearblob       = blob(BYTESPERPIXEL);
     
     // private variables passed into the constructor
     spi             = null; // imp SPI interface (pre-configured)
@@ -39,7 +39,7 @@ class NeoPixels {
     constructor(_spi, _frameSize) {
         this.spi = _spi;
         this.frameSize = _frameSize;
-        this.frame = blob(frameSize*24 + 1);
+        this.frame = blob(frameSize*BYTESPERPIXEL + 1);
         
         // prepare the bits array and the clearblob blob
         initialize();
@@ -67,7 +67,7 @@ class NeoPixels {
         }
         
         // now fill the clearblob
-        for(local j = 0; j < 24; j++) {
+        for(local j = 0; j < BYTESPERPIXEL; j++) {
             clearblob.writen(ZERO, 'b');
         }
         // must have a null at the end to drive MOSI low
