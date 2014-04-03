@@ -45,15 +45,17 @@ class Firebase {
      **************************************************************************/
     function stream(path = "", autoReconnect = true, onError = null) {
         // if we already have a stream open, don't open a new one
-        if (streamingRequest) return false;
+        if (isStreaming()) return false;
          
         if (onError == null) onError = _defaultErrorHandler.bindenv(this);
-        local request = http.get(_buildUrl(path), streamingHeaders);
-
-        streamingRequest = request.sendasync(
+        streamingRequest = http.get(_buildUrl(path), streamingHeaders);
+        streamingRequest.sendasync(
 
             function(resp) {
+                
                 // server.log("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
+                streamingRequest = null;
+
                 // if we timed out and have autoreconnect set
                 if (resp.statuscode == 28 && autoReconnect) {
                     stream(path, autoReconnect, onError);
