@@ -1,9 +1,10 @@
 // -----------------------------------------------------------------------------
 class Firebase {
     // General
-    baseUrl = null;         // Firebase base url
     db = null;              // the name of your firebase
     auth = null;            // Auth key (if auth is enabled)
+    baseUrl = null;         // Firebase base url
+    prefixUrl = "";         // Prefix added to all url paths (after the baseUrl and before the Path)
     
     // For REST calls:
     defaultHeaders = { "Content-Type": "application/json" };
@@ -13,6 +14,7 @@ class Firebase {
     streamingRequest = null;    // The request object of the streaming request
     data = null;                // Current snapshot of what we're streaming
     callbacks = null;           // List of callbacks for streaming request
+    keepAliveTimer = null;
 
     /***************************************************************************
      * Constructor
@@ -22,11 +24,13 @@ class Firebase {
      *      auth - the auth token for your Firebase
      **************************************************************************/
     constructor(_db, _auth) {
-        this.db = _db;
-        this.baseUrl = "https://" + db + ".firebaseio.com";
-        this.auth = _auth;
-        this.data = {}; 
-        this.callbacks = {};
+        const KEEP_ALIVE = 120;
+        
+        db = _db;
+        baseUrl = "https://" + db + ".firebaseio.com";
+        auth = _auth;
+        data = {}; 
+        callbacks = {};
     }
     
     /***************************************************************************
@@ -46,7 +50,7 @@ class Firebase {
         if (onError == null) onError = _defaultErrorHandler.bindenv(this);
         local request = http.get(_buildUrl(path), streamingHeaders);
 
-        this.streamingRequest = request.sendasync(
+        streamingRequest = request.sendasync(
 
             function(resp) {
                 // server.log("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
@@ -60,7 +64,7 @@ class Firebase {
                         // set new location
                         local location = resp.headers["location"];
                         local p = location.find(".firebaseio.com")+16;
-                        this.baseUrl = location.slice(0, p);
+                        baseUrl = location.slice(0, p);
                         stream(path, autoReconnect, onError);
                         return;
                     }
@@ -86,6 +90,10 @@ class Firebase {
             }.bindenv(this)
             
         );
+        
+        // Tickle the keepalive timer
+        if (keepAliveTimer) imp.cancelwakeup(keepAliveTimer);
+        keepAliveTimer = imp.wakeup(KEEP_ALIVE, _keepAliveExpired.bindenv(this))
         
         // Return true if we opened the stream
         return true;
@@ -131,6 +139,19 @@ class Firebase {
     }
     
     /***************************************************************************
+     * Reads a path from the internal cache. Really handy to use in an .on() handler
+     **************************************************************************/
+    function fromCache(path) {
+        local _data = data;
+        foreach (step in split(path, "/")) {
+            if (step == "") continue;
+            if (step in _data) _data = _data[step];
+            else throw "Path not found";
+        }
+        return _data;
+    }
+     
+    /***************************************************************************
      * Reads data from the specified path, and executes the callback handler
      * once complete.
      *
@@ -171,11 +192,13 @@ class Firebase {
      *      path     - the path of the node we're pushing to
      *      data     - the data we're pushing
      **************************************************************************/    
-    function push(path, data) {
+    function push(path, data, priority = null, callback = null) {
+        if (priority != null && typeof data == "table") data[".priority"] <- priority;
         http.post(_buildUrl(path), defaultHeaders, http.jsonencode(data)).sendasync(function(res) {
             if (res.statuscode != 200) {
-                server.error("Push: Firebase response: " + res.statuscode + " => " + res.body)
+                server.error("Push: Firebase responded " + res.statuscode + " to changes to " + path)
             }
+            if (callback) callback(res);
         }.bindenv(this));
     }
     
@@ -191,11 +214,12 @@ class Firebase {
      *      path     - the path of the node we're writing to
      *      data     - the data we're writing
      **************************************************************************/    
-    function write(path, data) {
+    function write(path, data, callback = null) {
         http.put(_buildUrl(path), defaultHeaders, http.jsonencode(data)).sendasync(function(res) {
             if (res.statuscode != 200) {
-                server.error("Write: Firebase response: " + res.statuscode + " => " + res.body)
+                server.error("Write: Firebase responded " + res.statuscode + " to changes to " + path)
             }
+            if (callback) callback(res);
         }.bindenv(this));
     }
     
@@ -211,11 +235,12 @@ class Firebase {
      *      path     - the path of the node we're patching
      *      data     - the data we're patching
      **************************************************************************/    
-    function update(path, data) {
+    function update(path, data, callback = null) {
         http.request("PATCH", _buildUrl(path), defaultHeaders, http.jsonencode(data)).sendasync(function(res) {
             if (res.statuscode != 200) {
-                server.error("Update: Firebase response: " + res.statuscode + " => " + res.body)
-            } 
+                server.error("Update: Firebase responded " + res.statuscode + " to changes to " + path)
+            }
+            if (callback) callback(res);
         }.bindenv(this));
     }
     
@@ -229,18 +254,28 @@ class Firebase {
      * Parameters:
      *      path     - the path of the node we're deleting
      **************************************************************************/        
-    function remove(path) {
+    function remove(path, callback = null) {
         http.httpdelete(_buildUrl(path), defaultHeaders).sendasync(function(res) {
             if (res.statuscode != 200) {
-                server.error("Delete: Firebase response: " + res.statuscode + " => " + res.body)
+                server.error("Delete: Firebase responded " + res.statuscode + " to changes to " + path)
             }
+            if (callback) callback(res);
         });
     }
     
     /************ Private Functions (DO NOT CALL FUNCTIONS BELOW) ************/
     // Builds a url to send a request to
     function _buildUrl(path) {
-        local url = baseUrl + path + ".json";
+        // Normalise the /'s
+        // baseURL = <baseURL>
+        // prefixUrl = <prefixURL>/
+        // path = <path>
+        if (baseUrl.len() > 0 && baseUrl[baseUrl.len()-1] == '/') baseUrl = baseUrl.slice(0, -1);
+        if (prefixUrl.len() > 0 && prefixUrl[0] == '/') prefixUrl = prefixUrl.slice(1);
+        if (prefixUrl.len() > 0 && prefixUrl[prefixUrl.len()-1] != '/') prefixUrl += "/";
+        if (path.len() > 0 && path[0] == '/') path = path.slice(1);
+        
+        local url = baseUrl + "/" + prefixUrl + path + ".json";
         url += "?ns=" + db;
         if (auth != null) url = url + "&auth=" + auth;
         
@@ -258,6 +293,18 @@ class Firebase {
     function _parseEventMessage(text) {
         // split message into parts
         local lines = split(text, "\n");
+        if (lines.len() < 2) return null;
+        
+        // Check for error conditions
+        if (lines.len() == 3 && lines[0] == "{" && lines[2] == "}") {
+            local error = http.jsondecode(text);
+            server.error("Error parsing Firebase event message: " + error.error);
+            return null;
+        }
+
+        // Tickle the keep alive timer
+        if (keepAliveTimer) imp.cancelwakeup(keepAliveTimer);
+        keepAliveTimer = imp.wakeup(KEEP_ALIVE, _keepAliveExpired.bindenv(this))
         
         // get the event
         local eventLine = lines[0];
@@ -381,10 +428,15 @@ class Firebase {
         return { path = new_path, data = changed_data };
     }
     
+    // No keep alive has been seen for a while, lets reconnect
+    function _keepAliveExpired() {
+        closeStream();
+    }
+    
 }
 
 
-const FIREBASENAME = "yourfirebase";
-const FIREBASESECRET = "yoursecret";
+const FIREBASENAME = "your firebase";
+const FIREBASESECRET = "your secret or token";
 
 firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
