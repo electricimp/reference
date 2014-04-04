@@ -6,7 +6,7 @@
 
 // This class requires the use of SPI257, which must be run at 7.5MHz 
 // to support neopixel timing.
-const SPICLK = 3750; // kHz
+const SPICLK = 7500; // kHz
 
 // This is used for timing testing only
 us <- hardware.micros.bindenv(hardware);
