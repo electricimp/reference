@@ -1,9 +1,8 @@
 // Weather Underground Forecast Agent
 // Copyright (C) 2014 Electric Imp, inc.
-// 
-// Scrapes PackageTrackr.com
 
 server.log("Weather Agent Running");
+local AGENTRELOADED = true;
 
 const UPDATEINTERVAL = 900; // fetch forecast every 10 minutes
 updatehandle <- null;
@@ -131,10 +130,6 @@ function prepWebpage() {
     </html>"
 }
 
-function getLatLon(location, callback = null) {
-    
-}
-
 // Use weatherunderground to get the conditions, latitude and longitude given a location string.
 // Location can be:
 //   Country/City ("Australia/Sydney") 
@@ -165,7 +160,6 @@ function getConditions() {
             local weather = response.current_observation;
             LAT = weather.observation_location.latitude.tofloat();
             LON = weather.observation_location.longitude.tofloat();
-            LOCATIONSTR = weather.observation_location.full;
             
             local forecastString = "";
             // Chunk together our forecast into a printable string
@@ -220,10 +214,13 @@ http.onrequest(function(req, resp) {
 // handle device restarts while agent carries on running
 device.on("start", function(val) {
     getConditions();
+    AGENTRELOADED = false;
 });
 
 // assign the webpage... kinda sloppy, sorry!
 prepWebpage();
 
 // handle agent restarts while device carries on running
-getConditions();
+imp.wakeup(5, function() {
+    if (AGENTRELOADED) { getConditions(); }
+});
