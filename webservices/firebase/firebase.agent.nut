@@ -45,34 +45,33 @@ class Firebase {
      **************************************************************************/
     function stream(path = "", autoReconnect = true, onError = null) {
         // if we already have a stream open, don't open a new one
-        if (streamingRequest) return false;
-         
-        if (onError == null) onError = _defaultErrorHandler.bindenv(this);
-        local request = http.get(_buildUrl(path), streamingHeaders);
+        if (isStreaming()) return false;
 
-        streamingRequest = request.sendasync(
+        if (onError == null) onError = _defaultErrorHandler.bindenv(this);
+        streamingRequest = http.get(_buildUrl(path), streamingHeaders);
+
+        streamingRequest.sendasync(
 
             function(resp) {
-                // log("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
-                // if we timed out and have autoreconnect set
-                if (resp.statuscode == 28 && autoReconnect) {
-                    stream(path, autoReconnect, onError);
-                    return;
-                }
+                streamingRequest = null;
                 if (resp.statuscode == 307) {
                     if("location" in resp.headers) {
                         // set new location
                         local location = resp.headers["location"];
                         local p = location.find(".firebaseio.com")+16;
                         baseUrl = location.slice(0, p);
-                        stream(path, autoReconnect, onError);
-                        return;
+                        return stream(path, autoReconnect, onError);
                     }
+                } else if (resp.statuscode == 28 && autoReconnect) {
+                    // if we timed out and have autoreconnect set
+                    return stream(path, autoReconnect, onError);
+                } else {
+                    server.error("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
                 }
             }.bindenv(this),
             
             function(messageString) {
-                // log("MessageString: " + messageString);
+                // server.log("MessageString: " + messageString);
                 local message = _parseEventMessage(messageString);
                 if (message) {
                     // Update the internal cache
@@ -81,7 +80,7 @@ class Firebase {
                     // Check out every callback for matching path
                     foreach (path,callback in callbacks) {
                         
-                        if (path == message.path || message.path.find(path + "/") == 0) {
+                        if (path == "/" || path == message.path || message.path.find(path + "/") == 0) {
                             // This is an exact match or a subbranch 
                             callback(message.path, message.data);
                         } else if (message.event == "patch") {
@@ -98,6 +97,8 @@ class Firebase {
                             // This is the root or a superbranch for a put or delete
                             local subdata = _getDataFromPath(path, message.path, data);
                             callback(path, subdata);
+                        } else {
+                            // server.log("No match for: " + path + " vs. " + message.path);
                         }
                         
                     }
@@ -130,6 +131,7 @@ class Firebase {
      **************************************************************************/
     function closeStream() {
         if (streamingRequest) { 
+            // server.log("Closing stream")
             streamingRequest.cancel();
             streamingRequest = null;
         }
@@ -309,7 +311,7 @@ class Firebase {
         // split message into parts
         local lines = split(text, "\n");
         if (lines.len() < 2) return null;
-        
+
         // Check for error conditions
         if (lines.len() == 3 && lines[0] == "{" && lines[2] == "}") {
             local error = http.jsondecode(text);
