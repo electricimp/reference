@@ -42,6 +42,9 @@ class Firebase {
      *      path - the path of the node we're listending to (without .json)
      *      autoReconnect - set to false to close stream after first timeout
      *      onError - custom error handler for streaming API 
+     * WARNING:
+     *      Be sure not to stream large branches as the limits on the Imp's JSON
+     *      decoder may get in the way.
      **************************************************************************/
     function stream(path = "", autoReconnect = true, onError = null) {
         // if we already have a stream open, don't open a new one
@@ -158,7 +161,7 @@ class Firebase {
     /***************************************************************************
      * Reads a path from the internal cache. Really handy to use in an .on() handler
      **************************************************************************/
-    function fromCache(path = "/") {
+    function fromStreamCache(path = "/") {
         local _data = data;
         foreach (step in split(path, "/")) {
             if (step == "") continue;
@@ -344,7 +347,13 @@ class Firebase {
             local dataString = dataLine.slice(6);
         
             // pull interesting bits out of the data
-            local d = http.jsondecode(dataString);
+            local d;
+            try {
+                d = http.jsondecode(dataString);
+            } catch (e) {
+                server.log("Exception while decoding (" + dataString.len() + " bytes): " + dataString);
+                throw e;
+            }
     
             // return a useful object
             returns.push({ "event": event, "path": d.path, "data": d.data });
