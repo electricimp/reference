@@ -1,15 +1,15 @@
-// Class for DHT11/DHT22 Temp/Humidity Sensor
+// Class for DHT22 Temp/Humidity Sensor
 
 const SPICLK = 937.5;
 
-// Class to read the DHT11/DHT22 family of temperature/humidity sensors
-// See http://akizukidenshi.com/download/ds/aosong/DHT11.pdf
+// Class to read the DHT22 temperature/humidity sensor
+// http://dlnmh9ip6v2uc.cloudfront.net/datasheets/Sensors/Weather/RHT03.pdf
 // These sensors us a proprietary one-wire protocol. The imp
 // emulates this protocol with SPI. 
 // To use:
 //  - tie MOSI to MISO with a 10k resistor
 //  - tie MISO to the data line on the sensor
-class DHTxx {
+class DHT22 {
     static STARTTIME_LOW     = 0.001000;    // 1 ms low time for start
     static STARTTIME_HIGH    = 0.000020;  // 20 us min high time for start
     static STARTTIME_SENSOR  = 0.000080;  // 80 us low / 80 us high "ACK" from sensor on START
@@ -125,8 +125,12 @@ class DHTxx {
         }
         
         //server.log(format("parsed: 0x %02x%02x %02x%02x %02x",result[0],result[1],result[2],result[3],result[4]));
-        humid = (result[0] * 1.0) + (result[1] / 1000.0);
-        temp = (result[2] * 1.0) + (result[3] / 1000.0);
+        humid = ((result[0] << 8) + result[1]) / 10.0;
+        temp = ((result[2] << 8) + result[3]);
+        if (temp & 0x8000) {
+            temp = (~temp & 0xffff) + 1;
+        }
+        temp = temp / 10.0;
         if (((result[0] + result[1] + result[2] + result[3]) & 0xff) != result[4]) {
             return {"rh":0,"temp":0};
         } else {
@@ -153,11 +157,6 @@ class DHTxx {
         
         //server.log(format("Sending %d bytes", startblob.len()));
         local result = spi.writeread(startblob);
-        local resultstr = "";
-        for (local k = 0; k < result.len(); k++) {
-            resultstr += format("%02x",result[k]);
-        }
-        //server.log(format("Read %d bytes: %s",resultstr.len()/2, resultstr));
         return parse(result);
     }
 }
@@ -165,7 +164,7 @@ class DHTxx {
 spi         <- hardware.spi257;
 clkspeed    <- spi.configure(MSB_FIRST, SPICLK);
 
-dht11 <- DHTxx(spi, clkspeed);
-data <- dht11.read();
+dht22 <- DHT22(spi, clkspeed);
+data <- dht22.read();
 server.log(format("Relative Humidity: %0.1f",data.rh)+" %");
 server.log(format("Temperature: %0.1f C",data.temp));
