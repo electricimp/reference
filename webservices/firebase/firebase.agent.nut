@@ -23,11 +23,11 @@ class Firebase {
      *      baseURL - the base URL to your Firebase (https://username.firebaseio.com)
      *      auth - the auth token for your Firebase
      **************************************************************************/
-    constructor(_db, _auth) {
+    constructor(_db, _auth, domain = "firebaseio.com") {
         const KEEP_ALIVE = 120;
         
         db = _db;
-        baseUrl = "https://" + db + ".firebaseio.com";
+        baseUrl = "https://" + db + "." + domain;
         auth = _auth;
         data = {}; 
         callbacks = {};
@@ -42,6 +42,9 @@ class Firebase {
      *      path - the path of the node we're listending to (without .json)
      *      autoReconnect - set to false to close stream after first timeout
      *      onError - custom error handler for streaming API 
+     * WARNING:
+     *      Be sure not to stream large branches as the limits on the Imp's JSON
+     *      decoder may get in the way.
      **************************************************************************/
     function stream(path = "", autoReconnect = true, onError = null) {
         // if we already have a stream open, don't open a new one
@@ -72,8 +75,8 @@ class Firebase {
             
             function(messageString) {
                 // server.log("MessageString: " + messageString);
-                local message = _parseEventMessage(messageString);
-                if (message) {
+                local messages = _parseEventMessage(messageString);
+                foreach (message in messages) {
                     // Update the internal cache
                     _updateCache(message);
                     
@@ -158,7 +161,7 @@ class Firebase {
     /***************************************************************************
      * Reads a path from the internal cache. Really handy to use in an .on() handler
      **************************************************************************/
-    function fromCache(path = "/") {
+    function fromStreamCache(path = "/") {
         local _data = data;
         foreach (step in split(path, "/")) {
             if (step == "") continue;
@@ -308,40 +311,62 @@ class Firebase {
 
     // parses event messages
     function _parseEventMessage(text) {
+        
         // split message into parts
-        local lines = split(text, "\n");
-        if (lines.len() < 2) return null;
+        local alllines = split(text, "\n");
+        if (alllines.len() < 2) return [];
 
-        // Check for error conditions
-        if (lines.len() == 3 && lines[0] == "{" && lines[2] == "}") {
-            local error = http.jsondecode(text);
-            server.error("Firebase error message: " + error.error);
-            return null;
-        }
-
-        // Tickle the keep alive timer
-        if (keepAliveTimer) imp.cancelwakeup(keepAliveTimer);
-        keepAliveTimer = imp.wakeup(KEEP_ALIVE, _keepAliveExpired.bindenv(this))
-        
-        // get the event
-        local eventLine = lines[0];
-        local event = eventLine.slice(7);
-        if(event.tolower() == "keep-alive") return null;
-        
-        // get the data
-        local dataLine = lines[1];
-        local dataString = dataLine.slice(6);
+        local returns = [];
+        for (local i = 0; i < alllines.len(); ) {
+            local lines = [];
+            
+            lines.push(alllines[i++]);
+            lines.push(alllines[i++]);
+            if (i < alllines.len() && alllines[i+1] == "}") {
+                lines.push(alllines[i++]);
+            }
+            
+            // Check for error conditions
+            if (lines.len() == 3 && lines[0] == "{" && lines[2] == "}") {
+                local error = http.jsondecode(text);
+                server.error("Firebase error message: " + error.error);
+                continue;
+            }
     
-        // pull interesting bits out of the data
-        local d = http.jsondecode(dataString);
-
-        // return a useful object
-        return { "event": event, "path": d.path, "data": d.data };
+            // Tickle the keep alive timer
+            if (keepAliveTimer) imp.cancelwakeup(keepAliveTimer);
+            keepAliveTimer = imp.wakeup(KEEP_ALIVE, _keepAliveExpired.bindenv(this))
+            
+            // get the event
+            local eventLine = lines[0];
+            local event = eventLine.slice(7);
+            if(event.tolower() == "keep-alive") continue;
+            
+            // get the data
+            local dataLine = lines[1];
+            local dataString = dataLine.slice(6);
+        
+            // pull interesting bits out of the data
+            local d;
+            try {
+                d = http.jsondecode(dataString);
+            } catch (e) {
+                server.log("Exception while decoding (" + dataString.len() + " bytes): " + dataString);
+                throw e;
+            }
+    
+            // return a useful object
+            returns.push({ "event": event, "path": d.path, "data": d.data });
+        }
+        
+        return returns;
     }
 
     // Updates the local cache
     function _updateCache(message) {
-
+        
+        // server.log(http.jsonencode(message)); 
+        
         // base case - refresh everything
         if (message.event == "put" && message.path == "/") {
             data = (message.data == null) ? {} : message.data;
@@ -370,6 +395,13 @@ class Firebase {
             }
             
             parent = currentData;
+            
+            // NOTE: This is a hack to deal with a bug in Firebase
+            // Firebase is sending arrays when it should be sending tables.
+            if (typeof currentData == "array") {
+                part = part.tointeger();
+            }
+            
             if (!(part in currentData)) {
                 // This is a new branch
                 currentData[part] <- {};
@@ -381,19 +413,37 @@ class Firebase {
         // Make the changes to the found branch
         if (message.event == "put") {
             if (message.data == null) {
-                if (key != null) {
-                    delete parent[key];
-                } else {
+                // Delete the branch
+                if (key == null) {
                     data = {};
+                } else {
+                    if (typeof parent == "array") {
+                        parent[key.tointeger()] = null;
+                    } else {
+                        delete parent[key];
+                    }
                 }
             } else {
-                if (key != null) parent[key] <- message.data;
-                else data[key] <- message.data;
+                // Replace the branch
+                if (key == null) {
+                    data = message.data;
+                } else {
+                    if (typeof parent == "array") {
+                        parent[key.tointeger()] = message.data;
+                    } else {
+                        parent[key] <- message.data;
+                    }
+                }
             }
         } else if (message.event == "patch") {
             foreach(k,v in message.data) {
-                if (key != null) parent[key][k] <- v
-                else data[k] <- v;
+                if (key == null) {
+                    // Patch the root branch
+                    data[k] <- v;
+                } else {
+                    // Patch the current branch
+                    parent[key][k] <- v;
+                }
             }
         }
         
