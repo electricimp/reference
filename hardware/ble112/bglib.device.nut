@@ -301,8 +301,13 @@ class BGLib {
     function log(type, message) {
         
         if ("log" in _event_callbacks) {
-            _event_callbacks["log"](type, message);
-            return;
+            _event_callbacks.log(type, message);
+        } else if (type == "ERR") {
+            server.error(format("%s: %s", type, message));
+        } else if (type == "SEND" || type == "RECV") {
+            server.log(format("%s: %s", type, hexdump(message)));
+        } else {
+            server.log(format("%s: %s", type, message));
         }
         
     }
@@ -1970,4 +1975,19 @@ class BGLib {
 //-------------------------------[ Example code ]------------------------------------
 
 ble112 <- BGLib(hardware.uart1289, hardware.pinB, hardware.pinA);
+
+//..............................................................................
+server.log("Imp booted.");
+
+ble112.reboot();
+ble112.on("system_boot", function(event) {
+
+    // Ping the device, make sure we can see it
+    ble112.system_hello(function(response) {
+
+        server.log("BLE112 booted.");
+        
+    })
+    
+})
 
