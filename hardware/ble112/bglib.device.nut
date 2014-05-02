@@ -30,6 +30,10 @@ Some useful references:
 - [Bluegiga forum] (https://bluegiga.zendesk.com/forums/21316731-Bluetooth-Smarth)
 - [Arduino BGLib] (https://github.com/jrowberg/bglib/blob/master/Arduino/BGLib.cpp)
 
+To do list:
+
+- Time-out requests as sometimes things go wrong.
+
 */
 
 //------------------------------------------------------------------------------
