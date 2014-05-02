@@ -500,7 +500,7 @@ class BGLib {
     
     // -------------------------------------------------------------------------
     function uart_write(header, payload) {
-        log("SEND", header + payload)
+        log("SEND", payload == null ? header : header + payload);
         
         local packet_size = null;
         if (_packet_m) {
@@ -1535,6 +1535,13 @@ class BGLib {
     
     // BLE_CLASS_ID.ATT_DB - Attributes
     function attributes_write(handle, offset, value, callback = null) {
+        if (typeof value == "integer") {
+            if (value <= 0xFF) {
+                value = format("%c", value);
+            } else {
+                value = format("%c%c", value & 0xFF, (value >> 8) & 0xFF);
+            }
+        }
         local payload = format("%c%c%c%c", 
                                 handle & 0xFF, (handle >> 8) & 0xFF,
                                 offset & 0xFF, 
