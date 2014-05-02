@@ -23,7 +23,7 @@ class Firebase {
      *      baseURL - the base URL to your Firebase (https://username.firebaseio.com)
      *      auth - the auth token for your Firebase
      **************************************************************************/
-    constructor(_db, _auth, domain = "firebaseio.com") {
+    constructor(_db, _auth = null, domain = "firebaseio.com") {
         const KEEP_ALIVE = 120;
         
         db = _db;
@@ -42,9 +42,6 @@ class Firebase {
      *      path - the path of the node we're listending to (without .json)
      *      autoReconnect - set to false to close stream after first timeout
      *      onError - custom error handler for streaming API 
-     * WARNING:
-     *      Be sure not to stream large branches as the limits on the Imp's JSON
-     *      decoder may get in the way.
      **************************************************************************/
     function stream(path = "", autoReconnect = true, onError = null) {
         // if we already have a stream open, don't open a new one
@@ -161,7 +158,7 @@ class Firebase {
     /***************************************************************************
      * Reads a path from the internal cache. Really handy to use in an .on() handler
      **************************************************************************/
-    function fromStreamCache(path = "/") {
+    function fromCache(path = "/") {
         local _data = data;
         foreach (step in split(path, "/")) {
             if (step == "") continue;
@@ -396,8 +393,8 @@ class Firebase {
             
             parent = currentData;
             
-            // NOTE: This is a hack to deal with a bug in Firebase
-            // Firebase is sending arrays when it should be sending tables.
+            // NOTE: This is a hack to deal with a quirk of Firebase
+            // Firebase sends arrays when the indicies are integers and its more efficient to use an array.
             if (typeof currentData == "array") {
                 part = part.tointeger();
             }
