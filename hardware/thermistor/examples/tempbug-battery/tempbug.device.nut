@@ -8,7 +8,7 @@
 // check your datasheet
 const b_therm = 3988;
 const t0_therm = 298.15;
-const r_therm = 10000;
+const r_therm = 100000.0;
 const WAKEINTERVAL_MIN = 15; // interval between wake-and-reads in minutes
 
 /* CLASS AND GLOBAL FUNCTION DEFINITIONS -------------------------------------*/
