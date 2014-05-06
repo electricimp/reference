@@ -977,7 +977,7 @@ class BGLib {
                         }
                         break;
                     
-                    /*    
+                    /*
                     case BLE_CLASS_ID.HARDWARE:
                         switch(event.cmd) {
                             case 0: // hardware_io_port_config_irq response
@@ -1179,9 +1179,10 @@ class BGLib {
                         switch(event.cmd) {
                             case 0: // attributes_value event
                                 event.payload.connection <- payload[0];
-                                event.payload.reason <- payload[1] + (payload[2] << 8);
-                                event.payload.handle <- payload[3] + (payload[4] << 8);
-                                event.payload.value <- payload.slice(6);
+                                event.payload.reason <- payload[1];
+                                event.payload.handle <- payload[2] + (payload[3] << 8);
+                                event.payload.offset <- payload[4] + (payload[5] << 8);
+                                event.payload.value <- payload.slice(7);
                                 event.name <- "attributes_value";
                                 break;
                                 
@@ -1342,7 +1343,7 @@ class BGLib {
                         }
                         break;
                     
-                    /*    
+                    /*
                     case BLE_CLASS_ID.HARDWARE:
                         switch(event.cmd) {
                             case 0: // hardware_soft_timer event
@@ -1357,7 +1358,7 @@ class BGLib {
                                 event.payload.state <- payload[6];
                                 event.name <- "hardware_io_port_status";
                                 break;
-                                
+                            
                             case 2: // hardware_adc_result event
                                 event.payload.input <- payload[0];
                                 event.payload.value <- payload[1] + (payload[2] << 8); // This is a 2's compliment with the decimation bits in the MSB
@@ -1372,7 +1373,7 @@ class BGLib {
                         }
                         break;
                     */
-                    
+
                     /*
                     case BLE_CLASS_ID.TEST:
                         // Not implemented
@@ -1951,7 +1952,7 @@ class BGLib {
         return send_command("hardware_analog_comparator_config_irq", BLE_CLASS_ID.HARDWARE, 18, payload, callback);
     }
     */
- 
+
     /*
     // BLE_CLASS_ID.DFU - DFU 
     function dfu_reset(dfu, callback = null) {
