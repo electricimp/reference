@@ -599,7 +599,7 @@ class BGLib {
                                 break;
                                 
                             case 2: // system_address_get response
-                                event.payload.address <- addr_to_string(payload.slice(2, 8));
+                                event.payload.address <- addr_to_string(payload.slice(0, 6));
                                 event.name <- "system_address_get";
                                 break;
                             
