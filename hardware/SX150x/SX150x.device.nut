@@ -59,7 +59,7 @@ class SX150x{
     }
     
     // enable or disable internal pull down resistor for specified GPIO
-    function setPullUp(gpio, enable) {
+    function setPullDown(gpio, enable) {
         writeBit(bank(gpio).REGPULLDN, gpio % 8, enable ? 0 : 1);
     }
 

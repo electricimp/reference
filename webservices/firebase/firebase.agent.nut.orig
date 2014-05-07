@@ -1,4 +1,13 @@
+<<<<<<< HEAD
+// Copyright (c) 2013 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
+const NEWLINE = "\n";
+
+=======
 // -----------------------------------------------------------------------------
+>>>>>>> master
 class Firebase {
     // General
     db = null;              // the name of your firebase
@@ -23,7 +32,7 @@ class Firebase {
      *      baseURL - the base URL to your Firebase (https://username.firebaseio.com)
      *      auth - the auth token for your Firebase
      **************************************************************************/
-    constructor(_db, _auth, domain = "firebaseio.com") {
+    constructor(_db, _auth = null, domain = "firebaseio.com") {
         const KEEP_ALIVE = 120;
         
         db = _db;
@@ -344,7 +353,13 @@ class Firebase {
             local dataString = dataLine.slice(6);
         
             // pull interesting bits out of the data
-            local d = http.jsondecode(dataString);
+            local d;
+            try {
+                d = http.jsondecode(dataString);
+            } catch (e) {
+                server.log("Exception while decoding (" + dataString.len() + " bytes): " + dataString);
+                throw e;
+            }
     
             // return a useful object
             returns.push({ "event": event, "path": d.path, "data": d.data });
@@ -387,8 +402,8 @@ class Firebase {
             
             parent = currentData;
             
-            // NOTE: This is a hack to deal with a bug in Firebase
-            // Firebase is sending arrays when it should be sending tables.
+            // NOTE: This is a hack to deal with a quirk of Firebase
+            // Firebase sends arrays when the indicies are integers and its more efficient to use an array.
             if (typeof currentData == "array") {
                 part = part.tointeger();
             }
@@ -495,28 +510,9 @@ class Firebase {
     }    
 }
 
-// https://yourfirebase.firebaseio.com
-const FIREBASENAME = "yourfirebase";
-const FIREBASEAUTH = "yourauth";
+// Sample instantiation
+const FIREBASENAME = "your firebase";
+const FIREBASESECRET = "your secret or token";
 
-firebase <- Firebase(FIREBASENAME, FIREBASEAUTH);
+firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
 
-firebase.on("/",function(path, data) {
-    if ("led" in data) device.send("led", data.led.tointeger());
-});
-
-firebase.on("/led", function(path, state) {
-    device.send("led", state);
-});
-
-firebase.stream("/", true);
-
-firebase.read("/led", function(data) {
-    server.log("led: " + data);
-})
-
-device.on("toggleLed", function(nullData) {
-    local value = 1;
-    if ("led" in firebase.data) value = 1 - firebase.data.led.tointeger();
-    firebase.write("/led", value);
-});

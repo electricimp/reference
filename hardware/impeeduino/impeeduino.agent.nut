@@ -77,47 +77,77 @@ function send_program() {
 
 //------------------------------------------------------------------------------------------------------------------------------
 // Parse the hex into an array of blobs
-function parse_hex(hex) {
+function parse_hexfile(hex) {
     
     try {
+        // Look at this doc to work out what we need and don't. Max is about 122kb.
+        // https://bluegiga.zendesk.com/entries/42713448--REFERENCE-Updating-BLE11x-firmware-using-UART-DFU
+        server.log("Parsing hex file");
         
-        // Prepare a large buffer for the entire program
-        program = blob(MAX_PROGRAM_SIZE);
-        for (local i = 0; i < MAX_PROGRAM_SIZE; i++) program.writen(0, 'b');
+        // Create and blank the program blob
+        program = blob(0x20000); // 128k maximum
+        for (local i = 0; i < program.len(); i++) program.writen(0x00, 'b');
+        program.seek(0);
         
-        local max_tell = 0;
-        local newhex = split(hex, ": ");
-        for (local l = 0; l < newhex.len(); l++) {
-            local line = strip(newhex[l]);
+        local maxaddress = 0, from = 0, to = 0, line = "", offset = 0x00000000;
+        do {
+            if (to < 0 || to == null || to >= hex.len()) break;
+            from = hex.find(":", to);
+            
+            if (from < 0 || from == null || from+1 >= hex.len()) break;
+            to = hex.find(":", from+1);
+            
+            if (to < 0 || to == null || from >= to || to >= hex.len()) break;
+            line = hex.slice(from+1, to);
+            // server.log(format("[%d,%d] => %s", from, to, line));
+            
             if (line.len() > 10) {
                 local len = hextoint(line.slice(0, 2));
                 local addr = hextoint(line.slice(2, 6));
                 local type = hextoint(line.slice(6, 8));
-                local checksum = hextoint(line.slice(-2));
-                
-                if (type != 0) continue;
 
-                // Grab each of the data bytes
-                program.seek(addr);
+                // Ignore all record types except 00, which is a data record. 
+                // Look out for 02 records which set the high order byte of the address space
+                if (type == 0) {
+                    // Normal data record
+                } else if (type == 4 && len == 2 && addr == 0 && line.len() > 12) {
+                    // Set the offset
+                    offset = hextoint(line.slice(8, 12)) << 16;
+                    if (offset != 0) {
+                        server.log(format("Set offset to 0x%08X", offset));
+                    }
+                    continue;
+                } else {
+                    server.log("Skipped: " + line)
+                    continue;
+                }
+
+                // Read the data from 8 to the end (less the last checksum byte)
+                program.seek(offset + addr)
                 for (local i = 8; i < 8+(len*2); i+=2) {
                     local datum = hextoint(line.slice(i, i+2));
                     program.writen(datum, 'b')
-                    
-                    // Keep track of where we are up to
-                    if (program.tell() > max_tell) max_tell = program.tell();
                 }
+                
+                // Checking the checksum would be a good idea but skipped for now
+                local checksum = hextoint(line.slice(-2));
+                
+                /// Shift the end point forward
+                if (program.tell() > maxaddress) maxaddress = program.tell();
+                
             }
-        }
+        } while (from != null && to != null && from < to);
 
-        // All finished, trim it down to size
-        program.seek(0);
-        program.resize(max_tell);
+        // Crop, save and send the program 
+        server.log(format("Max address: 0x%08x", maxaddress));
+        program.resize(maxaddress);
         
-        // Now send it
-        send_program();
+        server.log("Free RAM: " + (imp.getmemoryfree()/1024) + " kb")
+        return true;
         
     } catch (e) {
         server.log(e)
+        return false;
     }
     
 }

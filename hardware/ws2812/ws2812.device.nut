@@ -1,13 +1,12 @@
-/* WS2812 "Neopixel" LED Driver
- * Copyright (C) 2014 Electric Imp, inc.
- *
- * Uses SPI to emulate 1-wire
- * http://learn.adafruit.com/adafruit-neopixel-uberguide/advanced-coding
- *
- */
+// WS2812 "Neopixel" LED Driver
+// Copyright (C) 2014 Electric Imp, inc.
+//
+// Uses SPI to emulate 1-wire
+// http://learn.adafruit.com/adafruit-neopixel-uberguide/advanced-coding
 
-/* This class requires the use of SPI257, which must be run at 7.5MHz 
- * to support neopixel timing. */
+
+// This class requires the use of SPI257, which must be run at 7.5MHz 
+// to support neopixel timing.
 const SPICLK = 7500; // kHz
 
 // This is used for timing testing only
@@ -27,7 +26,7 @@ class NeoPixels {
     // copied in directly, instead of being built for each pixel - which makes the class faster.
     bits            = null;
     // Like bits, this blob holds the waveform to send the color [0,0,0], to clear pixels faster
-    clearblob       = blob(24);
+    clearblob       = blob(12);
     
     // private variables passed into the constructor
     spi             = null; // imp SPI interface (pre-configured)
@@ -39,7 +38,8 @@ class NeoPixels {
     constructor(_spi, _frameSize) {
         this.spi = _spi;
         this.frameSize = _frameSize;
-        this.frame = blob(frameSize*27 + 1);
+        this.frame = blob(frameSize*BYTESPERPIXEL + 1);
+        this.frame[frameSize*BYTESPERPIXEL] = 0;
         
         // prepare the bits array and the clearblob blob
         initialize();
@@ -67,11 +67,10 @@ class NeoPixels {
         }
         
         // now fill the clearblob
-        for(local j = 0; j < 24; j++) {
+        for(local j = 0; j < BYTESPERPIXEL; j++) {
             clearblob.writen(ZERO, 'b');
         }
-        // must have a null at the end to drive MOSI low
-        clearblob.writen(0x00,'b');
+        
     }
 
     // sets a pixel in the frame buffer
@@ -101,7 +100,7 @@ class NeoPixels {
 
 /* RUNTIME STARTS HERE -------------------------------------------------------*/
 
-const NUMPIXELS = 64;
+const NUMPIXELS = 24;
 const DELAY = 0.025;
 
 spi <- hardware.spi257;

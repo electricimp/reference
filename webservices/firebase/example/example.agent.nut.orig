@@ -1,4 +1,16 @@
+<<<<<<< HEAD
+// Copyright (c) 2013 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
+const FIREBASE_URL = ""
+const FIREBASE_AUTH = ""
+
+const NEWLINE = "\n";
+
+=======
 // -----------------------------------------------------------------------------
+>>>>>>> master
 class Firebase {
     // General
     db = null;              // the name of your firebase
