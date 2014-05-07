@@ -14,7 +14,7 @@ Usage
 i2c <- hardware.i2c89;
 i2c.configure(CLOCK_SPEED_100_KHZ);
 // Configure the EEPROM
-eeprom <- Cat24c(i2c);
+eeprom <- CAT24C(i2c);
 // write some test data
 local testStr = "Electric Imp!";
 // write the string to the eepromm, starting at offset 0
