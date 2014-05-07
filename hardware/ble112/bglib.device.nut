@@ -1343,7 +1343,22 @@ class BGLib {
                                 event.payload.sender <- addr_to_string(payload.slice(2, 8));
                                 event.payload.address_type <- addr_type_to_string(payload[8]);
                                 event.payload.bond <- payload[9];
-                                event.payload.data <- payload.slice(11);
+                                event.payload.data <- [];
+                                try {
+                                    for (local i = 11; i < payload.len(); i++) {
+                                        local len = payload[i++];
+                                        
+                                        local advpart = {};
+                                        advpart.type <- payload[i++];
+                                        advpart.data <- payload.slice(i, i+len-1);
+                                        
+                                        event.payload.data.push(advpart);
+                                        
+                                        i += len-2;
+                                    }
+                                }  catch (e) {
+                                    log("ERR", "Failed to parse advertising packet: " + e);
+                                }
                                 event.name <- "gap_scan_response";
                                 break;
                         }
