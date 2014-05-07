@@ -28,13 +28,11 @@ function discover_mode() {
                 // Get the local name of the device if we have an active connection.
                 // This can't happen in a passive connection
                 local local_name = "Unnamed";
-                /*
-                if (event.payload.data.len() > 2) {
-                    if (event.payload.data[1] == 0x09) {
-                        local_name = format("%s", event.payload.data.slice(2))
+                foreach (advdata in event.payload.data) {
+                    if (advdata.type == BLE_GAP_AD_TYPES.GAP_AD_TYPE_LOCALNAME_COMPLETE) {
+                        local_name = format("%s", advdata.data);
                     }
                 }
-                */
                 ble112.log("APP", format("New device: %s (%s)", local_name, event.payload.sender));
                 
                 scanned[event.payload.sender] <- {  "payload": event.payload, 
