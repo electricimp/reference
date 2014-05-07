@@ -1333,7 +1333,13 @@ class BGLib {
                         switch(event.cmd) {
                             case 0: // gap_scan_response event
                                 event.payload.rssi <- payload[0] - 256;
-                                event.payload.packet_type <- payload[1];
+                                switch (payload[1]) {
+                                    case 0: event.payload.packet_type <- "connectable"; break;
+                                    case 2: event.payload.packet_type <- "non-connectable"; break;
+                                    case 4: event.payload.packet_type <- "scan-response"; break;
+                                    case 6: event.payload.packet_type <- "discoverable"; break;
+                                    default: event.payload.packet_type <- "unknown"; break;
+                                }
                                 event.payload.sender <- addr_to_string(payload.slice(2, 8));
                                 event.payload.address_type <- addr_type_to_string(payload[8]);
                                 event.payload.bond <- payload[9];
