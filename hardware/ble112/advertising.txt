@@ -1,0 +1,44 @@
+How to break down an iBeacon packet
+==========================================
+
+
+RECV  80 29 06 00 d8 00 54 17  6a 58 2b d7 01 ff 1e 02      |.)....T.jX+.....|
+RECV  01 06 1a ff 4c 00 02 15  2f 23 44 54 cf 6d 4a 0f      |....L.../#DT.mJ.|
+RECV  ad f2 f4 91 1b a9 ff a6  00 01 02 7f c5               |.............   |
+
+Header (parsed by BGLib)
+80 23 06 00
+^- event
+   ^- length (35 bytes)
+      ^- GAP
+         ^- gap_scan_response event
+
+Payload (parsed by BGLib)
+d8 00 54 17 6a 58 2b d7 01 ff 1e
+^- rssi
+   ^- packet type = 0 (connectable advertising packet)
+       ^- addr = d7:2b:58:6a:17:54
+                        ^- address type = 1
+                           ^- bond = none
+                              ^- data length = 30
+
+Advertising Data (parsed by BGLib)
+02 01 06 
+^- bytes to follow = 2
+   ^- ad type = 1 (flags)
+      ^- flags = limited disc (off), general disc (on), dual mode (off), etc
+
+1a ff
+^- length = 26
+   ^- ad type = 0xff (manufacturer specific data)
+
+iBeacon specific data
+4c 00 02 15 2f 23 44 54 cf 6d 4a 0f ad f2 f4 91 1b a9 ff a6 00 01 02 7f c5
+^- company id = 0x004C (Apple)
+      ^- ibeacon advertisement indicator = 0x1502
+            ^- uuid = 2f 23 44 54 cf 6d 4a 0f ad f2 f4 91 1b a9 ff a6
+                                                            ^- major = 0x0001 (1)
+                                                                   ^- minor = 0x027F (639)
+                                                                        ^- power level = 0xC5 = -59 dB
+
+
