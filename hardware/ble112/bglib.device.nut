@@ -71,8 +71,8 @@ class BGLib {
             _wake.write(1); // Pull high to keep awake
         }
         if (_reset_l) {
-            _reset_l.configure(DIGITAL_OUT);
-            _reset_l.write(1); // Pull high to prevent reset
+            // Tristate the pin for now
+            _reset_l.configure(DIGITAL_IN);
         }
     }
     
@@ -265,7 +265,8 @@ class BGLib {
             GAP_AD_TYPE_SERVICES_128BIT_ALL  = 7,
             GAP_AD_TYPE_LOCALNAME_SHORT      = 8,
             GAP_AD_TYPE_LOCALNAME_COMPLETE   = 9,
-            GAP_AD_TYPE_TXPOWER              = 10
+            GAP_AD_TYPE_TXPOWER              = 10,
+            GAP_AD_TYPE_MANUFACTURER_DATA    = 255
         };
         
         enum BLE_GAP_ADVERTISING_POLICY
@@ -379,15 +380,20 @@ class BGLib {
     
     // -------------------------------------------------------------------------
     function halt() {
-        if (_reset_l) _reset_l.write(0);
+        if (_reset_l) {
+            _reset_l.configure(DIGITAL_OUT);
+            _reset_l.write(0);
+        }
     }
 
     // -------------------------------------------------------------------------
     function reboot() {
         if (_reset_l) {
+            _reset_l.configure(DIGITAL_OUT);
             _reset_l.write(0); 
             imp.wakeup(0.1, function() {
                 _reset_l.write(1);
+                _reset_l.configure(DIGITAL_IN);
                 _uart_buffer = "";
             }.bindenv(this))
         }
@@ -977,7 +983,6 @@ class BGLib {
                         }
                         break;
                     
-                    /*
                     case BLE_CLASS_ID.HARDWARE:
                         switch(event.cmd) {
                             case 0: // hardware_io_port_config_irq response
@@ -1081,7 +1086,6 @@ class BGLib {
                                 
                         }
                         break;
-                    */
 
                     
                     /*
@@ -1364,7 +1368,6 @@ class BGLib {
                         }
                         break;
                     
-                    /*
                     case BLE_CLASS_ID.HARDWARE:
                         switch(event.cmd) {
                             case 0: // hardware_soft_timer event
@@ -1393,7 +1396,6 @@ class BGLib {
                                 break;
                         }
                         break;
-                    */
 
                     /*
                     case BLE_CLASS_ID.TEST:
@@ -1864,7 +1866,6 @@ class BGLib {
         return send_command("gap_set_directed_connectable_mode", BLE_CLASS_ID.GAP, 10, payload, callback);
     }
 
-    /*
     // BLE_CLASS_ID.HARDWARE - Hardware
     function hardware_io_port_config_irq(port, enable_bits, falling_edge, callback = null) {
         log("ERR", "hardware_io_port_config_irq has been deprecated")
@@ -1972,7 +1973,6 @@ class BGLib {
         local payload = format("%c", enabled ? 0x01 : 0x00);
         return send_command("hardware_analog_comparator_config_irq", BLE_CLASS_ID.HARDWARE, 18, payload, callback);
     }
-    */
 
     /*
     // BLE_CLASS_ID.DFU - DFU 
