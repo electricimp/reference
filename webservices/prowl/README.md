@@ -4,5 +4,6 @@ The Prowl library wraps [Prowl's API](http://www.prowlapp.com/) for sending push
 
 Contributors
 ============
+- Matt Haines
 - Aron Steg
 
