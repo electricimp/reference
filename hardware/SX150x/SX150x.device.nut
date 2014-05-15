@@ -1,29 +1,9 @@
-/*
-Copyright (C) 2013 electric imp, inc.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
-and associated documentation files (the "Software"), to deal in the Software without restriction, 
-including without limitation the rights to use, copy, modify, merge, publish, distribute, 
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial 
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE 
-AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-/* 
- * Class(es) for SX150X I/O Expander Family
- * http://www.semtech.com/images/datasheet/sx150x_789.pdf
- * Tom Byrne
- * tom@electricimp.com
- * 10/21/2013
- */
+// Copyright (c) 2013,2014 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+//
+// Description: Driver for Semtech SX1504, SX1505 and SX1506 I2C GPIO Expanders
+// Datasheet: http://www.semtech.com/images/datasheet/sx150x_456.pdf
 
 class SX150x{
     //Private variables
@@ -197,7 +177,12 @@ class SX1506 extends SX150x{
     }
 }
 
-//Class to allow using an IO on an Expander just like an Imp pin
+
+//----------------------------------------------------------------------------------
+//  Example Code
+//----------------------------------------------------------------------------------
+
+//Check the repo for lastest variant of the ExpGPIO class
 class ExpGPIO{
     _expander = null;  //Instance of an Expander class
     _gpio     = null;  //Pin number of this GPIO pin
@@ -238,13 +223,6 @@ class ExpGPIO{
     
     function read() { return _expander.getPin(_gpio); }
 }
-
-
-//----------------------------------------------------------------------------------
-//
-//  Example Code
-//
-//----------------------------------------------------------------------------------
 
 //Initialize the I2C bus
 i2c <- hardware.i2c89;

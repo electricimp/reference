@@ -1,31 +1,10 @@
-/*
-Copyright (C) 2013 electric imp, inc.
+// Copyright (c) 2013 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
-and associated documentation files (the "Software"), to deal in the Software without restriction, 
-including without limitation the rights to use, copy, modify, merge, publish, distribute, 
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial 
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE 
-AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-/* 
- * MX25L3206E SPI Flash Driver Class (Device Firmware)
- * Tom Byrne
- * tom@electricimp.com
- * 10/10/20
- */
-
-class spiFlash {
-    // MX25L3206E SPI Flash
+// Semi-generic SPI Flash Driver
+// This class was developed to be used in an Electric Imp intercom application
+class SpiFlash {
     // Clock up to 86 MHz (we go up to 15 MHz)
     // device commands:
     static WREN     = "\x06"; // write enable
@@ -259,3 +238,16 @@ class spiFlash {
         return 0;
     }
 }
+
+// configure hardware before passing to constructor
+spi     <- hardware.spi257;
+spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, 15000);
+cs_l    <- hardware.pin8;
+cs_l.configure(DIGITAL_OUT);
+cs_l.write(1);
+
+// instantiate class
+flash <- SpiFlash(spi, cs_l)
+
+// clear memory
+flash.chipErase();

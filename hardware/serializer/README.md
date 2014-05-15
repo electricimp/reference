@@ -1,5 +1,6 @@
 
-## Introduction ##
+Serializer
+==========
 
 The "serializer" class has three core static functions for serializing any serializable object in Squirrel.
 
@@ -7,7 +8,13 @@ The "serializer" class has three core static functions for serializing any seria
 * deserialize - Pass in a blob (from serialize) and returns the original object
 * CRC - a general purpose 8-bit CRC generator for strings and blobs.
 
-## Usage ##
+Contributors
+============
+
+- Aron
+
+Usage
+=====
 
 The functions are all static so there is no need to instantiate the class. Simply call like so:
 

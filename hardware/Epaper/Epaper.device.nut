@@ -1,37 +1,13 @@
-/*
-Copyright (C) 2013 electric imp, inc.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
-and associated documentation files (the "Software"), to deal in the Software without restriction, 
-including without limitation the rights to use, copy, modify, merge, publish, distribute, 
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial 
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE 
-AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-/* 
- * Epaper Device Firmware
- * Tom Byrne
- * tom@electricimp.com
- * 10/9/2013
- */
+// Copyright (c) 2014 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
 
 // SPI Clock Rate in kHz
 const SPICLK = 30000;
 
+// class to drive Pervasive Displays epaper display
+// see http://repaper.org
 class epaper {
-    /*
-     * class to drive Pervasive Displays epaper display
-     * see http://repaper.org
-     */
 
     WIDTH           = null;
     HEIGHT          = null;
@@ -512,6 +488,7 @@ class epaper {
 }
 
 /* REGISTER AGENT CALLBACKS -------------------------------------------------*/
+
 agent.on("start", function(data) {
     display.start();
 });
@@ -561,19 +538,14 @@ agent.on("clear", function(val) {
     display.stop();
 });
 
-/* The device requests its own parameters from the agent upon startup.
- * This handler finishes initializing the device when the agent responds with these parameters.
- */
+// The device requests its own parameters from the agent upon startup.
+// This handler finishes initializing the device when the agent responds with these parameters.
 agent.on("params_res", function(res) {
-    /*
-     * display dimensions
-     *
-     * Standard sizes from repaper.org:
-     * 1.44" = 128 x 96  px
-     * 2.0"  = 200 x 96  px
-     * 2.7"  = 264 x 176 px
-     */
-
+    // Standard sizes from repaper.org:
+    // 1.44" = 128 x 96  px
+    // 2.0"  = 200 x 96  px
+    // 2.7"  = 264 x 176 px
+    
     // Pin configuration
     // epd_cs_l    <- hardware.pin1;   // EPD Chip Select (active-low)
     // MISO        <- hardware.pin2;   // SPI interface
@@ -588,8 +560,8 @@ agent.on("params_res", function(res) {
     // border      <- hardware.pinD;   // Border Control
     // flash_cs_l  <- hardware.pinE;   // Flash Chip Select (active low)
 
-    // ePaper(WIDTH, HEIGHT, SPI_IFC, EPD_CS_L, BUSY, TEMPSENSE, PWM, RESET, PANEL_ON, DISCHARGE, BORDER, FLASH_CS_L)
-    display <- epaper(res.width, res.height, hardware.spi257, hardware.pin1, hardware.pin6, hardware.pin8,
+    // Epaper(WIDTH, HEIGHT, SPI_IFC, EPD_CS_L, BUSY, TEMPSENSE, PWM, RESET, PANEL_ON, DISCHARGE, BORDER, FLASH_CS_L)
+    display <- Epaper(res.width, res.height, hardware.spi257, hardware.pin1, hardware.pin6, hardware.pin8,
         hardware.pin9, hardware.pinA, hardware.pinB, hardware.pinC, hardware.pinD);
 
     server.log("Device Started, free memory: " + imp.getmemoryfree());

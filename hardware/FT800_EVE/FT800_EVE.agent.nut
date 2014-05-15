@@ -1,33 +1,6 @@
-/*
-Copyright (C) 2014 electric imp, inc.
-
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
-and associated documentation files (the "Software"), to deal in the Software without restriction, 
-including without limitation the rights to use, copy, modify, merge, publish, distribute, 
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial 
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE 
-AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-/* Example agent for FTDI FT800 "Driver Class"
- * For more information on the FT800, see:
- * http://www.ftdichip.com/Support/Documents/ProgramGuides/FT800%20Programmers%20Guide.pdf
- * 
- * You may also want to view the GameDuino library for Arduino, which uses the FT800
- * http://excamera.com/sphinx/gameduino2/
- * http://excamera.com/files/gd2book_v0.pdf
- * 
- * tom@electricimp.com
- * 2/11/2014 
- */
+// Copyright (c) 2013 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
 
 const DISPWIDTH     = 480;
 const DISPHEIGHT    = 272;
@@ -190,50 +163,6 @@ function findword(targetword, sourcedata) {
     return sourcedata.tell() - 4;
 }
 
-/* PNG parser; doesn't work because the FT800 doesn't want proper PNGs.
-function sendPng(pngdata, handle) {
-    pngdata.seek(0,'b');
-    
-    // search the PNG blob for the header chunk, which starts with a 4-byte length, followed by a 4-byte marker, "IHDR"
-    // the standard requires that the IHDR chunk be the first chunk, so we don't need to backtrack after we parse it.
-    local hdroffset = findword("IHDR", pngdata);
-    pngdata.seek(hdroffset + 4);
-    // found it. Next four bytes are the width, then four for height
-    local width = pngdata.readblob(4);
-    width.swap4();
-    width = width.readn('i');
-    //server.log(format("0x %08x",width));
-    local height = pngdata.readblob(4);
-    height.swap4();
-    height = height.readn('i');
-    //server.log(format("0x %08x",height));
-    // next byte is the per-channel depth in bits
-    local chdepth = pngdata.readn('b');
-    //server.log(format("0x %02x",chdepth));
-    // next byte is the color type (0-7)
-    local type = pngdata.readn('b');
-    //server.log(format("0x %02x",type));
-    // there's more here, but the hell with it, don't think we need it yet.
-    
-    // search the remainder of the PNG for the IDAT chunk, with the bitmap in it. 
-    // the standard allows for more than one IDAT chunk, which we'll just fail at for the time being.
-    local idatoffset = findword("IDAT", pngdata);
-    pngdata.seek(idatoffset - 4);
-    local idatlen = pngdata.readblob(4);
-    idatlen.swap4();
-    idatlen = idatlen.readn('i');
-    pngdata.seek(idatoffset + 4);
-    
-    pngdata.swap4();
-    local bitmap = pngdata.readblob(idatlen);
-    
-    server.log(format("Parsed PNG, %d x %d px, %d bits per channel, type %d, %d bytes of bitmap",width,height,chdepth,type,bitmap.len()));
-
-    device.send("loadpng", {"pngdata":bitmap,"handle":handle,"format":0,
-        "bitsperpx":chdepth*3,"width":width,"height":height});
-}
-*/
-
 function sendPng(pngdata, handle, format, bitsperpx, width, height) {
     device.send("loadpng", {"pngdata":pngdata,"handle":handle,"format":format,
         "bitsperpx":bitsperpx,"width":width,"height":height});
@@ -281,9 +210,3 @@ http.onrequest(function(req, resp) {
 });
 
 server.log("Agent Started.");
-
-/*
-local test = format("%c%c%c%c",0x49, 0x48, 0x44, 0x52)
-server.log(test);
-server.log(test.slice(1,4));
-*/

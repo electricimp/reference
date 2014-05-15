@@ -1,35 +1,8 @@
-/*
-Copyright (C) 2013 electric imp, inc.
+// Copyright (c) 2014 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
 
-Permission is hereby granted, free of charge, to any person obtaining a copy of this software 
-and associated documentation files (the "Software"), to deal in the Software without restriction, 
-including without limitation the rights to use, copy, modify, merge, publish, distribute, 
-sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is 
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all copies or substantial 
-portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE 
-AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, 
-DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-*/
-
-/* 
- * Tom Buttner
- * tom@electricimp.com
- */
-
-/*
- * TMP112 Digital Temperature Sensor
- * 
- * Communicates via I2C
- * http://www.ti.com/lit/ds/symlink/tmp112.pdf
- *
- */
-class tmp112 {
+class TMP112 {
 	// static values (address offsets)
 	static TEMP_REG 		= 0x00;
 	static CONF_REG 		= 0x01;
@@ -66,7 +39,7 @@ class tmp112 {
 	INT_CALLBACK 	= null;
 
 	// generic temp interrupt
-	function tmp112_int(state) {
+	function tmp112_int(state) {S
 		server.log("Device: TMP112 Interrupt Occurred. State = "+state);
 	}
 
@@ -88,7 +61,6 @@ class tmp112 {
 		 * This is done to allow multiple devices to be constructed on the bus
 		 * without reconfiguring the bus with each instantiation and causing conflict.
 		 */
-		//this.i2c.configure(CLOCK_SPEED_100_KHZ);
 		this.int_pin.configure(DIGITAL_IN);
 		LAST_INT_STATE = this.int_pin.read();
 		POLL_INTERVAL = _alert_poll_interval;
@@ -473,3 +445,12 @@ class tmp112 {
 		return (read_c() * 9.0 / 5.0 + 32.0);
 	}
 }
+
+// 8-bit (left-justified I2C address. Just an example.)
+const TMP112_ADDR = 0x30;
+
+alert <- hardware.pin1;
+alert.configure(DIGITAL_IN);
+i2c <- hardware.i2c89;
+i2c.configure(CLOCK_SPEED_400_KHZ);
+tempsensor = TMP112(i2c, TMP112_ADDR, alert);

@@ -2,10 +2,9 @@
 //
 //I2C EEPROM, CAT24C Family
 // http://www.onsemi.com/pub_link/Collateral/CAT24C02-D.PDF
-
 const PAGE_LEN = 16;        // page length in bytes
 const WRITE_TIME = 0.005;   // max write cycle time in seconds
-class cat24c {
+class CAT24C {
     _i2c = null;
     _addr = null;
     
@@ -57,7 +56,7 @@ class cat24c {
 i2c <- hardware.i2c89;
 i2c.configure(CLOCK_SPEED_100_KHZ);
 // Configure the EEPROM
-eeprom <- cat24c(i2c);
+eeprom <- CAT24C(i2c);
 // write some test data
 local testStr = "Electric Imp!";
 // write the string to the eepromm, starting at offset 0
