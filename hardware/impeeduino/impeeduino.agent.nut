@@ -141,7 +141,7 @@ function parse_hexfile(hex) {
         // Crop, save and send the program 
         server.log(format("Max address: 0x%08x", maxaddress));
         program.resize(maxaddress);
-        
+        send_program();
         server.log("Free RAM: " + (imp.getmemoryfree()/1024) + " kb")
         return true;
         
