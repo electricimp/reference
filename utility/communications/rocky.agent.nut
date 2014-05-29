@@ -19,6 +19,7 @@ class Rocky
         signature = signature.tolower();
         if (!(signature in _handlers)) _handlers[signature] <- {};
         _handlers[signature][verb] <- callback;
+        return this;
     }
     
     // .........................................................................
@@ -76,7 +77,7 @@ class Rocky
     
     // .........................................................................
     function _onrequest(req, res) {
-        
+
         // Setup the context for the callbacks
         local context = Context(req, res);
         try {
@@ -85,12 +86,13 @@ class Rocky
             if ("x-forwarded-proto" in req.headers && req.headers["x-forwarded-proto"] != "https") {
                 context.send(405, "HTTP not allowed.");
                 return;
-            }      
+            }
             
             // Parse the request body back into the body
             try {
                 req.body = _parse_body(req);
             } catch (e) {
+                server.log("Parse error '" + e + "' when parsing:\r\n" + req.body)
                 context.send(400, e);
                 return;
             }
@@ -148,6 +150,7 @@ class Rocky
     function _parse_body(req) {
         
         if ("content-type" in req.headers && req.headers["content-type"] == "application/json") {
+            if (req.body == "" || req.body == null) return null;
             return http.jsondecode(req.body);
         }
         if ("content-type" in req.headers && req.headers["content-type"] == "application/x-www-form-urlencoded") {
@@ -289,7 +292,8 @@ class Rocky
 
 
 // -----------------------------------------------------------------------------
-class Context {
+class Context 
+{
     req = null;
     res = null;
     sent = false;
@@ -329,7 +333,14 @@ class Context {
     }
     
     // .........................................................................
-    function header(key, value) {
+    function header(key, def = null) {
+        key = key.tolower();
+        if (key in req.headers) return req.headers[key];
+        else return def;
+    }
+    
+    // .........................................................................
+    function set_header(key, value) {
         return res.header(key, value);
     }
     
@@ -359,8 +370,12 @@ class Context {
             res.send(200, code);
         } else if (message == null && (typeof code == "table" || typeof code == "array")) {
             // No result code, assume 200 ... and encode a json object
-            res.header("Content-Type", "application/json");
+            res.header("Content-Type", "application/json; charset=utf-8");
             res.send(200, http.jsonencode(code));
+        } else if (typeof code == "integer" && (typeof message == "table" || typeof message == "array")) {
+            // Encode a json object
+            res.header("Content-Type", "application/json; charset=utf-8");
+            res.send(code, http.jsonencode(message));
         } else {
             // Normal result
             res.send(code, message);
