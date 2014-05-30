@@ -409,7 +409,7 @@ class TMP112 {
 			CONV_READY = false;
 			local timeout = 30; // timeout in milliseconds
 			local start = hardware.millis();
-			while (!CONF_READY) {
+			while (!CONV_READY) {
 				if ((hardware.millis() - start) > timeout) {
 					server.error("Device: TMP112 Timed Out waiting for conversion.");
 					return 0;
