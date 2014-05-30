@@ -140,7 +140,7 @@ class TMP112 {
 		} else {
 			SHUTDOWN = false;	
 		}
-		if (conf[1] & 0x10) {
+		if (conf[1] & 0x80) {
 			CONV_READY = true;
 		} else {
 			CONV_READY = false;
@@ -410,6 +410,7 @@ class TMP112 {
 			local timeout = 30; // timeout in milliseconds
 			local start = hardware.millis();
 			while (!CONV_READY) {
+				read_conf();
 				if ((hardware.millis() - start) > timeout) {
 					server.error("Device: TMP112 Timed Out waiting for conversion.");
 					return -999;
