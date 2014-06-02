@@ -2,6 +2,10 @@
 // #include <rocky.agent.nu>
 
 const PROXY_API_KEY = "<generate your own key>"; 
+const AUTH_HTML = @"<form method='post'>
+                    Enter the one-time code here: <input name='code'><br/>
+                    <button type='submit'>Submit</button>
+                  </form>";
 
 rest <- Rocky();
 
@@ -90,11 +94,7 @@ rest.on("GET", "/oauth2/authorize", function(context) {
            && query.response_type == "code"
            ) {
             
-            local html = @"<form method='post'>
-                            Enter the one-time code here: <input name='code'><br/>
-                            <button type='submit'>Submit</button>
-                          </form>";
-            html = format(html, query.scope, query.client_id, query.response_type, query.redirect_uri);
+            html = format(AUTH_HTML, query.scope, query.client_id, query.response_type, query.redirect_uri);
             
             context.set_header("Content-Type", "text/html")
             return context.send(html);

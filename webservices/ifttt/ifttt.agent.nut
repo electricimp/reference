@@ -439,15 +439,19 @@ class IFTTT
     
     
     // .............................................................................
-    // Register an action handler
-    function action(act, callback) {
-        if (callback == null) {
-            delete _actions[act];
-        } else {
-            _actions[act] <- callback;
-        }
-    }
+    // Register the callback for test data
+    function test_setup(callback) {
 
+        _test_setup = callback;
+    }
+    
+    // .............................................................................
+    // Register the callback for teardown the test data
+    function test_teardown(callback) {
+        
+        _test_teardown = callback;
+    }
+    
     // .............................................................................
     // Register action field
     function add_action_field(action, field, label, value) {
@@ -463,17 +467,15 @@ class IFTTT
     }
     
     // .............................................................................
-    // Register the callback for test data
-    function test_setup(callback) {
-        _test_setup = callback;
+    // Register an action handler
+    function action(act, callback) {
+        if (callback == null) {
+            delete _actions[act];
+        } else {
+            _actions[act] <- callback;
+        }
     }
-    
-    // .............................................................................
-    // Register the callback for teardown the test data
-    function test_teardown(callback) {
-        _test_teardown = callback;
-    }
-    
+
     // .............................................................................
     // Reply to an IFTTT action request 
     function action_ok(context) {
@@ -523,10 +525,10 @@ class IFTTT
     }
     
     // .............................................................................
-    function trigger(trigger, data, realtime = true) {
+    function trigger(trigger, ingredients = {}, realtime = true) {
         
         // Push the data into the queue
-        _push_trigger_record(trigger, data);
+        _push_trigger_record(trigger, ingredients);
         
         // Real-time notification
         if (realtime) _notify_realtime();
