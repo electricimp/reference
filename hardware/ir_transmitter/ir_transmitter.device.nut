@@ -216,7 +216,6 @@ agent.on("set_timing", function(target) {
 
 /* RUNTIME STARTS HERE ------------------------------------------------------*/
 
-imp.configure("IR Transmitter",[],[]);
 
 // instantiate an IR transmitter
 sender <- IR_transmitter(hardware.spi257, hardware.pin1);

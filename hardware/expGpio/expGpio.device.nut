@@ -78,7 +78,6 @@ class expGPIO {
 
 /* EXAMPLE RUNTIME STARTS HERE ----------------------------------------------*/
 /*
-imp.configure("expGpio Example",[],[]);
 
 ioexp_int_l     <- hardware.pin1;   // I/O Expander Alert (Active Low)
 i2c             <- hardware.i2c89;
