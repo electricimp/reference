@@ -221,7 +221,7 @@ class Rocky
             } else if (auth.len() == 2 && auth[0] == "Bearer") {
                 // The bearer is just the password
                 if (auth[1].len() > 0) {
-                    return { authtype = "Bearer", user = "", pass = auth[1] };
+                    return { authtype = "Bearer", user = auth[1], pass = auth[1] };
                 }
             }
         }
