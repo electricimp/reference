@@ -1,4 +1,4 @@
-#Twitter Search
+#Twitter Class
 The Twitter class allows you to tweet, and stream results from Twitter's streaming API.
 
 **NOTE:** You can only have one instance of the streaming API open per account per app.
