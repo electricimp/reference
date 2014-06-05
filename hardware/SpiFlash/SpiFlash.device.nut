@@ -1,4 +1,4 @@
-// Copyright (c) 2013 Electric Imp
+// Copyright (c) 2014 Electric Imp
 // This file is licensed under the MIT License
 // http://opensource.org/licenses/MIT
 
@@ -20,14 +20,14 @@ class SpiFlash {
     static SE       = "\x20"; // sector erase (Any 4kbyte sector set to 0xff)
     static BE       = "\x52"; // block erase (Any 64kbyte sector set to 0xff)
     static CE       = "\x60"; // chip erase (full device set to 0xff)
-    static PP       = "\x02"; // page program 
+    static PP       = "\x02"; // page program
     static RDSCUR   = "\x2B"; // read security register
     static WRSCUR   = "\x2F"; // write security register
     static ENSO     = "\xB1"; // enter secured OTP
     static EXSO     = "\xC1"; // exit secured OTP
     static DP       = "\xB9"; // deep power down
     static RDP      = "\xAB"; // release from deep power down
- 
+
     // offsets for the record and playback sectors in memory
     // 64 blocks
     // first 48 blocks: playback memory
@@ -35,20 +35,20 @@ class SpiFlash {
     static totalBlocks = 64;
     static playbackBlocks = 48;
     static recordOffset = 0x2FFFD0;
- 
+
     // manufacturer and device ID codes
     mfgID = null;
     devID = null;
- 
+
     // spi interface
     spi = null;
     cs_l = null;
- 
+
     // constructor takes in pre-configured spi interface object and chip select GPIO
     constructor(spiBus, csPin) {
         this.spi = spiBus;
         this.cs_l = csPin;
- 
+
         // read the manufacturer and device ID
         cs_l.write(0);
         spi.write(RDID);
@@ -57,29 +57,29 @@ class SpiFlash {
         this.devID = (data[1] << 8) | data[2];
         cs_l.write(1);
     }
- 
+
     function wrenable() {
         cs_l.write(0);
         spi.write(WREN);
         cs_l.write(1);
     }
- 
+
     function wrdisable() {
         cs_l.write(0);
         spi.write(WRDI);
         cs_l.write(1);
     }
- 
+
     // pages should be pre-erased before writing
     function write(addr, data) {
         wrenable();
- 
+
         // check the status register's write enabled bit
         if (!(getStatus() & 0x02)) {
             server.error("Device: Flash Write not Enabled");
             return 1;
         }
- 
+
         cs_l.write(0);
         // page program command goes first
         spi.write(PP);
@@ -87,7 +87,7 @@ class SpiFlash {
         spi.write(format("%c%c%c", (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF));
         spi.write(data);
         cs_l.write(1);
- 
+
         // wait for the status register to show write complete
         // typical 1.4 ms, max 5 ms
         local timeout = 50000; // time in us
@@ -98,16 +98,24 @@ class SpiFlash {
                 return 1;
             }
         }
- 
+
         return 0;
     }
- 
+
     // allow data chunks greater than one flash page to be written in a single op
     function writeChunk(addr, data) {
         // separate the chunk into pages
         data.seek(0,'b');
         for (local i = 0; i < data.len(); i+=256) {
             local leftInBuffer = data.len() - data.tell();
+            if ((addr+i % 256) + leftInBuffer >= 256) {
+                // Realign to the end of the page
+                local align = 256 - ((addr+i) % 256);
+                flash.write((addr+i),data.readblob(align));
+                leftInBuffer -= align;
+                i += align;
+                if (leftInBuffer <= 0) break;
+            }
             if (leftInBuffer < 256) {
                 flash.write((addr+i),data.readblob(leftInBuffer));
             } else {
@@ -115,17 +123,17 @@ class SpiFlash {
             }
         }
     }
- 
+
     function read(addr, bytes) {
         cs_l.write(0);
         // to read, send the read command and a 24-bit address
         spi.write(READ);
         spi.write(format("%c%c%c", (addr >> 16) & 0xFF, (addr >> 8) & 0xFF, addr & 0xFF));
-        local readBlob = spi.readblob(bytes);        
+        local readBlob = spi.readblob(bytes);
         cs_l.write(1);
         return readBlob;
     }
- 
+
     function getStatus() {
         cs_l.write(0);
         spi.write(RDSR);
@@ -133,19 +141,19 @@ class SpiFlash {
         cs_l.write(1);
         return status[0];
     }
- 
+
     function sleep() {
         cs_l.write(0);
         spi.write(DP);
-        cs_l.write(1);     
+        cs_l.write(1);
    }
- 
+
     function wake() {
         cs_l.write(0);
         spi.write(RDP);
         cs_l.write(1);
     }
- 
+
     // erase any 4kbyte sector of flash
     // takes a starting address, 24-bit, MSB-first
     function sectorErase(addr) {
@@ -166,7 +174,7 @@ class SpiFlash {
         }
         return 0;
     }
- 
+
     // set any 64kbyte block of flash to all 0xff
     // takes a starting address, 24-bit, MSB-first
     function blockErase(addr) {
@@ -188,7 +196,7 @@ class SpiFlash {
         }
         return 0;
     }
- 
+
     // clear the full flash to 0xFF
     function chipErase() {
         server.log("Device: Erasing SPI Flash");
@@ -209,7 +217,7 @@ class SpiFlash {
         server.log("Device: Done with chip erase");
         return 0;
     }
- 
+
     // erase the message portion of the SPI flash
     // 2880000 bytes is 45 64-kbyte blocks
     function erasePlayBlocks() {
@@ -223,7 +231,7 @@ class SpiFlash {
         }
         return 0;
     }
- 
+
     // erase the record buffer portion of the SPI flash
     // this is a 960000-byte sector, beginning at block 46 and going to block 60
     function eraseRecBlocks() {
@@ -240,9 +248,9 @@ class SpiFlash {
 }
 
 // configure hardware before passing to constructor
-spi     <- hardware.spi257;
+spi     <- hardware.spi189;
 spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, 15000);
-cs_l    <- hardware.pin8;
+cs_l    <- hardware.pin7;
 cs_l.configure(DIGITAL_OUT);
 cs_l.write(1);
 
