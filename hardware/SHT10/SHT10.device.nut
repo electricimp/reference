@@ -1,9 +1,15 @@
+// Copyright (c) 2014 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
 // Class for SHT10 Temp/Humidity Sensor
 
 // Class to read the SHT10 temperature/humidity sensor
 // See http://www.adafruit.com/datasheets/Sensirion_Humidity_SHT1x_Datasheet_V5.pdf
-// These sensors us a proprietary one-wire protocol. The imp
+// These sensors us a proprietary clock and data, two wire protocol. The imp
 // emulates this protocol via bit-banging. 
+// Configured or unconfigured pins for clk and dta. Please note that these pins
+// will be reconfigured inside the class.
 // To use:
 //  - tie data line to pull-up resistor (10K)
 class SHT10 {
@@ -17,7 +23,7 @@ class SHT10 {
     static C3            = -0.0000015955;
     static T1            =  0.01;
     static T2            =  0.00008;
-    static AMBIENT       = 25;
+    static AMBIENT       =  25.0;
     
     dta = null;
     clk = null;
@@ -36,11 +42,13 @@ class SHT10 {
     }
     
     // Clock Pulse
-    // Input: (none)
+    // Input: number of pulses, defaults to 1 (int)
     // Return: (none)
-    function clkPulse() {
-        clk.write(1);
-        clk.write(0);
+    function clkPulse(pulseNum = 1) {
+        for (local i = 0; i < pulseNum; i++) {
+            clk.write(1);
+            clk.write(0);
+        }
     }
     
     // Transmission Start Bit-Banging
@@ -62,9 +70,7 @@ class SHT10 {
     // Return: (none)
     function address() {
         dta.write(0);
-        clkPulse();
-        clkPulse();
-        clkPulse();
+        clkPulse(3);
     }
     
     // Temperature Command Bit-Banging
@@ -72,12 +78,9 @@ class SHT10 {
     // Return: (none)
     function tempCommand() {
         dta.write(0);
-        clkPulse();
-        clkPulse();
-        clkPulse();
+        clkPulse(3);
         dta.write(1);
-        clkPulse();
-        clkPulse();
+        clkPulse(2);
     }
     
     // Humidity Command Bit-Banging
@@ -85,8 +88,7 @@ class SHT10 {
     // Return: (none)
     function humidCommand() {
         dta.write(0);
-        clkPulse();
-        clkPulse();
+        clkPulse(2);
         dta.write(1);
         clkPulse();
         dta.write(0);
@@ -96,22 +98,20 @@ class SHT10 {
     }
     
     // Wait for the sensor to finish the measurement
+    // Throws error if measurement takes too long to return
     // Input: (none)
-    // Return: 0 if the measurement is unsuccesful
-    //         1 if the measurement is succesful
+    // Return: (none)
     function waitForMeasure() {
         dta.configure(DIGITAL_IN);
         clkPulse();
         local counter = 0;
         while (dta.read()) {
             if (counter > WAIT_LIMIT) {
-                return 0;
+                throw "Sensor measurement unsuccessful";
             }
             imp.sleep(WAIT_INTERVAL);
             counter += WAIT_INTERVAL;
         }
-        return 1;
-        
     }
     
     // Read the result of the measurement
@@ -144,9 +144,7 @@ class SHT10 {
         transStart();
         address();
         tempCommand();
-        if (!waitForMeasure()) {
-            return 0;
-        }
+        waitForMeasure();
         local result = readResult();
         local output = D1 + (D2 * result);
         return output;
@@ -163,9 +161,7 @@ class SHT10 {
         transStart();
         address();
         humidCommand();
-        if (!waitForMeasure()) {
-            return 0;
-        }
+        waitForMeasure();
         local result = readResult();
         local unComp = C1 + (C2 * result) + (C3 * result * result);
         local output = (temp - AMBIENT) * (T1 + (T2 * result)) + unComp;
@@ -173,8 +169,15 @@ class SHT10 {
     }
 }
 
-sht10 <- SHT10(hardware.pin5, hardware.pin7);
-temperature <- sht10.readTemp();
-server.log(format("Temperature: %0.1f C", temperature));
-humidity <- sht10.readHumid(temperature);
-server.log(format("Humidity: %0.1f", humidity) + "%");
+clk <- hardware.pin5;
+dta <- hardware.pin7;
+sht10 <- SHT10(clk, dta);
+
+try {
+    temperature <- sht10.readTemp();
+    humidity <- sht10.readHumid(temperature);
+    server.log(format("Temperature: %0.1f C & Humidity: %0.1f", temperature, humidity) + "%");
+}
+catch(e) {
+    server.log(e);
+}

@@ -11,4 +11,4 @@ Driver class for a [DHT10 temperature/humidity sensor](http://www.adafruit.com/p
 The SHT1x family uses a proprietary one-wire protocol. The imp emulates this protocol via bit-banging. 
 To use tie data line to pull-up resistor (10K)
 
-![Connecting a SHT10 to an Electric Imp Card](sht10_bb.png "Connection Diagram")
+![Connecting a SHT10 to an Electric Imp Card](SHT10_bb.png "Connection Diagram")
