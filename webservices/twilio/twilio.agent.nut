@@ -1,20 +1,88 @@
-onst TWILIO_URL = "https://api.twilio.com/2010-04-01/Accounts/";
-const TWILIO_SID = "";
-const TWILIO_PWD = "";
-const TWILIO_SRC = "";
+const TWILIO_SID = "";		// Your Twilio Account SID
+const TWILIO_AUTH = "";		// Your Twilio Auth Token
+const TWILIO_NUM = "";		// Your Twilio Phone Number
 
-function send_sms(message, number) {
-    local data = { From = TWILIO_SRC, To = number, Body = message };
-    local auth = http.base64encode(TWILIO_SID + ":" + TWILIO_PWD);
-    local headers = {"Authorization": "Basic " + auth};
-    http.post(TWILIO_URL + TWILIO_SID + "/SMS/Messages.json", headers, http.urlencode(data)).sendasync(function(res) {
-        if (res.statuscode == 200 || res.statuscode == 201) {
-            server.log("Twilio SMS sent to: " + number);
-        } else {
-            server.log("Twilio error: " + res.statuscode + " => " + res.body);
+class Twilio {
+    _baseUrl = "https://api.twilio.com/2010-04-01/Accounts/";
+    
+    _accountSid = null;
+    _authToken = null;
+    _phoneNumber = null;
+    
+    constructor(accountSid, authToken, phoneNumber) {
+        _accountSid = accountSid;
+        _authToken = authToken;
+        _phoneNumber = phoneNumber;
+    }
+    
+    function send(to, message, callback = null) {
+        local url = _baseUrl + _accountSid + "/SMS/Messages.json"
+        
+        local auth = http.base64encode(_accountSid + ":" + _authToken);
+        local headers = { "Authorization": "Basic " + auth };
+        
+        local body = http.urlencode({
+            From = _phoneNumber,
+            To = to,
+            Body = message
+        });
+        
+        local request = http.post(url, headers, body);
+        if (callback == null) return request.sendsync();
+        else request.sendasync(callback);
+    }
+    
+    function Respond(resp, message) {
+        local data = { Response = { Message = message } };
+        local body = xmlEncode(data);
+        
+        resp.header("Content-Type", "text/xml");
+        
+        
+        server.log(body);
+        
+        resp.send(200, body);
+    }
+    
+    function xmlEncode(data, version="1.0", encoding="UTF-8") {
+        return format("<?xml version=\"%s\" encoding=\"%s\" ?>%s", version, encoding, _recursiveEncode(data))
+    }
+
+    /******************** Private Function (DO NOT CALL) ********************/
+    function _recursiveEncode(data) {
+        local s = "";
+        foreach(k, v in data) {
+            if (typeof(v) == "table" || typeof(v) == "array") {
+                s += format("<%s>%s</%s>", k.tostring(), _recursiveEncode(v), k.tostring());
+            } 
+            else { 
+                s += format("<%s>%s</%s>", k.tostring(), v.tostring(), k.tostring());;
+            }
         }
-    })
+        return s
+    }
 }
 
-// send a text message
-send_sms("15551234", "Hello from my Electric Imp project!!");
+twilio <- Twilio(TWILIO_SID, TWILIO_AUTH, TWILIO_NUM);
+
+// sending a message
+numberToSendTo <- "15555555555"
+twilio.send(numberToSendTo, "Hello from my agent!", function(resp) { server.log(resp.statuscode + " - " + resp.body); });
+
+// processing messages
+http.onrequest(function(req, resp) {
+    local path = req.path.tolower();
+    if (path == "/twilio" || path == "/twilio/") {
+        // twilio request handler
+        try {
+            local data = http.urldecode(req.body);
+            twilio.Respond(resp, "You just said '" + data.Body + "'");
+        } catch(ex) {
+            local message = "Uh oh, something went horribly wrong: " + ex;
+            twilio.Respond(resp, message);
+        }
+    } else {
+        // default request handler
+        resp.send(200, "OK");
+    }
+});
