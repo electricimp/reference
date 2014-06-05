@@ -1,5 +1,5 @@
 
-// #include <rocky.agent.nu>
+// #include <rocky.agent.nut>
 
 const PROXY_API_KEY = "<generate your own key>"; 
 const AUTH_HTML = @"<form method='post'>
