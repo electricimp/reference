@@ -215,7 +215,6 @@ class IR_receiver {
 
 /* RUNTIME STARTS HERE ------------------------------------------------------*/
 
-imp.configure("Sana",[],[]);
 
 // instantiate an IR receiver and supply it with the name of the agent callback to call on a new code
 learn <- IR_receiver(hardware.pin2, 1, "newcode");

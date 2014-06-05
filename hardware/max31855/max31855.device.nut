@@ -114,4 +114,3 @@ function readChip189(){
 }
 
 // Configure with the server
-imp.configure("MAX31855", [], []);

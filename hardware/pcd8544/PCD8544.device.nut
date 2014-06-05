@@ -424,7 +424,6 @@ if (hardware.wakereason() == WAKEREASON_POWER_ON || hardware.wakereason() == WAK
 
 screen.command(screen.DEFAULT_CONFIG);
 
-imp.configure("Nokia 5110 LCD", [], []);
 
 // Must use bindenv() to set correct scope
 agent.on("newText", screen.displayText.bindenv(screen));

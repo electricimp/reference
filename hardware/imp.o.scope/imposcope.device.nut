@@ -18,7 +18,6 @@ pt_s  <- hardware.pin2    // Phototransistor supply - write hi to use
 btn   <- hardware.pin8    // Button - will pull pin low when pressed
 led   <- hardware.pin9;   // Indicator LED - active low
  
-imp.configure("Blinkup Imp-O-Scope", [], []);
  
 function processBuffer(buffer, length) {
   if (length > 0) {

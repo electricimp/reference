@@ -140,7 +140,7 @@ class TMP112 {
 		} else {
 			SHUTDOWN = false;	
 		}
-		if (conf[1] & 0x10) {
+		if (conf[1] & 0x80) {
 			CONV_READY = true;
 		} else {
 			CONV_READY = false;
@@ -409,10 +409,11 @@ class TMP112 {
 			CONV_READY = false;
 			local timeout = 30; // timeout in milliseconds
 			local start = hardware.millis();
-			while (!CONF_READY) {
+			while (!CONV_READY) {
+				read_conf();
 				if ((hardware.millis() - start) > timeout) {
 					server.error("Device: TMP112 Timed Out waiting for conversion.");
-					return 0;
+					return -999;
 				}
 			}
 		}
@@ -442,7 +443,12 @@ class TMP112 {
 	 * Returns: current temperature in degrees Fahrenheit
 	 */
 	function read_f() {
-		return (read_c() * 9.0 / 5.0 + 32.0);
+		local temp_c = read_c();
+		if (temp_c == -999) {
+			return -999;
+		} else {
+			return (read_c() * 9.0 / 5.0 + 32.0);
+		}
 	}
 }
 

@@ -179,8 +179,8 @@ function check_duino() {
     local minor = execute(STK_GET_PARAMETER, 0x82, 1);
     local invalid = execute(STK_GET_PARAMETER, 0x83, 1);
     local signature = execute(STK_READ_SIGN);
-    assert(major.len() == 1 && major[0] == 0x04);
-    assert(minor.len() == 1 && minor[0] == 0x04);
+    assert(major.len() == 1 && minor.len() == 1);
+    assert((major[0] >= 5) || (major[0] == 4 && minor[0] >= 4));
     assert(invalid.len() == 1 && invalid[0] == 0x03);
     assert(signature.len() == 3 && signature[0] == 0x1E && signature[1] == 0x95 && signature[2] == 0x0F);
 }
