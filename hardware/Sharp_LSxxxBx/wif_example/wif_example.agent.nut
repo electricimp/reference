@@ -39,7 +39,7 @@ function processWIF(imageData) {
         }
         device.send("displayData", displayData);
     } else {
-        throw "WIF Dimensions must match code specifications";
+        throw "File does not meet WIF specifications";
     }
 }
 
@@ -72,21 +72,16 @@ function parse_hexpost(req, res) {
 // Input: http request and response (http)
 // Return: (none)
 http.onrequest(function(req, res) {
-    res.send(200, format(html, http.agenturl()));
     if (req.method == "GET") {
-        res.send(200, html);
+        res.send(200, format(html, http.agenturl()));
     } else if (req.method == "POST") {
-        if (req.path == "/uploadWIF" || req.path == "/uploadWIF/") {
-            if ("content-type" in req.headers) {
-                if (req.headers["content-type"].len() >= 19
-                && req.headers["content-type"].slice(0, 19) == "multipart/form-data") {
-                    local data = parse_hexpost(req, res);
-                    processWIF(data);
-                }
-            }
-        } else if (req.path == "/WIFimage") {
-            local data = req.body;
+        try {
+            local data = parse_hexpost(req, res);
             processWIF(data);
+            res.send(200, format(html, http.agenturl()));
+        } catch (e) {
+            server.log(e);
+            res.send(409, e);
         }
     }
 });

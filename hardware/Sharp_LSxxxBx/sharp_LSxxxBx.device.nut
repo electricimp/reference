@@ -4,12 +4,12 @@
 
 // Class for Sharp Memory LCD
 
-const HEIGHT = 96;
-const WIDTH  = 96;
+const HEIGHT        = 96; // px
+const WIDTH         = 96; // px
 
 // See specific model for typycal values
-const SPICLK = 500;
-const VCOMFREQ = 20;
+const SPICLK        = 500; // kHz
+const VCOM_FREQ     = 20;  // Hz
 
 // Class to write on the Sharp Memory LCD
 // See http://www.sharpmemorylcd.com/resources/LS013B4DN04_Application_Info.pdf
@@ -17,19 +17,16 @@ const VCOMFREQ = 20;
 // in combination with a CS pin.
 // The display's VCOM can either be generated in hardware or software.
 class SharpMemLCD {
-    static WRITE = 0x01;
-    static CLEAR = 0x04;
-    static VCOM  = 0x02;
-    static ZERO  = 0x00;
+    static WRITE   = 0x01;
+    static CLEAR   = 0x04;
+    static VCOM_H  = 0x02;
+    static VCOM_L  = 0x00;
     
-    height       = null;
-    width        = null;
-    lineBytes    = null;
-    screenBytes  = null;
-    cs           = null;
-    spi          = null;
-    vcom         = null;
-    vcomFreq     = null;
+    _lineBytes      = null;
+    _cs             = null;
+    _spi            = null;
+    _vcom           = null;
+    _vcomFreq       = null;
     
     // class constructor
     // Input: 
@@ -40,18 +37,15 @@ class SharpMemLCD {
     //      _vcomFreq: frequency with which to update VCOM range
     //                 if 0 it does not update through software
     // Return: (None)
-    constructor(_height, _width, _cs, _spi, _vcomFreq = 0) {
-        this.height = _height;
-        this.width  = _width;
+    constructor(height, width, cs, spi, vcomFreq = 0) {
         if ((height % 8) !=0 || (width % 8) != 0) {
             throw "Dimensions must be divisible by 8";
         }
-        this.lineBytes = _width / 8;
-        this.screenBytes = lineBytes * height;
-        this.cs = _cs;
-        this.spi = _spi;
-        this.vcom = ZERO;
-        this.vcomFreq = _vcomFreq;
+        _lineBytes = width / 8;
+        _cs = cs;
+        _spi = spi;
+        _vcom = VCOM_L;
+        _vcomFreq = vcomFreq;
         if (_vcomFreq != 0) {
             _toggleVCOM();
         }
@@ -61,13 +55,13 @@ class SharpMemLCD {
     // Input: (none)
     // Return: (none)
     function _toggleVCOM () {
-        if (vcom == ZERO) {
-            vcom = VCOM;
+        if (_vcom == VCOM_L) {
+            _vcom = VCOM_H;
         }  else {
-            vcom = ZERO;
+            _vcom = VCOM_L;
         }
-        _sendCommand(vcom);
-        imp.wakeup(1.0/vcomFreq, _toggleVCOM.bindenv(this));
+        _sendCommand(_vcom);
+        imp.wakeup(1.0/_vcomFreq, _toggleVCOM.bindenv(this));
     }
     
     // (Private) Outputs a command with optional data for the LCD to read
@@ -77,10 +71,10 @@ class SharpMemLCD {
         local buffer = blob(2+data.len());
         buffer.writen(command, 'b');
         buffer.writeblob(data);
-        buffer.writen(ZERO, 'b');
-        cs.write(1)
-        spi.write(buffer);
-        cs.write(0);
+        buffer.writen(0x00, 'b'); // trailer byte
+        _cs.write(1)
+        _spi.write(buffer);
+        _cs.write(0);
     }
     
     // Writes lines given line numbers and their contents
@@ -88,7 +82,7 @@ class SharpMemLCD {
     // Input: lines (blob) and optional line numbers (blob)
     // Return: (none)
     function writeLine (data, number=null) {
-        local buffer = blob(2*data.len()/lineBytes + data.len());
+        local buffer = blob(2*data.len()/_lineBytes + data.len());
         local counter = 0x00;
         while (buffer.eos() == null) {
             local line = counter;
@@ -96,11 +90,11 @@ class SharpMemLCD {
                 line = number.readn('b');
             }
             buffer.writen(line,'b');
-            buffer.writeblob(data.readblob(lineBytes));
-            buffer.writen(ZERO,'b');
+            buffer.writeblob(data.readblob(_lineBytes));
+            buffer.writen(0x00,'b'); // trailer byte
             counter += 0x01;
         }
-        _sendCommand(WRITE|vcom, buffer);
+        _sendCommand(WRITE|_vcom, buffer);
     }
     
     // Updates the full screen with data
@@ -109,7 +103,7 @@ class SharpMemLCD {
     // Return: (none)
     function updateScreen (data=null) {
         if (data == null) {
-            _sendCommand(CLEAR|vcom);
+            _sendCommand(CLEAR|_vcom);
         } else {
             writeLine(data);
         }
@@ -121,5 +115,5 @@ cs  <- hardware.pin2;
 spi <- hardware.spi257;
 cs.configure(DIGITAL_OUT);
 spi.configure(SIMPLEX_TX | LSB_FIRST, SPICLK);
-lcd <- SharpMemLCD(HEIGHT, WIDTH, cs, spi, VCOMFREQ);
-lcd.updateScreen();
+lcd <- SharpMemLCD(HEIGHT, WIDTH, cs, spi, VCOM_FREQ);
+lcd.updateScreen(); // Clear display

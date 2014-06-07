@@ -18,9 +18,9 @@ This display uses write only SPI which the imp emulates using two wire SPI in co
 | Pin 5  | Clock     |
 | Pin 7  | MOSI      |
 
-The power supply for the display depends on the model specifications, if 3.3V is the typical it can be connected to the eImp's 3.3V pin, otherwise an external power source is necessary in order to be within specs.
+The power supply for the display depends on the model specifications, if 3.3V is the typical it can be connected to the Imp's 3.3V pin, otherwise an external power source is necessary in order to be within specs.
 
 The display's VCOM can either be generated in hardware or software: 
 
 - If hardware mode is chosen then the EXTMD has to be tied to VDD. Furthermore the EXTIN pin in the breakout has to be connected to an oscillator of your choice that produces the correct VCOM frequency for your model. 
-- If software mode is chosen thne the EXTMD has to be tied to VDD. The VCOM frequency is regulated by the code.
+- If software mode is chosen then the EXTMD has to be tied to Ground. The VCOM frequency is regulated by the code.
