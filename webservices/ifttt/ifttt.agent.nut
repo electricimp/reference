@@ -3,6 +3,10 @@
 /* -------------------------[ IFTTT Class ]---------------------------------- */
 class IFTTT
 {
+    
+    static MAX_TRIGGERS = 50; // items
+    static MAX_TRIGGER_AGE = 3600; // seconds
+    
     _rocky = null;
     _channel_key = null;
     _client_id = null;
@@ -273,13 +277,21 @@ class IFTTT
                 
                 // Load the trigger data into a buffer
                 local data = [];
-                local limit = 3; // Should be 50;
+                local limit = MAX_TRIGGERS; 
                 if ("limit" in context.req.body) {
-                    limit = context.req.body.limit;
+                    limit = context.req.body.limit.tointeger();
+                }
+                if (limit > _trigger_data[trigger].len()) {
+                    limit = _trigger_data[trigger].len();
                 }
                 for (local i = 0; i < limit; i++) {
-                    if (_trigger_data[trigger].len() > 0) {
-                        data.push(_trigger_data[trigger].pop());
+                    data.push(_trigger_data[trigger][i]);
+                }
+                
+                // Clear out expired data
+                for (local i = _trigger_data[trigger].len()-1; i >= 0; i--) {
+                    if (time() - _trigger_data[trigger][i].meta.timestamp > MAX_TRIGGER_AGE) {
+                        _trigger_data[trigger].remove(i);
                     }
                 }
                 
@@ -393,7 +405,12 @@ class IFTTT
         
         // Stash the trigger record in a queue
         if (!(trigger in _trigger_data)) _trigger_data[trigger] <- [];
-        _trigger_data[trigger].push(data)
+        _trigger_data[trigger].insert(0, data)
+        
+        // Trim the history to MAX_TRIGGERS events
+        while (_trigger_data[trigger].len() > MAX_TRIGGERS) {
+            _trigger_data[trigger].pop();
+        }
         
         return true;
     }
@@ -439,19 +456,15 @@ class IFTTT
     
     
     // .............................................................................
-    // Register the callback for test data
-    function test_setup(callback) {
+    // Register an action handler
+    function action(act, callback) {
+        if (callback == null) {
+            delete _actions[act];
+        } else {
+            _actions[act] <- callback;
+        }
+    }
 
-        _test_setup = callback;
-    }
-    
-    // .............................................................................
-    // Register the callback for teardown the test data
-    function test_teardown(callback) {
-        
-        _test_teardown = callback;
-    }
-    
     // .............................................................................
     // Register action field
     function add_action_field(action, field, label, value) {
@@ -467,15 +480,17 @@ class IFTTT
     }
     
     // .............................................................................
-    // Register an action handler
-    function action(act, callback) {
-        if (callback == null) {
-            delete _actions[act];
-        } else {
-            _actions[act] <- callback;
-        }
+    // Register the callback for test data
+    function test_setup(callback) {
+        _test_setup = callback;
     }
-
+    
+    // .............................................................................
+    // Register the callback for teardown the test data
+    function test_teardown(callback) {
+        _test_teardown = callback;
+    }
+    
     // .............................................................................
     // Reply to an IFTTT action request 
     function action_ok(context) {
@@ -525,10 +540,10 @@ class IFTTT
     }
     
     // .............................................................................
-    function trigger(trigger, ingredients = {}, realtime = true) {
+    function trigger(trigger, data, realtime = true) {
         
         // Push the data into the queue
-        _push_trigger_record(trigger, ingredients);
+        _push_trigger_record(trigger, data);
         
         // Real-time notification
         if (realtime) _notify_realtime();
