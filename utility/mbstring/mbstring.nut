@@ -6,7 +6,7 @@ class mbstring
 {
     _str = null;
     
-    constructor(str) {
+    constructor(str = "") {
         _str = [];
         
         switch (typeof str) {
@@ -56,6 +56,26 @@ class mbstring
     
     function _typeof() {
         return "mbstring";
+    }
+    
+    function _add(op) {
+        local new_str = mbstring(_str);
+        foreach (ch in op) {
+            new_str._str.push(ch);
+        }
+        return new_str;
+    }
+    
+    function _cmp(other) {
+        for (local i = 0; i < _str.len(); i++) {
+            if (i < other._str.len()) {
+                local ch1 = _str[i];
+                local ch2 = other._str[i];
+                if (ch1 > ch2) return 1;
+                else if (ch1 < ch2) return -1;
+            }
+        }
+        return _str.len() <=> other.len();
     }
     
     function _nexti(previdx) {
