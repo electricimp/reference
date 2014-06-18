@@ -40,6 +40,7 @@ pubNub.publish(channel, { foo = "bar" }, function(err, data) {
 		server.log(data[1]);
 	}
 });
+```
 
 ## Subscribing to Data
 To subscribe to the channel, we need to specify the channel we are subscribing to, and a callback function to execute whenever there is more data. The callback function takes two parameters: err and data:
