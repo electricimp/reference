@@ -111,15 +111,15 @@ class SpiFlash {
             if ((addr+i % 256) + leftInBuffer >= 256) {
                 // Realign to the end of the page
                 local align = 256 - ((addr+i) % 256);
-                flash.write((addr+i),data.readblob(align));
+                write((addr+i),data.readblob(align));
                 leftInBuffer -= align;
                 i += align;
                 if (leftInBuffer <= 0) break;
             }
             if (leftInBuffer < 256) {
-                flash.write((addr+i),data.readblob(leftInBuffer));
+                write((addr+i),data.readblob(leftInBuffer));
             } else {
-                flash.write((addr+i),data.readblob(256));
+                write((addr+i),data.readblob(256));
             }
         }
     }
