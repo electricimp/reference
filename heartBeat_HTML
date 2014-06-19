@@ -1,0 +1,71 @@
+<html>
+<head>  
+    <title>Electric Imp Breakout</title>
+    <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+    <script src="http://code.jquery.com/mobile/1.3.1/jquery.mobile-1.3.1.min.js"></script>
+    <script>
+        $( function() {   
+            // Edit these values first! The externalURL variable should be the
+            // unique URL of your agent. e.g. the last part of:
+            // https://agent.electricimp.com/UpyYpRLmBB7m
+            // pollRate defines how often the values on your page will refresh.
+            var externalURL ="kcrkIKk9Tysm";
+            var pollRate ="1";
+
+            function poll(){
+                // Construct an ajax() GET request.
+                // http://www.w3schools.com/jquery/ajax_ajax.asp
+
+                $.ajax({
+                    type: "get",
+                    url: "https://agent.electricimp.com/"+externalURL,  // URL of our imp agent.
+                    dataType: "json",   // Expect JSON-formatted response from agent.
+                    success: function(agentMsg) {   // Function to run when request succeeds.
+
+                        // jQuery find "pin1" id and overwrite its data with "pin1" key value in agentMsg            
+                        $("#pin2").html(agentMsg.pin2);
+                        $("#vin").html(agentMsg.voltage);
+
+                        updateBG(agentMsg.pin2);    // Try this if you have a photocell connected to pin 5
+                    },
+                    error: function(err) {
+                        console.log("err"+ err.status)
+                    }
+                });
+            }
+            
+            // setInterval is Javascript method to call a function at a specified interval.
+            // http://www.w3schools.com/jsref/met_win_setinterval.asp
+            setInterval(function(){ poll(); }, pollRate);
+
+            // This function updates the 
+            function updateBG(lightSensor)
+            {
+                if (lightSensor > 35000)
+                {
+                    document.body.style.backgroundColor = '#a33';
+                    
+                    
+                }
+                else
+                {
+                    document.body.style.backgroundColor = '#b3e4fa';
+                    
+                }
+            }
+        });
+    </script>
+</head>
+    <body id="light">
+    	<style>
+    	.flower{
+    		display: block;
+    		margin:0 auto 0 auto;
+    	}
+    	#light {
+    		background-size: 100% 100%;
+    	}
+    	</style>
+       <img class="flower" src="heart.svg" width="50%" height="auto" >
+    </body>
+</html>
