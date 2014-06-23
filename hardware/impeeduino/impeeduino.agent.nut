@@ -176,7 +176,7 @@ http.onrequest(function (req, res) {
                         server.log("Programming completed")
                     })
                     server.log("Programming started")
-                    parse_hex(hex);
+                    parse_hexfile(hex);
                 }
             } else if (req.headers["content-type"] == "application/json") {
                 local json = null;
@@ -213,5 +213,3 @@ http.onrequest(function (req, res) {
 device.on("ready", function(ready) {
     if (ready) send_program();
 });
-
-
