@@ -1,6 +1,20 @@
 // -----------------------------------------------------------------------------
 // Connection manager
-
+//
+// This connection manager is designed to make the use of the RETURN_ON_ERROR timeout
+// policy simple. All the developer has to do is create an instance of the connection 
+// manager class and the timeout policy will change but the device will otherwise 
+// behave the same - it will continuously try to restore a connection to the Wifi.
+// Then all your network requests, like server.log(), will fail without freezing the CPU.
+// 
+// This class can be extended, if required, to do a few more things:
+// - Regularly check server.isconnected() which will indicate a disconnected state 
+//   much earlier than server.onunexpecteddisconnect().
+// - Back off the reconnection attempts to conserve batteries.
+// - Put the device to deep sleep while offline and reattempt to connect on wakeup.
+// - Provide for developer requested connect() and disconnect() functions for manual
+//   override of the defaul behaviour.
+// 
 class Connection {
 
     static CONNECTION_TIMEOUT = 30;
@@ -20,10 +34,11 @@ class Connection {
     
     // .........................................................................
     function disconnected(_reason) {
+        local fireevent = connected;
         connected = false;
         reason = _reason;
         server.connect(reconnect.bindenv(this), CONNECTION_TIMEOUT);
-        if ("disconnected" in callbacks) callbacks.disconnected();
+        if (fireevent && "disconnected" in callbacks) callbacks.disconnected();
     }
     
     // .........................................................................
@@ -38,7 +53,7 @@ class Connection {
     }
     
     // .........................................................................
-    function is_connected() {
+    function isconnected() {
         return connected;
     }
 
@@ -68,9 +83,9 @@ led_grn.write(1);
 led_red.write(1);
 
 function changed_status() {
-    if (cm.is_connected()) server.log("Connected");
-    led_grn.write(cm.is_connected() ? 0 : 1);
-    led_red.write(cm.is_connected() ? 1 : 0);
+    if (cm.isconnected()) server.log("Connected");
+    led_grn.write(cm.isconnected() ? 0 : 1);
+    led_red.write(cm.isconnected() ? 1 : 0);
 } 
 
 cm <- Connection();
