@@ -1,5 +1,5 @@
-// #include <rocky.agent.nut>
-// #include <ifttt.agent.nut>
+#include "rocky.agent.nut"
+#include "ifttt.agent.nut"
 
 
 /* ==============================[ Application code ]======================== */
@@ -20,7 +20,6 @@ ifttt.name = "My Big Red Button";
 
 // .............................................................................
 // IFTTT trigger configuration
-
 ifttt.add_trigger_field("button_pressed"); 
 
 

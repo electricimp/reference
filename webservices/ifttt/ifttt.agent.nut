@@ -1,4 +1,4 @@
-// #include <rocky.agent.nut>
+#include "rocky.agent.nut"
 
 /* -------------------------[ IFTTT Class ]---------------------------------- */
 class IFTTT
@@ -19,16 +19,21 @@ class IFTTT
     _trigger_fields = null;
     _trigger_data = null;
     _trigger_validators = null;
+    _trigger_filters = null;
     _test_setup = null;
     _test_teardown = null;
     
-    _agentid = null;
+    agentid = null;
     name = null;
+    userid = null;
+    username = null;
+    usertoken = null;
     
     constructor(rocky, channel_key, client_id, client_secret, proxy_url, proxy_api_key) {
         
         const TEST_DATA_VALID = "% tesT vALId datA %";
         const TEST_DATA_INVALID = "% tesT iNVALId datA %";
+        const PROXY_NOTIFICATION_PERIOD = 300; // 5 minutes
         
         _rocky = rocky;
         _channel_key = channel_key;
@@ -42,12 +47,13 @@ class IFTTT
         _trigger_fields = {};
         _trigger_data = {};
         _trigger_validators = {};
+        _trigger_filters = {};
         _test_setup = null;
         _test_teardown = null;
         
-        _agentid = split(http.agenturl(), "/").pop();
-        
+        agentid = split(http.agenturl(), "/").pop();
         name = "Electric Imp User";
+        _load();
         
         // Register the callbacks
         _rocky.authorise(_authorise.bindenv(this));
@@ -55,7 +61,6 @@ class IFTTT
         _rocky.on("GET",  "/", _get_root.bindenv(this));
         _rocky.on("POST", "/ifttt/v1/test/setup", _post_test_setup.bindenv(this));
         _rocky.on("POST", "/ifttt/v1/test/teardown", _post_test_teardown.bindenv(this));
-        _rocky.on("GET",  "/ifttt/v1/user/info", _get_user_info.bindenv(this));
         _rocky.on("GET",  "/oauth2/register", _get_oauth2_register.bindenv(this));
         _rocky.on("GET",  "/oauth2/authorize", _get_oauth2_authorize.bindenv(this));
         _rocky.on("POST", "/oauth2/token", _post_oauth2_token.bindenv(this));
@@ -70,6 +75,20 @@ class IFTTT
     }
 
     // .............................................................................
+    function _load() {
+        local data = server.load();
+        if ("name" in data) name = data.name;
+        if ("userid" in data) userid = data.userid;
+        if ("username" in data) username = data.username;
+        if ("usertoken" in data) usertoken = data.usertoken;
+    }
+    
+    // .............................................................................
+    function _save() {
+        server.save({ name = name, userid = userid, username = username, usertoken = usertoken });
+    }
+    
+    // .............................................................................
     // Check the Bearer or Channel Key is valid
     function _authorise(context, credentials) {
         switch (context.req.path) {
@@ -79,9 +98,9 @@ class IFTTT
             case "/oauth2/token":
                 return true;
             default:
-                // server.log(format("AUTH: %s => %s / %s", context.req.path, context.header("IFTTT-Channel-Key", "[none]"), context.header("Authorization", "[none]")))
                 return context.header("IFTTT-Channel-Key") == _channel_key
-                    || context.header("Authorization") == "Bearer " + _agentid;
+                    || context.header("Authorization") == "Bearer " + usertoken
+                    ;
         }
     }
     
@@ -106,7 +125,7 @@ class IFTTT
     
         // Respond with the test configuration
         local testrig = { "data": 
-                        {   "accessToken": _agentid,
+                        {   "accessToken": usertoken,
                             "samples": 
                                 { "actionRecordSkipping":  { },
                                   "actions":  { },
@@ -118,11 +137,11 @@ class IFTTT
         foreach (action, field in _action_fields) {
             foreach (label, values in field) {
                 // We aren't supporting actionRecordSkipping yet
-                testrig.data.samples.actionRecordSkipping[action] <- { };
+                if (!(action in testrig.data.samples.actionRecordSkipping)) testrig.data.samples.actionRecordSkipping[action] <- { };
                 testrig.data.samples.actionRecordSkipping[action][label] <- "";
                 
                 // We are supporting fix action field values
-                testrig.data.samples.actions[action] <- { };
+                if (!(action in testrig.data.samples.actions)) testrig.data.samples.actions[action] <- { };
                 testrig.data.samples.actions[action][label] <- values[math.rand() % values.len()].value;
             }
         }
@@ -161,36 +180,48 @@ class IFTTT
     }
     
     // .............................................................................
-    // IFTT wants to know who is logged in
-    function _get_user_info(context) {
-        
-        local res = { data = {} };
-        res.data.name <- name;
-        res.data.id <- _agentid;
-        context.send(res);
-        
-    }
-
-
-    // .............................................................................
     // The user has requested to register this device with the proxy
     function _get_oauth2_register(context) {
-        // Generate a one-time code of length 6
+
+        // Check the query parameters are complete
+        local query = context.req.query;
+        if (!("name" in query) || !("userid" in query) || !("username" in query)) {
+            return context.send(400, "Invalid request. Required fields are name, username and userid.")
+        }
+        if (query.name == "" || query.userid == "" || query.username == "") {
+            return context.send(400, "Invalid request. Required fields are name, username and userid.")
+        }
+
+        name = query.name;
+        userid = query.userid;
+        username = query.username;
+        usertoken = userid + "/" + _client_id;
+        _save();
+        
+
+        // Ask the proxy to generate a one-time code
         local url = _proxy_url + "/oauth2/register/user";
         
         local headers = {};
         headers["Authorization"] <- "Bearer " + _proxy_api_key;
         headers["Content-Type"] <- "application/json";
         
-        local code = format("%06d", 100000 + math.rand()).slice(0, 6);
-        local body = { "code": code, "agentid": _agentid };
-    
+        local body = { "agentid": agentid, "name": name, "username": username, "usertoken": usertoken, "clientid": _client_id };
+
         // Send the code to the proxy
         http.post(url, headers, http.jsonencode(body)).sendasync(function(res) {
             
-            // Respond to the user
+            // Respond to the user with a code
             if (res.statuscode == 200) {
-                if (context.isbrowser()) {
+                local code = 0;
+                try {
+                    code = res.body.tointeger();
+                } catch (e) {
+                    server.log("Exception: " + e)
+                }
+                if (code == 0) {
+                    context.send(500, "Internal error, please try again.");
+                } else if (context.isbrowser()) {
                     context.send("Your one-time code is '" + code + "' and is valid for 60 seconds.");
                 } else {
                     context.send({ code = code });
@@ -217,7 +248,7 @@ class IFTTT
                && query.client_id == _client_id
                && query.response_type == "code") {
                 
-                context.set_header("Location", query.redirect_uri + "?code=" + _agentid + "&state=" + query.state)
+                context.set_header("Location", query.redirect_uri + "?code=" + agentid + "&state=" + query.state)
                 context.send(302, "Access granted");
                 return;
             }
@@ -237,13 +268,13 @@ class IFTTT
         try {
             local query = http.urldecode(context.req.body);
             if (  query.grant_type == "authorization_code"
-               && query.code == _agentid
+               && query.code == agentid
                && query.client_id == _client_id
                && query.client_secret == _client_secret) {
                    
                    local res = {};
                    res.token_type <- "Bearer";
-                   res.access_token <- _agentid;
+                   res.access_token <- usertoken;
                    context.send(200, res);
                    return;
                }
@@ -281,11 +312,18 @@ class IFTTT
                 if ("limit" in context.req.body) {
                     limit = context.req.body.limit.tointeger();
                 }
-                if (limit > _trigger_data[trigger].len()) {
-                    limit = _trigger_data[trigger].len();
-                }
-                for (local i = 0; i < limit; i++) {
-                    data.push(_trigger_data[trigger][i]);
+                if (limit > 0) {
+                    for (local i = 0; i < _trigger_data[trigger].len(); i++) {
+                        if ("triggerFields" in context.req.body && trigger in _trigger_filters) {
+                            // We need to call the trigger_filter callback to check if this data applies to this filter
+                            if (!_trigger_filters[trigger](context.req.body.triggerFields, _trigger_data[trigger][i])) {
+                                // This data entry has been filtered out.
+                                continue;
+                            }
+                        }
+                        data.push(_trigger_data[trigger][i]);
+                        if (--limit <= 0) break;
+                    }
                 }
                 
                 // Clear out expired data
@@ -397,7 +435,7 @@ class IFTTT
         // Build a trigger record
         local d = date();
         local created_at = format("%04d-%02d-%02dT%02d:%02d:%02dZ", d.year, d.month+1, d.day, d.hour, d.min, d.sec);
-        local id = ifttt._agentid + ":" + time() + "." + d.usec;
+        local id = ifttt.agentid + ":" + time() + "." + d.usec;
         local meta = { "id": id, "timestamp": d.time }
         
         data.created_at <- created_at;
@@ -418,6 +456,10 @@ class IFTTT
     // .............................................................................
     // On boot, notify the IFTTT proxy about us
     function _notify_proxy() {
+        
+        // Repeat this regularly
+        imp.wakeup(PROXY_NOTIFICATION_PERIOD, _notify_proxy.bindenv(this))
+        
         // Update the proxy
         local url = _proxy_url + "/oauth2/register/agent";
         
@@ -425,13 +467,13 @@ class IFTTT
         headers["Authorization"] <- "Bearer " + _proxy_api_key;
         headers["Content-Type"] <- "application/json";
         
-        local body = {  "agentid": _agentid,
+        local body = {  "agentid": agentid,
                         "channelkey": _channel_key,
                         "clientid": _client_id,
         };
     
         http.post(url, headers, http.jsonencode(body)).sendasync(function(res) {
-            if (res.statuscode != 200) server.error("Proxy notified: " + res.statuscode);
+            if (res.statuscode != 200) server.error("Proxy notification failed: " + res.statuscode);
         });
 
     }
@@ -445,9 +487,9 @@ class IFTTT
         local headers = {};
         headers["Content-Type"] <- "application/json";
         headers["IFTTT-Channel-Key"] <- _channel_key;
-        headers["Authorization"] <- "Bearer " + _agentid;
+        headers["Authorization"] <- "Bearer " + agentid;
     
-        local body = { data = [ { user_id = _agentid } ] };
+        local body = { data = [ { user_id = agentid } ] };
         http.post(url, headers, http.jsonencode(body)).sendasync(function(res) {
             if (res.statuscode != 200) server.error("Real-time notification: " + res.statuscode)
         })
@@ -495,7 +537,7 @@ class IFTTT
     // Reply to an IFTTT action request 
     function action_ok(context) {
         local d = date();
-        local id = _agentid + ":" + d.time + "." + d.usec;
+        local id = agentid + ":" + d.time + "." + d.usec;
         local res = { "data": [ { "id": id } ] }        
         context.send(res);
     }
@@ -508,13 +550,18 @@ class IFTTT
         if (!(trigger in _trigger_data)) _trigger_data[trigger] <- [];
         if (!(trigger in _trigger_fields)) _trigger_fields[trigger] <- {};
         if (!(trigger in _trigger_validators)) _trigger_validators[trigger] <- {};
-        if (field != null && !(field in _trigger_fields[trigger])) _trigger_fields[trigger][field] <- [];
+        if (typeof field == "string" && !(field in _trigger_fields[trigger])) _trigger_fields[trigger][field] <- [];
 
-        
         if ( (field == null) && (label == null) && (value == null) ) {
             
             // We have a trigger with no fields at all
             
+        } else if ( (typeof field == "function") && (label == null) && (value == null) ) {
+            
+            // This is a filter callback for triggers to see if they match the triggered event
+            local callback = field;
+            _trigger_filters[trigger] <- callback;
+
         } else if ( (field != null) && (label == null) && (value == null) ) {
             
             // We have a field with no options and no validation
@@ -549,6 +596,14 @@ class IFTTT
         if (realtime) _notify_realtime();
     }
     
-
+    // .............................................................................
+    function clear_triggers(trigger = null) {
+        if (trigger == null) {
+            _trigger_data = {};
+        } else if (trigger in _trigger_data) {
+            _trigger_data[trigger] <- [];
+        }
+    }
+    
 }
 
