@@ -73,12 +73,12 @@ http.onrequest(function(req, res) {
             res.send(400, "Request must include source url for image file");
         }
         // get the content-length header from the remote URL to determine the image size
-        local resp = http.get(fetch_url, { Range=format("bytes=0-0") }).sendsync();
+        local resp =  http.request("HEAD", fetch_url, {}, "").sendsync();
         foreach (key, value in resp.headers) {
             server.log(key+" : "+value);
         }
         if ("content-length" in resp.headers) {
-            fw_len = split(resp.headers["content-range"],"/")[1].tointeger();
+            fw_len = resp.headers["content-length"].tointeger();
             server.log(format("Fetching new firmware (%d bytes) from %s",fw_len,fetch_url));
             device.send("load_fw", fw_len);
             res.send(200, "OK");
