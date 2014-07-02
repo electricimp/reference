@@ -20,12 +20,12 @@ Library Structure
 -----------------
 All libraries must have their own folder (matching the library name) that contains the following files:
 
-- README.md - Include a description of the library, the author, a hookup guide (if required), and sample usage. 
+- README.md - Include a description of the library, the author, a hookup guide (if required), and sample usage.
 - libraryName.device.nut (if device code is required) - The device code.
 - libraryName.agent.nut (if agent code is required) - The agent code.
 - Example folder (optional) - An example (if required).
 
-The **libraryName.device|agent.nut** should contain the classes/tables associated with the library, and a sample instantiation, if a more complete example (or sample appliation) is rerequired, it should be contained in an **Example** folder, with a similar structure to the library. 
+The **libraryName.device|agent.nut** should contain the classes/tables associated with the library, and a sample instantiation, if a more complete example (or sample appliation) is required, it should be contained in an **Example** folder, with a similar structure to the library. 
 
 Example Folder
 --------------
@@ -40,15 +40,15 @@ Code Conventions
 ----------------
 Please use the following cade conventions in your Squirrel:
 
-- Constants should be ALLCAPS with underscores between words 
+- Constants should be ALLCAPS with underscores between words
   - e.g ```const MAX_SIZE = 12;```
-- Class/Tables names should be UpperCamelCased 
+- Class/Tables names should be UpperCamelCased
   - e.g. ```class ThisClass {```
-- Instantiated classes should be lowerCamelCased 
+- Instantiated classes should be lowerCamelCased
   - e.g. ```thisClass <- ThisClass();```
 - Class/Table methods and properties should be lowerCamelCased
   - e.g. ```function publicMethod() {```
-- Class/Table methods and properties that should not be externally referenced should be prefaced with an underscore 
+- Class/Table methods and properties that should not be externally referenced should be prefaced with an underscore
   - e.g. ```function _privateMethod() {```
 
 File Headers
