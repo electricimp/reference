@@ -350,6 +350,7 @@ class Modbus {
 
     // 0x05 - Write Single Coil
     // coilValue argument is 0 (off) or 1 (on)
+    // (callbackHandler is not implemented)
     function writeSingleCoil(deviceAddress, coilAddress, coilValue, callbackHandler = null) {
         server.log(format("Setting coil 0x%02X to %i", coilAddress, coilValue));
         // Generate PDU
@@ -364,6 +365,7 @@ class Modbus {
 
     // 0x06 - Write Single Register
     // regValue argument is a 16-bit value (anything >16 bits will be truncated to the least sig. 16 bits)
+    // (callbackHandler is not implemented)
     function writeSingleReg(deviceAddress, regAddress, regValue, callbackHandler = null) {
         server.log(format("Setting register 0x%02X to 0x%02X", regAddress, regValue));
         // Generate PDU
@@ -378,6 +380,7 @@ class Modbus {
     // 0x0F - Write Multiple Coils
     // coilValues argument should be a blob, startingAddress coil at LSB of first byte
     // the rest, LSB->MSB byte by byte (so total size of coilValues should be ceil(quantity / 8))
+    // (callbackHandler is not implemented)
     function writeMultipleCoils(deviceAddress, startingAddress, quantity, coilValues, callbackHandler = null) {
         if ((deviceAddress < 0x00) || (deviceAddress > 0xFF)) {
             server.error("Invalid device address");
@@ -409,6 +412,7 @@ class Modbus {
     // 0x10 - Write Multiple Registers
     // regValues argument should be a big-endian blob of length (quantity * 2)
     // and should begin with the 16-bit value of startingAddress
+    // (callbackHandler is not implemented)
     function writeMultipleRegs(deviceAddress, startingAddress, quantity, regValues, callbackHandler = null) {
         if ((deviceAddress < 0x00) || (deviceAddress > 0xFF)) {
             server.error("Invalid device address");
