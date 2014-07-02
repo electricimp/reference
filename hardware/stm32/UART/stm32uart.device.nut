@@ -23,6 +23,8 @@ function hexdump(data) {
     }
 }
 
+// This class implements the UART bootloader command set described in 
+// 
 class Stm32 {    
     static INIT_TIME        = 0.2; // ms
     static UART_CONN_TIME   = 0.010; // ms, initial UART configuration time
@@ -318,7 +320,7 @@ class Stm32 {
         };
         // system will now exit bootloader and jump into application code
         bootloader_active = false;
-        mem_ptr = 0;
+        set_mem_ptr(0);
     }
     
     // Write data to any valid memory address (RAM, Flash, Option Byte Area, etc.)
@@ -368,7 +370,7 @@ class Stm32 {
     // Return: None
     function erase_mem(num_pages, page_codes) {
         if (!bootloader_active) { enter_bootloader(); }
-        mem_ptr = 0;
+        set_mem_ptr(0);
         clear_uart();
         uart.write(format("%c%c",CMD_ERASE, (~CMD_ERASE) & 0xff));
         get_ack(TIMEOUT_CMD);
@@ -391,7 +393,7 @@ class Stm32 {
     // Return: None
     function erase_global_mem() {
         if (!bootloader_active) { enter_bootloader(); }
-        mem_ptr = 0;
+        set_mem_ptr(0);
         clear_uart();
         uart.write(format("%c%c",CMD_ERASE, (~CMD_ERASE) & 0xff));
         get_ack(TIMEOUT_CMD);
@@ -410,7 +412,7 @@ class Stm32 {
     // Return: None
     function ext_erase_mem(addr, len) {
         if (!bootloader_active) { enter_bootloader(); }
-        mem_ptr = 0
+        set_mem_ptr(0)
         clear_uart();
         uart.write(format("%c%c",CMD_EXT_ERASE, (~CMD_EXT_ERASE) & 0xff));
         get_ack(TIMEOUT_CMD);
@@ -434,7 +436,7 @@ class Stm32 {
     // Return: None
     function mass_erase() {
         if (!bootloader_active) { enter_bootloader(); }
-        mem_ptr = 0;
+        set_mem_ptr(0);
         clear_uart();
         uart.write(format("%c%c",CMD_EXT_ERASE, (~CMD_EXT_ERASE) & 0xff));
         get_ack(TIMEOUT_CMD);
@@ -451,7 +453,7 @@ class Stm32 {
     // Return: None
     function bank1_erase() {
         if (!bootloader_active) { enter_bootloader(); }
-        mem_ptr = 0;
+        set_mem_ptr(0);
         clear_uart();
         uart.write(format("%c%c",CMD_EXT_ERASE, (~CMD_EXT_ERASE) & 0xff));
         get_ack(TIMEOUT_CMD);
@@ -466,7 +468,7 @@ class Stm32 {
     // Return: None    
     function bank2_erase() {
         if (!bootloader_active) { enter_bootloader(); }
-        mem_ptr = 0;
+        set_mem_ptr(0);
         clear_uart();
         uart.write(format("%c%c",CMD_EXT_ERASE, (~CMD_EXT_ERASE) & 0xff));
         get_ack(TIMEOUT_CMD);
