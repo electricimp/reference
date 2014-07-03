@@ -5,7 +5,7 @@
 
 // GLOBALS AND CONSTS ----------------------------------------------------------
 
-const BUFFERSIZE = 8192; // bytes per buffer of data sent from agent
+const BLOCKSIZE = 4096; // bytes per buffer of data sent from agent
 const BAUD = 115200; // any standard baud between 9600 and 115200 is allowed
                     // exceeding 38400 is not recommended as the STM32 may overrun the imp's RX FIFO
 BYTE_TIME <- 8.0 / (BAUD * 1.0);
@@ -592,11 +592,9 @@ agent.on("rd_unprot", function(dumm) {
     stm32.cmd_rd_unprot();
 });
 
-fw_len <- null;
 // Initiate an application firmware update
 agent.on("load_fw", function(len) {
-    fw_len = len;
-    server.log(format("FW Update: %d bytes",fw_len));
+    server.log(format("FW Update: %d bytes",len));
     stm32.enter_bootloader();
     server.log("FW Update: Enabling Flash Write");
     // Note that you do not always need to write unprotect; it's done here as a just-in-case
@@ -604,9 +602,8 @@ agent.on("load_fw", function(len) {
     server.log("FW Update: Mass Erasing Flash");
     stm32.mass_erase();
     server.log("FW Update: Starting Download");
-    local num_bytes = BUFFERSIZE;
-    if (fw_len < BUFFERSIZE) { num_bytes = fw_len; }
-    agent.send("pull", num_bytes);
+    // send pull request with a dummy value
+    agent.send("pull", 0);
 });
 
 // used to load new application firmware; device sends a block of data to the stm32,
@@ -621,25 +618,19 @@ agent.on("push", function(buffer) {
         else { data = buffer.readblob(bytes_left_this_buffer); }
         stm32.cmd_wr_mem(data);
     }
-    
-    local bytes_left_total = fw_len - stm32.get_mem_ptr();
-    local next_buffer_size = bytes_left_total > BUFFERSIZE ? BUFFERSIZE : bytes_left_total;
-    imp.sleep(0.5)
-    
-    if (next_buffer_size == 0) {
-        server.log("FW Update: Complete, Resetting");
-        fw_len = 0;
-        // can use the GO command to jump right into flash and run
-        stm32.cmd_go();
-        // Or, you can just reset the device and it'll come up and run the new application code
-        //stm32.reset();
-        agent.send("fw_update_complete", true);
-    } else {
-        agent.send("pull", next_buffer_size);
-        server.log(format("FW Update: loaded %d / %d",stm32.get_mem_ptr(),fw_len));
-    }
+    // send pull request with a dummy value
+    agent.send("pull", 0);
 });
 
+// agent sends this event when the device has downloaded the entire new firmware image
+// the device can then reset or send the GO command to start execution
+agent.on("dl_complete", function(dummy) {
+    server.log("FW Update: Complete, Resetting");
+    // can use the GO command to jump right into flash and run
+    stm32.cmd_go();
+    // Or, you can just reset the device and it'll come up and run the new application code
+    //stm32.reset();
+});
 
 // MAIN ------------------------------------------------------------------------
 

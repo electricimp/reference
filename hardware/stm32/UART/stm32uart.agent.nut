@@ -4,31 +4,83 @@
 // http://opensource.org/licenses/MIT
 
 // GLOBALS AND CONSTS ----------------------------------------------------------
+const INTEL_HEX_CHAR = 0x3A; // ":" in ASCII
+const BLOCKSIZE = 4096; // size of binary image chunks to send down to device
+
+// supported image file types
+enum filetypes {
+    INTEL_HEX,
+    BIN
+}
 
 agent_buffer <- blob(2);
 fetch_url <- "";
-fetch_ptr <- 0;
+fw_ptr <- 0;
+fw_len <- 0;
+filetype <- null;
+
+// FUNCTION AND CLASS DEFINITIONS ----------------------------------------------
+
+// Take in a chunk of Intel HEX file and produce a block of raw binary file
+// for more information on Intel HEX, see http://en.wikipedia.org/wiki/Intel_HEX
+// Input: (blob) a block of HEX file. Make these the same size as your flash blocks, if applicable
+// Return: (blob)
+function hexfileToBin(hex_chunk) {
+    
+}
+
+function finish_dl() {
+    device.send("dl_complete",0);
+    server.log("Download complete");
+    fetch_url = "";
+    fw_ptr = 0;
+    fw_len = 0;
+    filetype = null;
+}
+
+function send_data(dummy) {
+    local bytes_left_total = fw_len - fw_ptr;
+    local buffersize = bytes_left_total > BLOCKSIZE ? BLOCKSIZE : bytes_left_total;
+    
+    // check and see if we've finished the download
+    if (buffersize == 0) {
+        finish_dl();
+        return;
+    } 
+    
+    local buffer = blob(buffersize);
+    // if we're fetching a remote file in chunks, go get another
+    if (fetch_url != "") {
+        // download still in progress
+        buffer.writestring(http.get(fetch_url, { Range=format("bytes=%u-%u", fw_ptr, fw_ptr + buffersize) }).sendsync().body);
+    // we're sending chunks of file from memory
+    } else {
+        buffer.writeblob(agent_buffer.readblob(buffersize));
+    }
+    
+    // check filetype; if we need to convert to binary, do that here
+    // device will always just receive chunks of binary data
+    switch(filetype) {
+        case filetypes.INTEL_HEX:
+            device.send("push",hexfileToBin(buffer));
+        case filetypes.BIN:
+            device.send("push",buffer);
+        default: 
+            // we don't know the filetype yet; must have just started
+            if (buffer[0] == INTEL_HEX_CHAR) {
+                filetype = filetypes.INTEL_HEX;
+                device.send("push",hexfileToBin(buffer));
+            } else {
+                filetype = filetypes.BIN;
+                device.send("push",buffer);
+            }
+    }
+    
+    fw_ptr += buffersize;
+    server.log(format("FW Update: Sent %d/%d bytes",fw_ptr,fw_len));
+}
 
 // DEVICE CALLBACKS ------------------------------------------------------------
-
-device.on("pull", function(buffersize) {
-    if (fetch_url != "") {
-        local buffer = blob(buffersize);
-        buffer.writestring(http.get(fetch_url, { Range=format("bytes=%u-%u", fetch_ptr, fetch_ptr + buffersize) }).sendsync().body);
-        device.send("push", buffer);
-    } else {
-        server.log(format("Device requested %d bytes",buffersize));
-        device.send("push", agent_buffer.readblob(buffersize));
-    }
-});
-
-device.on("fw_update_complete", function(success) {
-    if (success) {
-        server.log("FW Update Successfully Completed.");
-    } else {
-        server.log("FW Update Failed.");
-    }
-});
 
 // Allow the device to inform us of its bootloader version and supported commands
 // This agent doesn't use this for anything; this method is here as an example
@@ -48,6 +100,9 @@ device.on("set_id", function(id) {
     server.log("STM32 PID: "+id);
 });
 
+// Serve a buffer of new image data to the device upon request
+device.on("pull", send_data);
+
 // HTTP REQUEST HANDLER --------------------------------------------------------
 
 http.onrequest(function(req, res) {
@@ -65,10 +120,10 @@ http.onrequest(function(req, res) {
         device.send("load_fw", agent_buffer.len());
         res.send(200, "OK");
     } else if (req.path == "/fetch" || req.path == "/fetch/") {
-        local fw_len = 0;
+        fw_len = 0;
         if ("url" in req.query) {
             fetch_url = req.query.url;
-            fetch_ptr = 0;
+            fw_ptr = 0;
         } else {
             res.send(400, "Request must include source url for image file");
         }
