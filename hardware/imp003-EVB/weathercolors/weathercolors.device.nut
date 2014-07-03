@@ -34,4 +34,4 @@ grnled.configure(PWM_OUT, 1.0/PWMFREQ, 1.0);
 bluled.configure(PWM_OUT, 1.0/PWMFREQ, 1.0);
 
 // notify the agent that we've just restarted and need a new color setting
-//agent.send("start", 0);
+agent.send("start", 0);
