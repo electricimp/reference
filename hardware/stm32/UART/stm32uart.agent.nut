@@ -21,14 +21,6 @@ filetype <- null;
 
 // FUNCTION AND CLASS DEFINITIONS ----------------------------------------------
 
-// Take in a chunk of Intel HEX file and produce a block of raw binary file
-// for more information on Intel HEX, see http://en.wikipedia.org/wiki/Intel_HEX
-// Input: (blob) a block of HEX file. Make these the same size as your flash blocks, if applicable
-// Return: (blob)
-function hexfileToBin(hex_chunk) {
-    
-}
-
 function finish_dl() {
     device.send("dl_complete",0);
     server.log("Download complete");
