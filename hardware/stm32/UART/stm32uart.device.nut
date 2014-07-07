@@ -26,7 +26,7 @@ function hexdump(data) {
 // This class implements the UART bootloader command set described in 
 // 
 class Stm32 {    
-    static INIT_TIME        = 0.2; // ms
+    static INIT_TIME        = 0.5; // seconds
     static UART_CONN_TIME   = 0.010; // ms, initial UART configuration time
     static TIMEOUT_CMD      = 100; // ms
     static TIMEOUT_ERASE    = 30000; // ms; erases take a long time!
