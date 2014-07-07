@@ -49,35 +49,36 @@ function callbackHandler(data) {
     // See function definition for 'data' argument format
 }
 ```
+### Read / Write Functions ###
 
-### 0x01 - readCoils(deviceAddress, startingAddress, quantity, callbackHandler = null)
+#### 0x01 - readCoils(deviceAddress, startingAddress, quantity, callbackHandler = null)
 **Description**: Reads status of 1-2000 contiguous coils in a single device.<br>
 **Callback argument**: blob of length (quantity / 8), rounded up, one coil per bit, LSB->MSB (as per Modbus spec)
 
-### 0x02 - readInputs(deviceAddress, startingAddress, quantity, callbackHandler = null)
+#### 0x02 - readInputs(deviceAddress, startingAddress, quantity, callbackHandler = null)
 **Description**: Reads status of 1-2000 contiguous inputs in a single device<br>
 **Callback Argument**: blob of length (quantity / 8), rounded up, one input per bit, LSB->MSB (as per Modbus spec)
 
-### 0x03 - readHoldingRegs(deviceAddress, startingAddress, quantity, callbackHandler = null)
+#### 0x03 - readHoldingRegs(deviceAddress, startingAddress, quantity, callbackHandler = null)
 **Description**: Read the values of up to 125 contiguous 16-bit holding registers<br>
 **Callback Argument**: big-endian blob of length (quantity * 2), beginning with the startingAddress register
 
-### 0x04 - readInputRegs(deviceAddress, startingAddress, quantity, callbackHandler = null)
+#### 0x04 - readInputRegs(deviceAddress, startingAddress, quantity, callbackHandler = null)
 **Description**: Read the values of up to 125 contiguous 16-bit input registers<br>
 **Callback Argument**: big-endian blob of length (quantity * 2), beginning with the startingAddress register
 
-### 0x05 - writeSingleCoil(deviceAddress, coilAddress, coilValue)
+#### 0x05 - writeSingleCoil(deviceAddress, coilAddress, coilValue)
 **Description**: Writes a single coil<br>
 **Arguments**: coilValue argument is 0 (off) or 1 (on)
 
-### 0x06 - writeSingleReg(deviceAddress, regAddress, regValue)
+#### 0x06 - writeSingleReg(deviceAddress, regAddress, regValue)
 **Description**: Writes a single register<br>
 **Argument**: regValue argument is a 16-bit value (anything >16 bits will be truncated to the least sig. 16 bits)
 
-### 0x0F - writeMultipleCoils(deviceAddress, startingAddress, quantity, coilValues)
+#### 0x0F - writeMultipleCoils(deviceAddress, startingAddress, quantity, coilValues)
 **Description**: Write up to 1968 coils in a single device<br>
 **Argument**: coilValues argument should be a blob, startingAddress coil at LSB of first byte
 
-### 0x10 - writeMultipleRegs(deviceAddress, startingAddress, quantity, regValues)
+#### 0x10 - writeMultipleRegs(deviceAddress, startingAddress, quantity, regValues)
 **Description**: Write up to 123 registers in a single device<br>
 **Argument**: regValues argument should be a big-endian blob of length (quantity * 2) and begin with the 16-bit value of startingAddress
