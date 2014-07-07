@@ -1,7 +1,6 @@
 // Modbus RTU Master
 
 class Modbus {
-    // The wheels on the bus go mod, mod, mod
 
     _uart       = null;
     _charTime   = null;

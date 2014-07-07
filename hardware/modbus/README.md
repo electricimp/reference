@@ -20,20 +20,35 @@ Command  | Description
 
 ### Constructor ###
 
-```javascript
-modbus <- Modbus(hardware.uart12, 9200, 8, PARITY_NONE, 1, callbackHandler, errorHandler, 1);
+```squirrel
+modbus <- Modbus(hardware.uart12, 9200, 8, PARITY_NONE, 1, callbackHandler, errorHandler, 1.0);
 ```
 
+#### Parameters ####
 \#  | Type | Description
 :-: | :--- | :------
 1 | uart     | Unconfigured UART pins
 2 | integer  | Baud Rate
 3 | integer  | Data bits (7 or 8)
-4 | const    | PARITY_NONE, PARITY_EVEN, or PARITY_ODD
+4 | const    | PARITY_NONE / PARITY_EVEN / PARITY_ODD
 5 | integer  | Stop bits (1 or 2)
 6 | function | Receive callback
 7 | function | Error callback
 8 | float    | Response timeout in seconds (optional)
+
+### Callbacks ###
+
+```squirrel
+function errorHandler(functionCode, exceptionCode) {
+    server.error(format("Function: 0x%02X, Exception: 0x%02X", functionCode, exceptionCode));
+    // Handle some errors
+}
+
+function callbackHandler(data) {
+    // Generic handler for callbacks from read functions
+    // See function definition for 'data' argument format
+}
+```
 
 ### 0x01 - readCoils(deviceAddress, startingAddress, quantity, callbackHandler = null)
 **Description**: Reads status of 1-2000 contiguous coils in a single device.<br>
