@@ -11,7 +11,7 @@ In order to use the Twitter API, you'll first need to create a [Twitter App](dev
 ## Instantiating the class
 Instantiate the class with the following line of code:
 
-	twitter <- Twitter(CONSUMER_KEY, CONSUMER_SECRET, AUTH_TOKEN, TOKEN_SECRET);
+	twitter <- Twitter(API_KEY, API_SECRET, AUTH_TOKEN, TOKEN_SECRET);
 
 ## Tweeting
 Sending a tweet is super easy:

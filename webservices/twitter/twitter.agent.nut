@@ -3,8 +3,8 @@
 // http://opensource.org/licenses/MIT
 
 // Twitter Keys
-const CONSUMER_KEY = "";
-const CONSUMER_SECRET = "";
+const API_KEY = "";
+const API_SECRET = "";
 const AUTH_TOKEN = "";
 const TOKEN_SECRET = "";
 
@@ -196,7 +196,7 @@ class Twitter {
 
 }
  
-twitter <- Twitter(CONSUMER_KEY, CONSUMER_SECRET, AUTH_TOKEN, TOKEN_SECRET);
+twitter <- Twitter(API_KEY, API_SECRET, AUTH_TOKEN, TOKEN_SECRET);
 
 // open a stream searching for 'electricimp'
 twitter.stream("electricimp", function(tweet) {
