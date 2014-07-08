@@ -198,10 +198,3 @@ class Twitter {
  
 twitter <- Twitter(API_KEY, API_SECRET, AUTH_TOKEN, TOKEN_SECRET);
 
-// open a stream searching for 'electricimp'
-twitter.stream("electricimp", function(tweet) {
-    server.log(format("%s - %s", tweet.text, tweet.user.screen_name))
-});
-
-// wait a few seconds, then tweet at electricimp - it should show up in the logs
-imp.wakeup(5.0, function() { twitter.tweet("I just tweeted from an @electricimp agent - bit.ly/ei-twitter."); });
