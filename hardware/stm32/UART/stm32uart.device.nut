@@ -6,6 +6,7 @@
 // GLOBALS AND CONSTS ----------------------------------------------------------
 
 const BLOCKSIZE = 4096; // bytes per buffer of data sent from agent
+const STM32_SECTORSIZE = 0x4000;
 const BAUD = 115200; // any standard baud between 9600 and 115200 is allowed
                     // exceeding 38400 is not recommended as the STM32 may overrun the imp's RX FIFO
 BYTE_TIME <- 8.0 / (BAUD * 1.0);
@@ -31,7 +32,7 @@ class Stm32 {
     static TIMEOUT_CMD      = 100; // ms
     static TIMEOUT_ERASE    = 30000; // ms; erases take a long time!
     static TIMEOUT_WRITE    = 1000; // ms
-    static TIMEOUT_PROTECT  = 5000; // ms; used when enabling or disabling read or write protect \
+    static TIMEOUT_PROTECT  = 5000; // ms; used when enabling or disabling read or write protect
 
     static CMD_INIT         = 0x7F;
     static ACK              = 0x79;
@@ -50,6 +51,7 @@ class Stm32 {
     static CMD_RDOUT_UNPROT = 0x92;
     
     static FLASH_BASE_ADDR  = 0x08000000;
+    static SECTORSIZE = 0x4000; // size of one flash "page"
 
     bootloader_version = null;
     bootloader_active = false;
@@ -407,25 +409,26 @@ class Stm32 {
     // Note that either ERASE or EXT_ERASE are supported, but not both
     // The STM32F407VG does not support ERASE
     // Input: 
-    //      num_pages (2-byte integer) number of pages to erase
-    //      page_codes (array of 2-byte codes)
+    //      page codes (array of 2-byte integers). List of "sector codes"; leading bytes of memory address to erase.
     // Return: None
-    function ext_erase_mem(addr, len) {
+    function ext_erase_mem(page_codes) {
         if (!bootloader_active) { enter_bootloader(); }
         set_mem_ptr(0)
         clear_uart();
         uart.write(format("%c%c",CMD_EXT_ERASE, (~CMD_EXT_ERASE) & 0xff));
         get_ack(TIMEOUT_CMD);
         // 2 bytes for num_pages, 2 bytes per page code, 1 byte for checksum
-        local erblob = blob(2 * page_codes.len() + 3);
-        erblob.writen(num_pages & 0xff00 >> 8, 'b');
-        erblob.writen(num_pages * 0xff, 'b');
+        local num_pages = page_codes.len() - 1; // device erases N + 1 pages (grumble)
+        local erblob = blob((2 * num_pages) + 3);
+        erblob.writen((num_pages & 0xff00) >> 8, 'b');
+        erblob.writen(num_pages & 0xff, 'b');
         foreach (page in page_codes) {
-            erblob.writen(page & 0xff00 >> 8, 'b');
-            erblob.writen(page * 0xff, 'b');
+            erblob.writen((page & 0xff00) >> 8, 'b');
+            erblob.writen(page & 0xff, 'b');
         }
         wr_checksum(erblob);
-        uart.write(wrblob);
+        uart.write(erblob);
+        hexdump(erblob);
         if (!get_ack(TIMEOUT_ERASE)) {
             throw "Flash Extended Erase Failed (NACK)";
         }
@@ -599,8 +602,13 @@ agent.on("load_fw", function(len) {
     server.log("FW Update: Enabling Flash Write");
     // Note that you do not always need to write unprotect; it's done here as a just-in-case
     stm32.wr_unprot();
-    server.log("FW Update: Mass Erasing Flash");
-    stm32.mass_erase();
+    local page_codes = [];
+    local erase_through_sector = math.ceil((len * 1.0) / STM32_SECTORSIZE);
+    for (local i = 0; i <= erase_through_sector; i++) {
+        page_codes.push(i + 1);
+    }
+    server.log(format("FW Update: Erasing %d page(s) in Flash (%d bytes each)", erase_through_sector, STM32_SECTORSIZE));
+    stm32.ext_erase_mem(page_codes);
     server.log("FW Update: Starting Download");
     // send pull request with a dummy value
     agent.send("pull", 0);
@@ -636,7 +644,7 @@ agent.on("dl_complete", function(dummy) {
 
 nrst <- hardware.pin8;
 boot0 <- hardware.pin9;
-uart <- hardware.uart57;
+uart <- hardware.uart6E;
 
 nrst.configure(DIGITAL_OUT);
 nrst.write(1);
