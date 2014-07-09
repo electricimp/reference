@@ -1,6 +1,5 @@
-
 // =============================================================================
-class BufferedUART {
+class LineUART {
     
     _pins = null;
     _buf = null;
@@ -63,29 +62,20 @@ class BufferedUART {
     
     
     // -------------------------------------------------------------------------
-    // Read the UART directly until the buffer is full, one of the EOL characters is
-    // received, or the timeout (seconds) has expired
-    function read(timeout_sec = 5) {
-        _buf.seek(0);
-        local _timeout = hardware.millis() + (timeout_sec * 1000).tointeger();
-        local ch = null;
-        do {
-            ch = _pins.read();
-            if (ch == -1) continue;
-            if (_eol_chars.find(ch) != null) {
-                return _ready(true);
-            }
-            _buf.writen(ch, 'b');
-        } while (_buf.tell() < _buf.len() && hardware.millis() < _timeout);
-        
-        return _ready(true);
-    }
-
-    
-    // -------------------------------------------------------------------------
-    // Writes the provided buffer (string or blob) to the UART
-    function write(buf) {
+    // Writes the provided buffer (string or blob) to the UART. Optionally,
+    // an callback can be provided for returning (only) the next response.
+    function write(buf, callback = null) {
         _pins.write(buf);
+        
+        if (callback) {
+            local old_callback = _callback;
+            local new_callback = callback;
+            _callback = function(buf) {
+                _callback = old_callback;
+                new_callback(buf);
+            }.bindenv(this);
+        }
+        
         return this;
     }
     
