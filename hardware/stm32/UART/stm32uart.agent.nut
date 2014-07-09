@@ -4,14 +4,7 @@
 // http://opensource.org/licenses/MIT
 
 // GLOBALS AND CONSTS ----------------------------------------------------------
-const INTEL_HEX_CHAR = 0x3A; // ":" in ASCII
 const BLOCKSIZE = 4096; // size of binary image chunks to send down to device
-
-// supported image file types
-enum filetypes {
-    INTEL_HEX,
-    BIN
-}
 
 agent_buffer <- blob(2);
 fetch_url <- "";
@@ -50,24 +43,7 @@ function send_data(dummy) {
         buffer.writeblob(agent_buffer.readblob(buffersize));
     }
     
-    // check filetype; if we need to convert to binary, do that here
-    // device will always just receive chunks of binary data
-    switch(filetype) {
-        case filetypes.INTEL_HEX:
-            device.send("push",hexfileToBin(buffer));
-        case filetypes.BIN:
-            device.send("push",buffer);
-        default: 
-            // we don't know the filetype yet; must have just started
-            if (buffer[0] == INTEL_HEX_CHAR) {
-                filetype = filetypes.INTEL_HEX;
-                device.send("push",hexfileToBin(buffer));
-            } else {
-                filetype = filetypes.BIN;
-                device.send("push",buffer);
-            }
-    }
-    
+    device.send("push",buffer);
     fw_ptr += buffersize;
     server.log(format("FW Update: Sent %d/%d bytes",fw_ptr,fw_len));
 }
@@ -105,33 +81,33 @@ http.onrequest(function(req, res) {
     
     if (req.path == "/push" || req.path == "/push/") {
         server.log("Agent received new firmware, starting update");
-        server.log(req.body.len());
-        agent_buffer = blob(req.body.len());
+        fw_len = req.body.len();
+        agent_buffer = blob(fw_len);
         agent_buffer.writestring(req.body);
         agent_buffer.seek(0,'b');
-        device.send("load_fw", agent_buffer.len());
+        device.send("load_fw", fw_len);
         res.send(200, "OK");
     } else if (req.path == "/fetch" || req.path == "/fetch/") {
         fw_len = 0;
         if ("url" in req.query) {
             fetch_url = req.query.url;
             fw_ptr = 0;
+            // get the content-length header from the remote URL to determine the image size
+            local resp =  http.request("HEAD", fetch_url, {}, "").sendsync();
+            if ("content-length" in resp.headers) {
+                res.send(200, "OK");
+                fw_len = resp.headers["content-length"].tointeger();
+                device.send("load_fw", fw_len);
+                server.log(format("Fetching new firmware (%d bytes) from %s",fw_len,fetch_url));
+                foreach (key, value in resp.headers) {
+                    server.log(key+" : "+value);
+                }
+            } else {
+                res.send(400, "No content-length header from "+fetch_url);
+                return;
+            }
         } else {
             res.send(400, "Request must include source url for image file");
-        }
-        // get the content-length header from the remote URL to determine the image size
-        local resp =  http.request("HEAD", fetch_url, {}, "").sendsync();
-        foreach (key, value in resp.headers) {
-            server.log(key+" : "+value);
-        }
-        if ("content-length" in resp.headers) {
-            fw_len = resp.headers["content-length"].tointeger();
-            server.log(format("Fetching new firmware (%d bytes) from %s",fw_len,fetch_url));
-            device.send("load_fw", fw_len);
-            res.send(200, "OK");
-        } else {
-            res.send(400, "No content-length header from "+fetch_url);
-            return;
         }
     } else {
         // send a response to prevent request hang
