@@ -4,9 +4,7 @@ class SparkFunStream {
     
     _publicKey = null;
     _privateKey = null;
-    
-    _deleteKey = null;
-    
+   
     constructor(baseUrl, publicKey, privateKey) {
         _baseUrl = baseUrl;
         _privateKey = privateKey;
