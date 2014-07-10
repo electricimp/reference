@@ -231,7 +231,7 @@ class Stm32 {
     // Return: Result (table)
     //      bootloader_version (byte)
     //      supported_cmds (array)
-    function cmd_get() {
+    function get() {
         // only request info from the device if we don't already have it
         if (bootloader_version == null || supported_cmds.len() == 0) {
             // make sure the bootloader is active; allows us to call this method directly from outside the class
@@ -252,7 +252,7 @@ class Stm32 {
     // The imp will store the results of this command to save time if asked again later
     // Input: None
     // Return: pid (2 bytes)
-    function cmd_get_id() {
+    function get_id() {
         // just return the value if we already know it
         if (pid == null) {
             // make sure bootloader is active before sending command
@@ -269,7 +269,7 @@ class Stm32 {
     //      len: number of bytes to read. 0-255.
     // Return: 
     //      memory contents from addr to addr+len (blob)
-    function cmd_rd_mem(addr, len) {
+    function rd_mem(addr, len) {
         if (!bootloader_active) { enter_bootloader(); }
         clear_uart();
         uart.write(format("%c%c",CMD_RD_MEMORY, (~CMD_RD_MEMORY) & 0xff));
@@ -304,7 +304,7 @@ class Stm32 {
     // Input: 
     //      addr: 4-byte address
     // Return: None
-    function cmd_go(addr = null) {
+    function go(addr = null) {
         if (!bootloader_active) { enter_bootloader(); }
         clear_uart()
         uart.write(format("%c%c",CMD_GO, (~CMD_GO) & 0xff));
@@ -332,7 +332,7 @@ class Stm32 {
     //      addr: 4-byte starting address
     //      data: data to write (0 to 256 bytes, blob)
     // Return: None
-    function cmd_wr_mem(data, addr = null) {
+    function wr_mem(data, addr = null) {
         if (!bootloader_active) { enter_bootloader(); }
         local len = data.len();
         clear_uart();
@@ -428,7 +428,6 @@ class Stm32 {
         }
         wr_checksum(erblob);
         uart.write(erblob);
-        hexdump(erblob);
         if (!get_ack(TIMEOUT_ERASE)) {
             throw "Flash Extended Erase Failed (NACK)";
         }
@@ -574,13 +573,13 @@ class Stm32 {
 
 // Allow the agent to request that the device send its bootloader version and supported commands
 agent.on("get_version", function(dummy) {
-    agent.send("set_version",stm32.cmd_get());
+    agent.send("set_version",stm32.get());
     if (stm32.bootloader_active) { stm32.reset(); }
 });
 
 // Allow the agent to request the device's PID
 agent.on("get_id", function(dummy) {
-    agent.send("set_id", stm32.cmd_get_id());
+    agent.send("set_id", stm32.get_id());
     if (stm32.bootloader_active) { stm32.reset(); }
 });
 
@@ -591,21 +590,36 @@ agent.on("reset", function(dummy) {
 
 // Allow the agent to remove readback protection from the flash
 // (give this a go if flash writes and erases mysteriously give you "invalid address")
-agent.on("rd_unprot", function(dumm) {
-    stm32.cmd_rd_unprot();
+agent.on("rd_unprot", function(dummy) {
+    stm32.rd_unprot();
 });
+
+// Allow the agent to remove write protection from the flash
+// (try this if you're unable to write new images; removed from the write routine for speed and clarity)
+agent.on("wr_unprot", function(dummy) {
+    stm32.wr_unprot();
+});
+
+// Allow the agent to erase the full flash 
+// Useful for device recovery if something goes wrong during testing
+agent.on("erase", function(dummy) {
+    server.log("Enabling Flash Erase");
+    stm32.wr_unprot();
+    server.log("Erasing All STM32 Flash");
+    stm32.mass_erase();
+    server.log("Resetting STM32");
+    stm32.reset();
+    server.log("Done");
+})
 
 // Initiate an application firmware update
 agent.on("load_fw", function(len) {
     server.log(format("FW Update: %d bytes",len));
     stm32.enter_bootloader();
-    server.log("FW Update: Enabling Flash Write");
-    // Note that you do not always need to write unprotect; it's done here as a just-in-case
-    stm32.wr_unprot();
     local page_codes = [];
     local erase_through_sector = math.ceil((len * 1.0) / STM32_SECTORSIZE);
     for (local i = 0; i <= erase_through_sector; i++) {
-        page_codes.push(i + 1);
+        page_codes.push(i);
     }
     server.log(format("FW Update: Erasing %d page(s) in Flash (%d bytes each)", erase_through_sector, STM32_SECTORSIZE));
     stm32.ext_erase_mem(page_codes);
@@ -624,7 +638,7 @@ agent.on("push", function(buffer) {
         //server.log(format("%d bytes left in current buffer. Flash pointer at %d",bytes_left_this_buffer,stm32.get_mem_ptr()));
         if (bytes_left_this_buffer > 256) { data = buffer.readblob(256); }
         else { data = buffer.readblob(bytes_left_this_buffer); }
-        stm32.cmd_wr_mem(data);
+        stm32.wr_mem(data);
     }
     // send pull request with a dummy value
     agent.send("pull", 0);
@@ -635,9 +649,10 @@ agent.on("push", function(buffer) {
 agent.on("dl_complete", function(dummy) {
     server.log("FW Update: Complete, Resetting");
     // can use the GO command to jump right into flash and run
-    stm32.cmd_go();
+    stm32.go();
     // Or, you can just reset the device and it'll come up and run the new application code
     //stm32.reset();
+    server.log("Running");
 });
 
 // MAIN ------------------------------------------------------------------------
@@ -649,7 +664,7 @@ uart <- hardware.uart6E;
 nrst.configure(DIGITAL_OUT);
 nrst.write(1);
 boot0.configure(DIGITAL_OUT);
-boot0.write(1);
+boot0.write(0);
 uart.configure(BAUD, 8, PARITY_EVEN, 1, NO_CTSRTS);
 
 stm32 <- Stm32(uart, nrst, boot0);

@@ -85,8 +85,9 @@ http.onrequest(function(req, res) {
         agent_buffer = blob(fw_len);
         agent_buffer.writestring(req.body);
         agent_buffer.seek(0,'b');
-        device.send("load_fw", fw_len);
-        res.send(200, "OK");
+        device.send("load_fw", fw_len
+        );
+        res.send(200, "OK\n");
     } else if (req.path == "/fetch" || req.path == "/fetch/") {
         fw_len = 0;
         if ("url" in req.query) {
@@ -95,7 +96,7 @@ http.onrequest(function(req, res) {
             // get the content-length header from the remote URL to determine the image size
             local resp =  http.request("HEAD", fetch_url, {}, "").sendsync();
             if ("content-length" in resp.headers) {
-                res.send(200, "OK");
+                res.send(200, "OK\n");
                 fw_len = resp.headers["content-length"].tointeger();
                 device.send("load_fw", fw_len);
                 server.log(format("Fetching new firmware (%d bytes) from %s",fw_len,fetch_url));
@@ -103,15 +104,18 @@ http.onrequest(function(req, res) {
                     server.log(key+" : "+value);
                 }
             } else {
-                res.send(400, "No content-length header from "+fetch_url);
+                res.send(400, "No content-length header from "+fetch_url+"\n");
                 return;
             }
         } else {
-            res.send(400, "Request must include source url for image file");
+            res.send(400, "Request must include source url for image file\n");
         }
+    } else if (req.path == "/erase" || req.path == "/erase/") {
+        res.send(200, "OK\n");
+        device.send("erase", 0);
     } else {
         // send a response to prevent request hang
-        res.send(200, "OK");
+        res.send(200, "OK\n");
     }
 });
     
