@@ -85,8 +85,7 @@ http.onrequest(function(req, res) {
         agent_buffer = blob(fw_len);
         agent_buffer.writestring(req.body);
         agent_buffer.seek(0,'b');
-        device.send("load_fw", fw_len
-        );
+        device.send("load_fw", fw_len);
         res.send(200, "OK\n");
     } else if (req.path == "/fetch" || req.path == "/fetch/") {
         fw_len = 0;
