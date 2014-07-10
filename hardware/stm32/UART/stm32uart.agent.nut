@@ -37,7 +37,7 @@ function send_data(dummy) {
     // if we're fetching a remote file in chunks, go get another
     if (fetch_url != "") {
         // download still in progress
-        buffer.writestring(http.get(fetch_url, { Range=format("bytes=%u-%u", fw_ptr, fw_ptr + buffersize) }).sendsync().body);
+        buffer.writestring(http.get(fetch_url, { Range=format("bytes=%u-%u", fw_ptr, fw_ptr + buffersize - 1) }).sendsync().body);
     // we're sending chunks of file from memory
     } else {
         buffer.writeblob(agent_buffer.readblob(buffersize));
