@@ -41,6 +41,17 @@ function hextoint(str) {
     return hex;
 }
 
+// Helper: Compute the 1-byte modular sum of a line of Intel Hex
+// Input: Line of Intel Hex (string)
+// Return: modular sum (integer, 1-byte)
+function modularsum(line) {
+    local sum = 0x00
+    for (local i = 0; i < line.len(); i+=2) {
+        sum += hextoint(line.slice(i,i + 2));
+    }
+    return ((~sum + 1) & 0xff);
+}
+
 // Helper: Parse a buffer of hex into the bin_buffer
 // Input: Intel Hex data (string)
 // Return: None
@@ -62,7 +73,8 @@ function parse_hexfile(hex) {
             to = hex.find(":", from + 1);
             
             if (to < 0 || to == null || from >= to || to >= hex.len()) break;
-            line = hex.slice(from + 1, to);
+            // make sure to strip nasty trailing \r\n
+            line = rstrip(hex.slice(from + 1, to));
             //server.log(format("[%d,%d] => %s", from, to, line));
             
             if (line.len() > 10) {
@@ -97,7 +109,11 @@ function parse_hexfile(hex) {
                 }
                 
                 // Checking the checksum would be a good idea but skipped for now
-                local checksum = hextoint(line.slice(-2));
+                local read = hextoint(line.slice(line.len() - 2, line.len()));
+                local calc = modularsum(line.slice(0,line.len() - 2));
+                if (read != calc) {
+                    throw format("Hex File Checksum Error: %02x (read) != %02x (calc) [%s]", read, calc, line);
+                }
             }
         } while (from != null && to != null && from < to);
         
