@@ -5,14 +5,118 @@
 
 // GLOBALS AND CONSTS ----------------------------------------------------------
 const BLOCKSIZE = 4096; // size of binary image chunks to send down to device
+const DELAY_DONE_NOTIFICATION_BY = 0.1; // pause to let the device write the final chunk before ending download
 
-agent_buffer <- blob(2);
+enum filetypes {
+    INTELHEX,
+    BIN
+}
+
+hex_buffer <- "";
+bin_buffer <- blob(2);
 fetch_url <- "";
 fw_ptr <- 0;
 fw_len <- 0;
 filetype <- null;
+bin_ptr <- 0;
+bin_len <- 0;
+bytes_sent <- 0;
 
 // FUNCTION AND CLASS DEFINITIONS ----------------------------------------------
+
+// Helper: Parses a hex string and turns it into an integer
+// Input: hexidecimal number as a string
+// Return: number (integer)
+function hextoint(str) {
+    local hex = 0x0000;
+    foreach (ch in str) {
+        local nibble;
+        if (ch >= '0' && ch <= '9') {
+            nibble = (ch - '0');
+        } else {
+            nibble = (ch - 'A' + 10);
+        }
+        hex = (hex << 4) + nibble;
+    }
+    return hex;
+}
+
+// Helper: Parse a buffer of hex into the bin_buffer
+// Input: Intel Hex data (string)
+// Return: None
+//      (writes binary into bin_buffer)
+function parse_hexfile(hex) {
+    try {
+        // line up are start at the point in the bin buffer we've already parsed up to
+        bin_buffer.seek(bin_len);
+        // make sure we have enough bin buffer to write in all the things we're going to parse
+        // for (local i = bin_len; i < BLOCKSIZE; i++) bin_buffer.writen(0xFF, 'b');
+        // bin_buffer.seek(bin_len);
+        
+        local from = 0, to = 0, line = "", offset = 0x00000000;
+        do {
+            if (to < 0 || to == null || to >= hex.len()) break;
+            from = hex.find(":", to);
+            
+            if (from < 0 || from == null || from + 1 >= hex.len()) break;
+            to = hex.find(":", from + 1);
+            
+            if (to < 0 || to == null || from >= to || to >= hex.len()) break;
+            line = hex.slice(from + 1, to);
+            //server.log(format("[%d,%d] => %s", from, to, line));
+            
+            if (line.len() > 10) {
+                local len = hextoint(line.slice(0, 2));
+                local addr = hextoint(line.slice(2, 6));
+                local type = hextoint(line.slice(6, 8));
+ 
+                // Ignore all record types except 00, which is a data record. 
+                // Look out for 02 records which set the high order byte of the address space
+                if (type == 0) {
+                    // Normal data record
+                //} else if (type == 4 && len == 2 && addr == 0 && line.len() > 12) {
+                } else if (type == 4) {
+                    //server.log(format("Type 4 Line, len %d, addr %08x, line len %d", len, addr, line.len()));
+                    // Set the offset
+                    offset = hextoint(line.slice(8, 12)); // << 16;
+                    if (offset != 0) {
+                        //server.log(format("Set offset to 0x%08X", offset));
+                        //server.log(format("From: %d, To: %d",from,to));
+                        // right now, we ignore offset changes and assume the full images will be contiguous!
+                    }
+                    continue;
+                } else {
+                    //server.log("Skipped: " + line)
+                    continue;
+                }
+ 
+                // Read the data from 8 to the end (less the last checksum byte)
+                for (local i = 8; i < (8 + (len * 2)); i += 2) {
+                    local datum = hextoint(line.slice(i, i + 2));
+                    bin_buffer.writen(datum, 'b')
+                }
+                
+                // Checking the checksum would be a good idea but skipped for now
+                local checksum = hextoint(line.slice(-2));
+            }
+        } while (from != null && to != null && from < to);
+        
+        // Resize the raw hex buffer so that it starts at the next line we need to parse
+        //server.log(format("Resizing Hex Buffer [%d to %d]",from,hex_buffer.len()));
+        hex_buffer = hex_buffer.slice(from, hex_buffer.len());
+        
+        bin_len += (bin_buffer.tell() - bin_len);
+        bin_buffer.seek(bin_ptr);
+        //server.log(format("Done parsing chunk, %d bytes in bin buffer",bin_len));
+        
+        //server.log("Free RAM: " + (imp.getmemoryfree()/1024) + " kb")
+        return true;
+        
+    } catch (e) {
+        server.log(e)
+        return false;
+    }
+}
 
 function finish_dl() {
     device.send("dl_complete",0);
@@ -21,9 +125,62 @@ function finish_dl() {
     fw_ptr = 0;
     fw_len = 0;
     filetype = null;
+    // reclaim memory
+    hex_buffer = "";
+    // intel hex parsing may not have been used, but clean up in case
+    bin_ptr = 0;
+    bin_len = 0;
+    bin_buffer = blob(2);
+    bytes_sent = 0;
 }
 
-function send_data(dummy) {
+function send_from_intelhex(dummy = 0) {
+    if (bin_len > BLOCKSIZE) {
+        bin_buffer.seek(bin_ptr,'b');
+        // we have more than a full chunk of raw binary data to send to the device, so send it.
+        device.send("push", bin_buffer.readblob(BLOCKSIZE));
+        bytes_sent += BLOCKSIZE;
+        // resize our local buffer of parsed data to contain only unsent data
+        local parsed_bytes_left = bin_len - bin_buffer.tell();
+        //server.log(format("Sent %d bytes, %d bytes remain in bin_buffer",bin_buffer.tell(),parsed_bytes_left));
+        // don't need to seek, as we've just read up to the end of the chunk we sent
+        local swap = bin_buffer.readblob(parsed_bytes_left);
+        bin_buffer.resize(parsed_bytes_left);
+        bin_buffer.seek(0,'b');
+        bin_buffer.writeblob(swap);
+        bin_buffer.seek(0,'b');
+        bin_ptr = 0;
+        bin_len = parsed_bytes_left;
+        server.log(format("FW Update: Parsed %d/%d bytes, sent %d bytes",fw_ptr,fw_len,bytes_sent));
+    } else {
+        if (fw_ptr == fw_len) {
+            if (bin_ptr == bin_len) {
+                // We've already sent the last (partial) chunk; finishe the download
+                finish_dl();
+            } else {
+                // there's nothing left to fetch on the server we're fetching from
+                // just send what we have
+                device.send("push", bin_buffer);
+                bytes_sent += bin_buffer.len();
+                server.log(format("FW Update: Parsed %d/%d bytes, sent %d bytes (Final block)",fw_ptr,fw_len,bytes_sent));
+                bin_ptr = bin_len;
+            }
+        } else {
+            // fetch more data from the remote server and parse it, then come back here to send it
+            local bytes_left_remote = fw_len - fw_ptr;
+            local buffersize = bytes_left_remote > BLOCKSIZE ? BLOCKSIZE : bytes_left_remote;
+            //server.log(format("Fetching %d-%d",fw_ptr,fw_ptr + buffersize - 1));
+            hex_buffer += http.get(fetch_url, { Range=format("bytes=%u-%u", fw_ptr, fw_ptr + buffersize - 1) }).sendsync().body;
+            fw_ptr += buffersize;
+            // this will parse the string right into bin_buffer
+            parse_hexfile(hex_buffer);
+            // go around again!
+            send_from_intelhex();
+        }
+    }
+}
+
+function send_from_binary(dummy = 0) {
     local bytes_left_total = fw_len - fw_ptr;
     local buffersize = bytes_left_total > BLOCKSIZE ? BLOCKSIZE : bytes_left_total;
     
@@ -40,7 +197,7 @@ function send_data(dummy) {
         buffer.writestring(http.get(fetch_url, { Range=format("bytes=%u-%u", fw_ptr, fw_ptr + buffersize - 1) }).sendsync().body);
     // we're sending chunks of file from memory
     } else {
-        buffer.writeblob(agent_buffer.readblob(buffersize));
+        buffer.writeblob(raw_buffer.readblob(buffersize));
     }
     
     device.send("push",buffer);
@@ -69,7 +226,13 @@ device.on("set_id", function(id) {
 });
 
 // Serve a buffer of new image data to the device upon request
-device.on("pull", send_data);
+device.on("pull", function(dummy) {
+    if (filetype == filetypes.INTELHEX) {
+        send_from_intelhex();
+    } else {
+        send_from_binary();
+    }
+});
 
 // HTTP REQUEST HANDLER --------------------------------------------------------
 
@@ -79,12 +242,26 @@ http.onrequest(function(req, res) {
     res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
     res.header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
     
+    if ("type" in req.query) {
+        if (req.query.type == "hex" || req.query.type == "intel" || req.query.type == "intelhex") {
+            filetype = filetypes.INTELHEX;
+        } else if (req.query.type == "bin" || req.query.type == "binary") {
+            filetype = filetypes.BIN;
+        } else {
+            res.send(400, "Invalid filetype (?type=[ hex | bin ])\n");
+            return;
+        }
+    } else {
+        server.log("No filetype given; defaulting to binary");
+        filetype = filetypes.BIN;
+    }
+    
     if (req.path == "/push" || req.path == "/push/") {
         server.log("Agent received new firmware, starting update");
         fw_len = req.body.len();
-        agent_buffer = blob(fw_len);
-        agent_buffer.writestring(req.body);
-        agent_buffer.seek(0,'b');
+        raw_buffer = blob(fw_len);
+        raw_buffer.writestring(req.body);
+        raw_buffer.seek(0,'b');
         device.send("load_fw", fw_len);
         res.send(200, "OK\n");
     } else if (req.path == "/fetch" || req.path == "/fetch/") {
