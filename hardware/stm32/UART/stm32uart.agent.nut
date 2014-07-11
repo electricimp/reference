@@ -6,6 +6,7 @@
 // GLOBALS AND CONSTS ----------------------------------------------------------
 const BLOCKSIZE = 4096; // size of binary image chunks to send down to device
 const DELAY_DONE_NOTIFICATION_BY = 0.1; // pause to let the device write the final chunk before ending download
+const INTELHEX_CHAR = 0x3A; // opening character of an intel hex file
 
 enum filetypes {
     INTELHEX,
@@ -132,6 +133,31 @@ function parse_hexfile(hex) {
     } catch (e) {
         server.log(e)
         return false;
+    }
+}
+
+// Helper: take in either a single char or a url string and use it to determine the source file type
+// Input: [optional] byte
+//      If a byte (first char of file) is provided, will attempt to match char to determine filetype
+//      Otherwise, will attempt to fetch a char from fetch_url
+// Return: None
+//      filetype is set as a side-effect
+function get_filetype(byte = null) {
+    local char = ""
+    if (byte) { 
+        char = byte;
+    } else if (fetch_url != "") {
+        local char = http.get(fetch_url, { Range="bytes=0-1" }).sendsync().body[0];
+    } else {
+        throw "Unable to determine filetype: no args given and fetch_url not set"
+    }
+    
+    if (char == INTELHEX_CHAR) {
+        server.log("Filetype: Intel Hex");
+        filetype = filetypes.INTELHEX;
+    } else {
+        server.log("Filetype: Binary");
+        filetype = filetypes.BIN;
     }
 }
 
@@ -265,26 +291,15 @@ http.onrequest(function(req, res) {
     res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
     res.header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
     
-    if ("type" in req.query) {
-        if (req.query.type == "hex" || req.query.type == "intel" || req.query.type == "intelhex") {
-            filetype = filetypes.INTELHEX;
-        } else if (req.query.type == "bin" || req.query.type == "binary") {
-            filetype = filetypes.BIN;
-        } else {
-            res.send(400, "Invalid filetype (?type=[ hex | bin ])\n");
-            return;
-        }
-    } else {
-        server.log("No filetype given; defaulting to binary");
-        filetype = filetypes.BIN;
-    }
-    
     if (req.path == "/push" || req.path == "/push/") {
         server.log("Agent received new firmware, starting update");
         fw_len = req.body.len();
         agent_buffer = blob(fw_len);
         agent_buffer.writestring(req.body);
         agent_buffer.seek(0,'b');
+        // determine if this is intel hex or binary (or other)
+        get_filetype(agent_buffer[0]);
+        // notify device we're ready to start
         device.send("load_fw", fw_len);
         res.send(200, "OK\n");
     } else if (req.path == "/fetch" || req.path == "/fetch/") {
@@ -297,6 +312,9 @@ http.onrequest(function(req, res) {
             if ("content-length" in resp.headers) {
                 res.send(200, "OK\n");
                 fw_len = resp.headers["content-length"].tointeger();
+                // determine file type
+                get_filetype();
+                // notify device we're starting
                 device.send("load_fw", fw_len);
                 server.log(format("Fetching new firmware (%d bytes) from %s",fw_len,fetch_url));
                 foreach (key, value in resp.headers) {
