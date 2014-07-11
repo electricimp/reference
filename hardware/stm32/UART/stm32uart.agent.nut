@@ -12,6 +12,7 @@ enum filetypes {
     BIN
 }
 
+agent_buffer <- blob(2);
 hex_buffer <- "";
 bin_buffer <- blob(2);
 fetch_url <- "";
@@ -143,6 +144,7 @@ function finish_dl() {
     filetype = null;
     // reclaim memory
     hex_buffer = "";
+    agent_buffer = blob(2);
     // intel hex parsing may not have been used, but clean up in case
     bin_ptr = 0;
     bin_len = 0;
@@ -185,8 +187,13 @@ function send_from_intelhex(dummy = 0) {
             // fetch more data from the remote server and parse it, then come back here to send it
             local bytes_left_remote = fw_len - fw_ptr;
             local buffersize = bytes_left_remote > BLOCKSIZE ? BLOCKSIZE : bytes_left_remote;
-            //server.log(format("Fetching %d-%d",fw_ptr,fw_ptr + buffersize - 1));
-            hex_buffer += http.get(fetch_url, { Range=format("bytes=%u-%u", fw_ptr, fw_ptr + buffersize - 1) }).sendsync().body;
+            if (fetch_url != "") {
+                // we're fetching from remote
+                hex_buffer += http.get(fetch_url, { Range=format("bytes=%u-%u", fw_ptr, fw_ptr + buffersize - 1) }).sendsync().body;
+            } else {
+                // we're reading from local blob
+                hex_buffer += agent_buffer.readblob(buffersize).tostring();
+            }
             fw_ptr += buffersize;
             // this will parse the string right into bin_buffer
             parse_hexfile(hex_buffer);
@@ -213,7 +220,7 @@ function send_from_binary(dummy = 0) {
         buffer.writestring(http.get(fetch_url, { Range=format("bytes=%u-%u", fw_ptr, fw_ptr + buffersize - 1) }).sendsync().body);
     // we're sending chunks of file from memory
     } else {
-        buffer.writeblob(raw_buffer.readblob(buffersize));
+        buffer.writeblob(agent_buffer.readblob(buffersize));
     }
     
     device.send("push",buffer);
@@ -275,9 +282,9 @@ http.onrequest(function(req, res) {
     if (req.path == "/push" || req.path == "/push/") {
         server.log("Agent received new firmware, starting update");
         fw_len = req.body.len();
-        raw_buffer = blob(fw_len);
-        raw_buffer.writestring(req.body);
-        raw_buffer.seek(0,'b');
+        agent_buffer = blob(fw_len);
+        agent_buffer.writestring(req.body);
+        agent_buffer.seek(0,'b');
         device.send("load_fw", fw_len);
         res.send(200, "OK\n");
     } else if (req.path == "/fetch" || req.path == "/fetch/") {
