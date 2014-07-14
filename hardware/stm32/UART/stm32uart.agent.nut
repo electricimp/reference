@@ -46,12 +46,26 @@ function hextoint(str) {
 // Helper: Compute the 1-byte modular sum of a line of Intel Hex
 // Input: Line of Intel Hex (string)
 // Return: modular sum (integer, 1-byte)
-function modularsum(line) {
+function modularsum8(line) {
     local sum = 0x00
     for (local i = 0; i < line.len(); i+=2) {
         sum += hextoint(line.slice(i,i + 2));
     }
     return ((~sum + 1) & 0xff);
+}
+
+// Helper: Compute the 32-bit modular sum of a blob
+// Input: data (blob)
+// Return: modular sum (integer)
+function modularsum32(data) {
+    local pos = data.tell()
+    data.seek(0,'b');
+    local sum = 0x00000000
+    for (local i = 0; i < line.len(); i+=4) {
+        sum += data.readn('i');
+    }
+    data.seek(pos,'b');
+    return ((~sum + 1) & 0xffffffff);
 }
 
 // Helper: Parse a buffer of hex into the bin_buffer
@@ -112,7 +126,7 @@ function parse_hexfile(hex) {
                 
                 // Checking the checksum would be a good idea but skipped for now
                 local read = hextoint(line.slice(line.len() - 2, line.len()));
-                local calc = modularsum(line.slice(0,line.len() - 2));
+                local calc = modularsum8(line.slice(0,line.len() - 2));
                 if (read != calc) {
                     throw format("Hex File Checksum Error: %02x (read) != %02x (calc) [%s]", read, calc, line);
                 }
@@ -161,6 +175,10 @@ function get_filetype(byte = null) {
     }
 }
 
+// Send a message to the device to end the device firmware update process
+// This function then resets all global variables used in firmware update
+// Input: None
+// Return: None
 function finish_dl() {
     device.send("dl_complete",0);
     server.log("Download complete");
@@ -178,6 +196,11 @@ function finish_dl() {
     bytes_sent = 0;
 }
 
+// "pull" events from the device are routed here if the source file is in Intel Hex format
+// This function responds to the "pull" event with a "push" event and a block of raw
+// binary image data, of size BLOCKSIZE
+// If this function determines that it has sent the end of the new image, it will trigger
+// finish_dl() to end the process
 function send_from_intelhex(dummy = 0) {
     if (bin_len > BLOCKSIZE) {
         bin_buffer.seek(bin_ptr,'b');
@@ -229,6 +252,11 @@ function send_from_intelhex(dummy = 0) {
     }
 }
 
+// "pull" events from the device are routed here if the source file is in raw binary format
+// This function responds to the "pull" event with a "push" event and a block of raw
+// binary image data, of size BLOCKSIZE
+// If this function determines that it has sent the end of the new image, it will trigger
+// finish_dl() to end the process
 function send_from_binary(dummy = 0) {
     local bytes_left_total = fw_len - fw_ptr;
     local buffersize = bytes_left_total > BLOCKSIZE ? BLOCKSIZE : bytes_left_total;
@@ -329,7 +357,7 @@ http.onrequest(function(req, res) {
         }
     } else if (req.path == "/erase" || req.path == "/erase/") {
         res.send(200, "OK\n");
-        device.send("erase", 0);
+        device.send("erase_stm32", 0);
     } else {
         // send a response to prevent request hang
         res.send(200, "OK\n");
