@@ -60,8 +60,8 @@ function modularsum8(line) {
 function modularsum32(data) {
     local pos = data.tell()
     data.seek(0,'b');
-    local sum = 0x00000000
-    for (local i = 0; i < line.len(); i+=4) {
+    local sum = 0x00000000;
+    while(!data.eos()) {
         sum += data.readn('i');
     }
     data.seek(pos,'b');
@@ -205,7 +205,8 @@ function send_from_intelhex(dummy = 0) {
     if (bin_len > BLOCKSIZE) {
         bin_buffer.seek(bin_ptr,'b');
         // we have more than a full chunk of raw binary data to send to the device, so send it.
-        device.send("push", {checksum = 0, buffer = bin_buffer.readblob(BLOCKSIZE)});
+        local sendbuffer = bin_buffer.readblob(BLOCKSIZE);
+        device.send("push", {checksum = modularsum32(sendbuffer), buffer = sendbuffer});
         bytes_sent += BLOCKSIZE;
         // resize our local buffer of parsed data to contain only unsent data
         local parsed_bytes_left = bin_len - bin_buffer.tell();
@@ -227,7 +228,7 @@ function send_from_intelhex(dummy = 0) {
             } else {
                 // there's nothing left to fetch on the server we're fetching from
                 // just send what we have
-                device.send("push", {checksum = 0, buffer = bin_buffer});
+                device.send("push", {checksum = modularsum32(bin_buffer), buffer = bin_buffer});
                 bytes_sent += bin_buffer.len();
                 server.log(format("FW Update: Parsed %d/%d bytes, sent %d bytes (Final block)",fw_ptr,fw_len,bytes_sent));
                 bin_ptr = bin_len;
@@ -277,7 +278,7 @@ function send_from_binary(dummy = 0) {
         buffer.writeblob(agent_buffer.readblob(buffersize));
     }
     
-    device.send("push",{checksum = 0, buffer = buffer});
+    device.send("push",{checksum = modularsum32(buffer), buffer = buffer});
     fw_ptr += buffersize;
     server.log(format("FW Update: Sent %d/%d bytes",fw_ptr,fw_len));
 }
