@@ -43,6 +43,12 @@ You will also need to connect the Imp to a SPI Flash IC:
 
 ### Load New Image File Into NOR Flash
 
+When an image is sent to the agent, it will be loaded into NOR flash. The device will also store a checksum for each 4096-byte block of data stored. The checksums and image size are stored in a serialized image attribute table, which is stored in the first 4096-byte sector of flash. 
+
+The target STM32 is not affected by sending the new image. Instead, the device waits for an "update" request from the agent. At this point, it will attempt to load the image from NOR flash and update the target STM32 with it.
+
+For the first step, images files can be sent directly to the agent with a POST, or a generic request to <agent_url>/fetch with the target URL as a query parameter can be used to tell the agent to fetch the image from a remote server:
+
 #### Push directly to the agent
 
 Sending a binary file:
@@ -67,4 +73,20 @@ Include the source url as query parameter:
 
 ### Update STM32 from Image in NOR Flash
 
+Once a valid image has been stored in NOR, the device can load the new image into the target STM32 whenever requested. The agent will trigger the update when it receives a generic reqest to <agent_url>/update:
+
+```
+14:20:40-tom$ curl https://agent.electricimp.com/<ID>/update
+```
+
 ### (Not Required) Clearing NOR or STM32 Flash
+
+The agent can also instruct the device to clear the NOR storage or target STM32 flash:
+
+```
+14:21:40-tom$ curl https://agent.electricimp.com/<ID>/erasenor
+```
+
+```
+14:22:40-tom$ curl https://agent.electricimp.com/<ID>/erasetarget
+```
