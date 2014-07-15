@@ -40,19 +40,21 @@ class Stm32 {
     static NACK             = 0x1F;
     static CMD_GET          = 0x00;
     static CMD_GET_VERSION_PROT_STATUS = 0x01;
-    static CMD_getId       = 0x02;
-    static CMD_rdMemORY    = 0x11;
+    static CMD_GETID       = 0x02;
+    static CMD_RD_MEM    = 0x11;
     static CMD_GO           = 0x21;
-    static CMD_wrMemORY    = 0x31;
+    static CMD_WR_MEM    = 0x31;
     static CMD_ERASE        = 0x43; // ERASE and EXT_ERASE are exclusive; only one is supported
     static CMD_EXT_ERASE    = 0x44;
-    static CMD_wrProt      = 0x63;
-    static CMD_wrUnprot    = 0x73;
+    static CMD_WR_PROT      = 0x63;
+    static CMD_WR_UNPROT    = 0x73;
     static CMD_RDOUT_PROT   = 0x82;
     static CMD_RDOUT_UNPROT = 0x92;
     
     static FLASH_BASE_ADDR  = 0x08000000;
+    static WRSIZE = 256; // max bytes per write
     static SECTORSIZE = 0x4000; // size of one flash "page"
+    
 
     bootloader_version = null;
     bootloader_active = false;
@@ -132,7 +134,7 @@ class Stm32 {
         getAck(TIMEOUT_CMD);
         imp.sleep(BYTE_TIME * 2);
         local num_bytes = uart.read() + 0;
-        if (cmd == CMD_getId) {num_bytes++;} // getId command responds w/ number of bytes in ID - 1.
+        if (cmd == CMD_GETID) {num_bytes++;} // getId command responds w/ number of bytes in ID - 1.
         imp.sleep(BYTE_TIME * (num_bytes + 4));
         
         local result = blob(num_bytes);
@@ -258,7 +260,7 @@ class Stm32 {
         if (pid == null) {
             // make sure bootloader is active before sending command
             if (!bootloader_active) { enterBootloader(); }
-            local result = sendCmd(CMD_getId);
+            local result = sendCmd(CMD_GETID);
             pid = result.readn('w');
         }
         return format("%04x",pid);
@@ -273,7 +275,7 @@ class Stm32 {
     function rdMem(addr, len) {
         if (!bootloader_active) { enterBootloader(); }
         clearUart();
-        uart.write(format("%c%c",CMD_rdMemORY, (~CMD_rdMemORY) & 0xff));
+        uart.write(format("%c%c",CMD_RD_MEM, (~CMD_RD_MEM) & 0xff));
         getAck(TIMEOUT_CMD);
         // read mem command ACKs, then waits for starting memory address
         local addrblob = blob(5);
@@ -335,33 +337,40 @@ class Stm32 {
     // Return: None
     function wrMem(data, addr = null) {
         if (!bootloader_active) { enterBootloader(); }
-        local len = data.len();
-        clearUart();
-        uart.write(format("%c%c",CMD_wrMemORY, (~CMD_wrMemORY) & 0xff));
-        getAck(TIMEOUT_CMD);
-
-        // read mem command ACKs, then waits for starting memory address
-        local addrblob = blob(5);
         if (addr == null) { addr = mem_ptr; }
-        addrblob.writen(addr,'i');
-        addrblob.swap4(); // STM32 wants MSB-first. Imp is LSB-first.
-        wrChecksum(addrblob);
-        uart.write(addrblob);
-        if (!getAck(TIMEOUT_CMD)) {
-            throw format("Got NACK on wrMemORY for addr %08x (invalid address)",addr);
-        };
+        data.seek(0,'b');
+    
+        while (!data.eos()) {
+            local bytes_left = data.len() - data.tell();
+            local bytes_to_write = bytes_left > WRSIZE ? WRSIZE : bytes_left;
+            local buffer = data.readblob(bytes_to_write);
+            
+            clearUart();
+            uart.write(format("%c%c",CMD_WR_MEM, (~CMD_WR_MEM) & 0xff));
+            getAck(TIMEOUT_CMD);
         
-        // STM32 ACKs the address, then waits for the number of bytes to be written
-        local wrblob = blob(data.len() + 2);
-        wrblob.writen(len - 1,'b');
-        wrblob.writeblob(data);
-        wrChecksum(wrblob);
-        uart.write(wrblob);
-        
-        if(!getAck(TIMEOUT_WRITE)) {
-            throw "Write Failed (NACK)";
+            // read mem command ACKs, then waits for starting memory address
+            local addrblob = blob(5);
+            addrblob.writen(mem_ptr,'i');
+            addrblob.swap4(); // STM32 wants MSB-first. Imp is LSB-first.
+            wrChecksum(addrblob);
+            uart.write(addrblob);
+            if (!getAck(TIMEOUT_CMD)) {
+                throw format("Got NACK on wrMemORY for addr %08x (invalid address)",addr);
+            };
+            
+            // STM32 ACKs the address, then waits for the number of bytes to be written
+            local wrblob = blob(buffer.len() + 2);
+            wrblob.writen(buffer.len() - 1,'b');
+            wrblob.writeblob(buffer);
+            wrChecksum(wrblob);
+            uart.write(wrblob);
+            
+            if(!getAck(TIMEOUT_WRITE)) {
+                throw "Write Failed (NACK)";
+            }
+            mem_ptr += bytes_to_write;
         }
-        mem_ptr += len;
     }
     
     // Erase flash memory pages
@@ -464,6 +473,7 @@ class Stm32 {
         if (!getAck(TIMEOUT_ERASE)) {
             throw "Flash Bank 1 Erase Failed (NACK)";
         }
+        setMemPtr(0);
     }
     
     // Erase bank 2 flash memory for devices that support EXT_ERASE
@@ -490,7 +500,7 @@ class Stm32 {
     function wrProt(num_sectors, sector_codes) {
         if (!bootloader_active) { enterBootloader(); }
         clearUart();
-        uart.write(format("%c%c",CMD_wrProt, (~CMD_wrProt) & 0xff));
+        uart.write(format("%c%c",CMD_WR_PROT, (~CMD_WR_PROT) & 0xff));
         getAck(TIMEOUT_CMD);
         local protblob = blob(sector_codes.len() + 2);
         protblob.writen(num_sectors & 0xff, 'b');
@@ -515,7 +525,7 @@ class Stm32 {
     function wrUnprot() {
         if (!bootloader_active) { enterBootloader(); }
         clearUart();
-        uart.write(format("%c%c",CMD_wrUnprot, (~CMD_wrUnprot) & 0xff));
+        uart.write(format("%c%c",CMD_WR_UNPROT, (~CMD_WR_UNPROT) & 0xff));
         // first ACK acknowledges command
         getAck(TIMEOUT_CMD);
         // second ACK acknowledges completion of write protect enable
@@ -526,6 +536,7 @@ class Stm32 {
         bootloader_active = false;
         imp.sleep(INIT_TIME);
         enterBootloader();
+        setMemPtr(0);
     }
     
     // Enable flash memory read protection
@@ -566,8 +577,8 @@ class Stm32 {
         bootloader_active = false;
         imp.sleep(INIT_TIME);
         enterBootloader();
+        setMemPtr(0);
     }
-    
 }
 
 // Semi-generic SPI Flash Driver
@@ -1050,12 +1061,12 @@ agent.on("load_fw", function(dummy) {
     server.log("FW Update: Target Flash Erased, Transfering Image to Target");
     fw_ptr = 0;
         
-    local data = blob(256);
     while (fw_ptr < fw_attr.size) {
         local bytes_left = fw_attr.size - fw_ptr;
-        local read_bytes = bytes_left > 256 ? 256 : bytes_left;
+        local read_bytes = bytes_left > BLOCKSIZE ? BLOCKSIZE : bytes_left;
         stm32.wrMem(flash.read(fw_ptr + BLOCKSIZE, read_bytes));
         fw_ptr += read_bytes;
+        server.log(format("FW Update: Loaded %d/%d bytes",fw_ptr,fw_attr.size));
     }
     
     server.log("FW Update: Finished Transferring Image to Target, Starting")
@@ -1111,7 +1122,11 @@ agent.on("push", function(data) {
 agent.on("dl_complete", function(dummy) {
     server.log("FW Update: Image Download Complete, Storing Image Attributes");
     
-    // first, serialize the attribute table
+    // if we were fetching a file from hex, we got an inacurrate initial length
+    // now that we know the actual resulting binary length, store it in the attr table
+    fw_attr.size = fw_ptr - BLOCKSIZE;
+    
+    // serialize the attribute table
     local attrblob = blob(BLOCKSIZE);
     local tempblob = serializer.serialize(fw_attr);
     server.log(format("File attribute table is %d bytes serialized",tempblob.len()));
