@@ -62,8 +62,11 @@ class RS485 {
     }
 }
 
-// Usage
+// Usage:
+// Instantiate an RS485 object with optional read/write enable lines,
+// then configure the internal UART object being wrapped
+
 // RS485(UART, readEnable, writeEnable, readEnablePolarity, writeEnablePolarity);
-rs485   <- RS485(hardware.uart12, hardware.pin7, hardware.pin5, RS485.ACTIVE_LOW, RS485.ACTIVE_HIGH);
-// Modbus(UART or RS485, baudRate, dataBits, parity, stopBits, callbackHandler, errorHandler, optional timeout in seconds)
-modbus  <- Modbus(rs485, 9200, 8, PARITY_NONE, 1, callbackHandler, errorHandler);
+rs485 <- RS485(hardware.uart12, hardware.pin7, hardware.pin5, RS485.ACTIVE_LOW, RS485.ACTIVE_HIGH);
+// configure(baud rate, data bits, parity, stop bits, UART flags, callback);
+rs485.configure(9600, 8, PARITY_NONE, 1, NO_CTSRTS, myCallback);
