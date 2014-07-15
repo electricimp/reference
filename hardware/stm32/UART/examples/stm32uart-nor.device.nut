@@ -8,7 +8,7 @@
 const BLOCKSIZE = 4096; // bytes per buffer of data sent from agent
 const STM32_SECTORSIZE = 0x4000;
 const BAUD = 115200; // any standard baud between 9600 and 115200 is allowed
-const SPICLK = 3750; // kHz, rate to run the SPI
+const SPICLK = 7500; // kHz, rate to run the SPI
                     
 BYTE_TIME <- 8.0 / (BAUD * 1.0);
 
@@ -1035,12 +1035,12 @@ agent.on("load_fw", function(dummy) {
     local attrlen = attrlenblob.readn('i');
     server.log(format("File attribute table is %d bytes in NOR, serialized",attrlen));
     fw_attr = serializer.deserialize(flash.read(4,attrlen));
-    server.log(format("File attribute table loaded, loading %d byte image from NOR",fw_attr.len));
+    server.log(format("File attribute table loaded, loading %d byte image from NOR",fw_attr.size));
     
     // Now begin transfering data from NOR to target flash
     stm32.enterBootloader();
     local page_codes = [];
-    local erase_through_sector = math.ceil((len * 1.0) / STM32_SECTORSIZE);
+    local erase_through_sector = math.ceil((fw_attr.size * 1.0) / STM32_SECTORSIZE);
     for (local i = 0; i <= erase_through_sector; i++) {
         page_codes.push(i);
     }
@@ -1049,10 +1049,12 @@ agent.on("load_fw", function(dummy) {
     
     server.log("FW Update: Target Flash Erased, Transfering Image to Target");
     fw_ptr = 0;
-    while (fw_ptr < fw_attr.len) {
-        local bytes_left = fw_attr.len - fw_ptr;
-        local read_bytes = bytes_left > BLOCKSIZE ? BLOCKSIZE : bytes_left;
-        stm32.wrMem(flash.readChunk(fw_ptr + BLOCKSIZE, read_bytes));
+        
+    local data = blob(256);
+    while (fw_ptr < fw_attr.size) {
+        local bytes_left = fw_attr.size - fw_ptr;
+        local read_bytes = bytes_left > 256 ? 256 : bytes_left;
+        stm32.wrMem(flash.read(fw_ptr + BLOCKSIZE, read_bytes));
         fw_ptr += read_bytes;
     }
     
@@ -1067,9 +1069,9 @@ agent.on("load_fw", function(dummy) {
 // The agent will supply a 32-bit checksum with each block of data sent with "push"
 fw_attr <- {}
 fw_ptr <- BLOCKSIZE;
-agent.on("store_fw", function(attr) {
-    server.log(format("FW Update: %d bytes",attr.len));
-    fw_attr.len <- attr.len;
+agent.on("store_fw", function(size) {
+    server.log(format("FW Update: %d bytes",size));
+    fw_attr.size <- size;
     fw_attr.checksums <- [];
     // set the download pointer to the beginning of the 2nd sector
     // the first sector will hold the attribute table
@@ -1078,8 +1080,8 @@ agent.on("store_fw", function(attr) {
     // clear the required number of sectors + 1 in the NOR flash
     // the first sector will be used to store a serialized version of the attribute table,
     // which will also contain all of the checksums for each block, so that they can be verified on read
-    local erase_through_sector = attr.len / BLOCKSIZE;
-    server.log(format("FW Update: Erasing %d sector(s) in NOR (%d bytes each)", erase_through_sector, attr.blocksize));
+    local erase_through_sector = math.ceil(fw_attr.size * 1.0 / BLOCKSIZE);
+    server.log(format("FW Update: Erasing %d sector(s) in NOR", erase_through_sector));
     for (local i = 0; i <= erase_through_sector; i++) {
         flash.sectorErase((i * BLOCKSIZE) & 0x00ffffff);
     }
@@ -1099,7 +1101,7 @@ agent.on("push", function(data) {
 
     // store the actual buffer of data in NOR
     flash.writeChunk(fw_ptr, data.buffer);
-    fw_ptr += data.buffer.len;
+    fw_ptr += data.buffer.len();
     
     // request more data from the agent
     agent.send("pull", 0);
@@ -1111,7 +1113,7 @@ agent.on("dl_complete", function(dummy) {
     
     // first, serialize the attribute table
     local attrblob = blob(BLOCKSIZE);
-    local tempblob = serializer.serialze(fw_attr);
+    local tempblob = serializer.serialize(fw_attr);
     server.log(format("File attribute table is %d bytes serialized",tempblob.len()));
     // first 4 bytes in flash is the length of the attribute table
     attrblob.writen(tempblob.len(), 'i');

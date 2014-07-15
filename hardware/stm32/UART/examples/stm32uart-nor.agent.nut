@@ -205,7 +205,7 @@ function send_from_intelhex(dummy = 0) {
     if (bin_len > BLOCKSIZE) {
         bin_buffer.seek(bin_ptr,'b');
         // we have more than a full chunk of raw binary data to send to the device, so send it.
-        device.send("push", bin_buffer.readblob(BLOCKSIZE));
+        device.send("push", {checksum = 0, buffer = bin_buffer.readblob(BLOCKSIZE)});
         bytes_sent += BLOCKSIZE;
         // resize our local buffer of parsed data to contain only unsent data
         local parsed_bytes_left = bin_len - bin_buffer.tell();
@@ -227,7 +227,7 @@ function send_from_intelhex(dummy = 0) {
             } else {
                 // there's nothing left to fetch on the server we're fetching from
                 // just send what we have
-                device.send("push", bin_buffer);
+                device.send("push", {checksum = 0, buffer = bin_buffer});
                 bytes_sent += bin_buffer.len();
                 server.log(format("FW Update: Parsed %d/%d bytes, sent %d bytes (Final block)",fw_ptr,fw_len,bytes_sent));
                 bin_ptr = bin_len;
@@ -277,7 +277,7 @@ function send_from_binary(dummy = 0) {
         buffer.writeblob(agent_buffer.readblob(buffersize));
     }
     
-    device.send("push",buffer);
+    device.send("push",{checksum = 0, buffer = buffer});
     fw_ptr += buffersize;
     server.log(format("FW Update: Sent %d/%d bytes",fw_ptr,fw_len));
 }
@@ -328,7 +328,7 @@ http.onrequest(function(req, res) {
         // determine if this is intel hex or binary (or other)
         get_filetype(agent_buffer[0]);
         // notify device we're ready to start
-        device.send("load_fw", fw_len);
+        device.send("store_fw", fw_len);
         res.send(200, "OK\n");
     } else if (req.path == "/fetch" || req.path == "/fetch/") {
         fw_len = 0;
@@ -343,7 +343,7 @@ http.onrequest(function(req, res) {
                 // determine file type
                 get_filetype();
                 // notify device we're starting
-                device.send("load_fw", fw_len);
+                device.send("store_fw", fw_len);
                 server.log(format("Fetching new firmware (%d bytes) from %s",fw_len,fetch_url));
                 foreach (key, value in resp.headers) {
                     server.log(key+" : "+value);
@@ -355,6 +355,9 @@ http.onrequest(function(req, res) {
         } else {
             res.send(400, "Request must include source url for image file\n");
         }
+    } else if (req.path == "/update" || req.path == "/update/") {
+        res.send(200, "OK\n");
+        device.send("load_fw", 0);
     } else if (req.path == "/erasetarget" || req.path == "/erasetarget/") {
         res.send(200, "OK\n");
         device.send("erase_target", 0);
