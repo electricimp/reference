@@ -9,8 +9,10 @@ const BLOCKSIZE = 4096; // bytes per buffer of data sent from agent
 const STM32_SECTORSIZE = 0x4000;
 const BAUD = 115200; // any standard baud between 9600 and 115200 is allowed
 const SPICLK = 7500; // kHz, rate to run the SPI
+const PAUSE_TIME = 0.08; // seconds, time to pause between BLOCKSIZE writes to target during transfer
                     
 BYTE_TIME <- 8.0 / (BAUD * 1.0);
+looper <- null; // used to store context for load_from_nor generator
 
 // CLASS AND FUNCTION DEFS -----------------------------------------------------
 
@@ -23,6 +25,60 @@ function hexdump(data) {
         }
         server.log(line);
     }
+}
+
+// Helper: Compute the 32-bit modular sum of a blob
+// Input: data (blob)
+// Return: modular sum (integer)
+function modularsum32(data) {
+    local pos = data.tell()
+    data.seek(0,'b');
+    local sum = 0x00000000;
+    while(!data.eos()) {
+        sum += data.readn('i');
+    }
+    data.seek(pos,'b');
+    return ((~sum + 1) & 0xffffffff);
+}
+
+// Helper: jump out of firmware update loops by yielding to this function
+// This allows squirrel to idle, which allows the impOS to service the IP stack
+// If this pattern is not followed for long, tight loops, the imp will fall offline
+function pause(duration) {
+    return imp.wakeup(duration, function() {resume looper;});
+}
+
+// Helper: Used by agent callback for load_fw
+// This function works together with the pause function to allow the imp to idle squirrel
+// periodically during the target update process. This prevents connection loss.
+// Input: None (function will use the global fw_attr table)
+// Return: None
+function load_from_nor() {
+    server.log("Loading image from NOR");
+    fw_ptr = 0;
+    local block_idx = 0;
+    while (fw_ptr < fw_attr.size) {
+        local bytes_left = fw_attr.size - fw_ptr;
+        local read_bytes = bytes_left > BLOCKSIZE ? BLOCKSIZE : bytes_left;
+        local xfer_buffer = flash.read(fw_ptr + BLOCKSIZE, read_bytes);
+        local read_checksum = fw_attr.checksums[block_idx++];
+        local calc_checksum = modularsum32(xfer_buffer);
+        if (read_checksum != calc_checksum) {
+            throw format("Checksum Error when Reading Block %d from NOR. Read = 0x%08x, Calculated = 0x%08x",
+                block_idx - 1,read_checksum,calc_checksum);
+        }
+        stm32.wrMem(flash.read(fw_ptr + BLOCKSIZE, read_bytes));
+        fw_ptr += read_bytes;
+        server.log(format("FW Update: Loaded %d/%d bytes (Checksum Read: 0x%08x, Calc: 0x%08x)",
+            fw_ptr,fw_attr.size,read_checksum,calc_checksum));
+        
+        // idle squirrel briefly to allow OS to handle IP stack
+        yield pause(PAUSE_TIME);
+    }
+    looper = null;
+    server.log("FW Update: Finished Transferring Image to Target, Starting")
+    stm32.go();
+    server.log("Running")
 }
 
 // This class implements the UART bootloader command set
@@ -1059,19 +1115,12 @@ agent.on("load_fw", function(dummy) {
     stm32.extEraseMem(page_codes);
     
     server.log("FW Update: Target Flash Erased, Transfering Image to Target");
-    fw_ptr = 0;
-        
-    while (fw_ptr < fw_attr.size) {
-        local bytes_left = fw_attr.size - fw_ptr;
-        local read_bytes = bytes_left > BLOCKSIZE ? BLOCKSIZE : bytes_left;
-        stm32.wrMem(flash.read(fw_ptr + BLOCKSIZE, read_bytes));
-        fw_ptr += read_bytes;
-        server.log(format("FW Update: Loaded %d/%d bytes",fw_ptr,fw_attr.size));
-    }
     
-    server.log("FW Update: Finished Transferring Image to Target, Starting")
-    stm32.go();
-    server.log("Running")
+    // the transfer process is encapsulated in a function so that it can use the 
+    // yield/resume generator pattern. This is required to prevent connection loss
+    //load_from_nor();
+    looper = load_from_nor();
+    resume looper;
 });
 
 // Initiate of target image download NOR
