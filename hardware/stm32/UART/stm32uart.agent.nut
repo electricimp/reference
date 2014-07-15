@@ -161,7 +161,7 @@ function get_filetype(byte = null) {
     if (byte) { 
         char = byte;
     } else if (fetch_url != "") {
-        local char = http.get(fetch_url, { Range="bytes=0-1" }).sendsync().body[0];
+        char = http.get(fetch_url, { Range="bytes=0-1" }).sendsync().body[0];
     } else {
         throw "Unable to determine filetype: no args given and fetch_url not set"
     }
