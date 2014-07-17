@@ -4,6 +4,18 @@ In this example, the Electric Imp is connected to an external STM32 processor ov
 
 SPI Flash is abstracted through the [SPI Flash driver class](https://github.com/electricimp/reference/tree/master/hardware/SpiFlash).
 
+## Operation
+
+<p align="center"><img class="img-rounded" src="images/STM32_NOR_example_1.png"  width="800" /><br><i>Step 1: Agent is instructed via an HTTP request to fetch an image from an external server</i><br>&nbsp;</p>
+
+<p align="center"><img class="img-rounded" src="images/STM32_NOR_example_2.png"  width="800" /><br><i>Step 2: Agent downloads the new image file block-by-block, parses as necessary, and sends the binary image to the device. Each block comes with a 32-bit checksum, calculated by the agent, to protect the image when it is stored in flash. The device saves each block to flash, leaving the first sector of NOR for the checksums.</i><br>&nbsp;</p>
+
+<p align="center"><img class="img-rounded" src="images/STM32_NOR_example_3.png"  width="800" /><br><i>Step 3: Device serializes and saves information about the image file, including the checksums</i><br>&nbsp;</p>
+
+<p align="center"><img class="img-rounded" src="images/STM32_NOR_example_4.png"  width="800" /><br><i>Step 4: Agent is instructed via an HTTP request to initiate the target update process from NOR flash. Device loads the checksums and length into memory before beginning the image transfer.</i><br>&nbsp;</p>
+
+<p align="center"><img class="img-rounded" src="images/STM32_NOR_example_5.png"  width="800" /><br><i>Step 5: Device transfers the image to the target flash block-by-block, verifying the checksum for each block before writing it to the target. Device sends "GO" command (or resets target) to start execution when full image is loaded.</i><br>&nbsp;</p>
+
 ## Hardware
 
 To use this class, you'll need to connect one of the Imp's UARTs to one of the STM32's bootloader-compatible USARTs. Note that not all of the STM32's USARTs are available for use by the bootloader. 
