@@ -2,18 +2,19 @@
 // This file is licensed under the MIT License
 // http://opensource.org/licenses/MIT
 
-// **********************************************************************************************************************************
-class sensor {
 
-    i2c       = null;
-    pin_en_l  = null;
+class sensor 
+{
+    i2c = null;
+    pin_en_l = null;
     pin_drain = null;
-    addr      = null;
-    ready     = false;
-    name      = "sensor";
+    addr = null;
+    ready = false;
+    name = "sensor";
     static sensorlist = {};
 
-    constructor(_i2c=null, _pin_en_l=null, _pin_drain=null, _addr=null) {
+    constructor(_i2c=null, _pin_en_l=null, _pin_drain=null, _addr=null) 
+    {
         i2c = _i2c;
 		pin_en_l = _pin_en_l;
 		pin_drain = _pin_drain;
@@ -25,27 +26,35 @@ class sensor {
 		if (pin_drain) pin_drain.configure(DIGITAL_OUT);
 
         // Test the sensor and if its alive then setup a handler to execute all functions of the class
-        if (test()) {
+        
+        if (test())
+        {
             sensorlist[name] <- this;
             agent.on(name, agent_event.bindenv(this));
         }
     }
 
-	function enable() {
+	function enable() 
+	{
 		if (pin_en_l) pin_en_l.write(0);
 		if (pin_drain) pin_drain.write(1);
 		imp.sleep(0.001);
 	}
 
-	function disable() {
+	function disable() 
+	{
 		if (pin_en_l) pin_en_l.write(1);
 		if (pin_drain) pin_drain.write(0);
 	}
 
-	function test() {
-        if (i2c == null) {
+	function test() 
+	{
+        if (i2c == null) 
+        {
             ready = false;
-        } else {
+        } 
+        else 
+        {
       		enable();
       		local t = i2c.read(addr, "", 1);
       		ready = (t != null);
@@ -55,104 +64,134 @@ class sensor {
         return ready;
 	}
 
-    function get_nv(key) {
-    	if (("nv" in getroottable()) && (key in ::nv)) {
+    function get_nv(key) 
+    {
+    	if (("nv" in getroottable()) && (key in ::nv)) 
+    	{
             return ::nv[key];
-		} else {
+		} 
+		else 
+		{
     	    return null;
 		}
     }
 
-    function set_nv(key, value) {
+    function set_nv(key, value) 
+    {
         if (!("nv" in getroottable())) ::nv <- {};
         ::nv[key] <- value;
     }
 
-
-    function dump_nv(root = null) {
-        if ("nv" in getroottable()) {
+    function dump_nv(root = null) 
+    {
+        if ("nv" in getroottable()) 
+        {
             if (root == null) root = ::nv;
-            foreach (k,v in root) {
-                if (typeof v == "array" || typeof v == "table") {
+            foreach (k,v in root) 
+            {
+                if (typeof v == "array" || typeof v == "table") 
+                {
                     log("NV: " + k + " => " + v)
                     dump_nv(v);
-                } else {
+                } 
+                else 
+                {
                     log("NV: " + k + " => " + v)
                 }
             }
-        } else {
+        } 
+        else 
+        {
             log("NV: Not defined");
         }
-
     }
 
-
-    function get_wake_reason() {
-
-		switch (hardware.wakereason()) {
-		case WAKEREASON_POWER_ON: return "power on";
-		case WAKEREASON_TIMER: return "timer";
-		case WAKEREASON_SW_RESET: return "software reset";
-		case WAKEREASON_PINW: return "wake pin interrupt";
-		case WAKEREASON_NEW_SQUIRREL: return "new squirrel";
-		default: return "unknown";
+    function get_wake_reason()
+    {
+		switch (hardware.wakereason()) 
+		{
+			case WAKEREASON_POWER_ON:
+				return "power on";
+			case WAKEREASON_TIMER:
+				return "timer";
+			case WAKEREASON_SW_RESET:
+				return "software reset";
+			case WAKEREASON_PINW:
+				return "wake pin interrupt";
+			case WAKEREASON_NEW_SQUIRREL:
+				return "new squirrel";
+			default:
+				return "unknown";
 		}
     }
 
-
-	function get_bootreason() {
-        // log("GET bootreason: " + get_nv("reason"));
+	function get_bootreason() 
+	{
+        // server.log("GET bootreason: " + get_nv("reason"));
         return get_nv("reason");
 	}
 
-
-	function set_bootreason(_reason = null) {
+	function set_bootreason(_reason = null)
+	{
         set_nv("reason", _reason);
-        // log("SET bootreason to " + _reason);
+        // server.log("SET bootreason to " + _reason);
 	}
 
-    function agent_event(data) {
+    function agent_event(data) 
+    {
         last_activity = time();
-        if (data.method in this && typeof this[data.method] == "function") {
-
-            // Formulate the function and the callback
+        if (data.method in this && typeof this[data.method] == "function") 
+        {
+			// Formulate the function and the callback
+			
             local method = this[data.method];
             local params = [this];
             local callback = remote_response(name, data.method).bindenv(this);
 
-            if ("params" in data) {
-                if (typeof data.params == "array") {
+            if ("params" in data) 
+            {
+                if (typeof data.params == "array") 
+                {
                     params.extend(data.params);
-                } else {
+                } 
+                else 
+                {
                     params.push(data.params);
                 }
             }
+            
             params.push(callback);
 
             // Execute the function call with the parameters and callbacks
-            try {
+            
+            try 
+            {
                 method.acall(params);
-            } catch (e) {
-                log(format("Exception while executing '%s.%s': %s", name, data.method, e))
+            } 
+            catch (e) 
+            {
+                server.log(format("Exception while executing '%s.%s': %s", name, data.method, e))
             }
         }
     }
 
-    function reset() {
-        if (i2c) {
+    function reset() 
+    {
+        if (i2c) 
+        {
             i2c.write(0x00,format("%c",RESET_VAL));
             imp.sleep(0.01);
         }
     }
 
-
-	function sleep(dur = 600, delay = 0, callback = null) {
-
-		switch (hardware.wakereason()) {
-		case WAKEREASON_POWER_ON:
-		case WAKEREASON_NEW_SQUIRREL:
-			delay = delay >= 10 ? delay : 10;
-			break;
+	function sleep(dur = 600, delay = 0, callback = null)
+	{
+		switch (hardware.wakereason())
+		{
+			case WAKEREASON_POWER_ON:
+			case WAKEREASON_NEW_SQUIRREL:
+				delay = delay >= 10 ? delay : 10;
+				break;
 		}
 
 		server.log("Sleeping in " + delay + " for " + dur + ". Last wake reason: " + get_wake_reason());
@@ -166,74 +205,74 @@ class sensor {
 				server.expectonlinein(dur);
 				imp.deepsleepfor(dur);
 			}.bindenv(this))
-		}.bindenv(this))
-
+		}.bindenv(this));
 	}
 
-
-    function remote_response(dev, method) {
-        return function(data = null) {
-            agent.send(dev + "." + method, data);
-        }
+    function remote_response(dev, method) 
+    {
+        return function(data = null){agent.send(dev + "." + method, data);}
     }
 
 }
 
-// **********************************************************************************************************************************
 /* LIS3DH Ultra-low Power 3-axis Accelerometer
  * http://www.st.com/web/catalog/sense_power/FM89/SC444/PF250725
  *
  */
-class lis3dh extends sensor {
-
-    static CTRL_REG1     = "\x20";
-    static CTRL_REG2     = "\x21";
-    static CTRL_REG3     = "\x22";
-    static CTRL_REG4     = "\x23";
-    static CTRL_REG5     = "\x24";
-    static CTRL_REG6     = "\x25";
-    static DATA_X_L      = "\x28";
-    static DATA_X_H      = "\x29";
-    static DATA_Y_L      = "\x2A";
-    static DATA_Y_H      = "\x2B";
-    static DATA_Z_L      = "\x2C";
-    static DATA_Z_H      = "\x2D";
-    static INT1_CFG      = "\x30";
-    static INT1_SRC      = "\x31";
-    static INT1_THS      = "\x32";
+ 
+class lis3dh extends sensor 
+{
+    static CTRL_REG1 = "\x20";
+    static CTRL_REG2 = "\x21";
+    static CTRL_REG3 = "\x22";
+    static CTRL_REG4 = "\x23";
+    static CTRL_REG5 = "\x24";
+    static CTRL_REG6 = "\x25";
+    static DATA_X_L = "\x28";
+    static DATA_X_H = "\x29";
+    static DATA_Y_L = "\x2A";
+    static DATA_Y_H = "\x2B";
+    static DATA_Z_L = "\x2C";
+    static DATA_Z_H = "\x2D";
+    static INT1_CFG = "\x30";
+    static INT1_SRC = "\x31";
+    static INT1_THS = "\x32";
     static INT1_DURATION = "\x33";
-    static TAP_CFG       = "\x38";
-    static TAP_SRC       = "\x39";
-    static TAP_THS       = "\x3A";
-    static TIME_LIMIT    = "\x3B";
-    static TIME_LATENCY  = "\x3C";
-    static TIME_WINDOW   = "\x3D";
-    static WHO_AM_I      = "\x0F";
+    static TAP_CFG = "\x38";
+    static TAP_SRC = "\x39";
+    static TAP_THS = "\x3A";
+    static TIME_LIMIT = "\x3B";
+    static TIME_LATENCY = "\x3C";
+    static TIME_WINDOW = "\x3D";
+    static WHO_AM_I = "\x0F";
     static FLAG_SEQ_READ = "\x80";
-    WAKE_PIN             = null;
+    WAKE_PIN = null;
 
     last_state = {x = null, y = null, z = null};
 
     static name = "accelerometer";
 
-    constructor(_i2c, _wakepin, _addr = 0x30) {
+    constructor(_i2c, _wakepin, _addr = 0x30) 
+    {
         WAKE_PIN = _wakepin;
         base.constructor(_i2c, null, null, _addr);
     }
 
-    function stop(callback = null) {
+    function stop(callback = null) 
+    {
         WAKE_PIN.configure(DIGITAL_IN);
         set_bootreason();
         if (callback) callback();
     }
 
-
-    function read(callback = null, initialise = true) {
-
+    function read(callback = null, initialise = true) 
+    {
         if (!ready) return null;
 
         // Configure settings of the accelerometer
-        if (initialise) {
+        
+        if (initialise) 
+        {
             i2c.write(addr, CTRL_REG1 + "\x47");  // Turn on the sensor, enable X, Y, and Z, ODR = 50 Hz
             i2c.write(addr, CTRL_REG2 + "\x00");  // High-pass filter disabled
             i2c.write(addr, CTRL_REG3 + "\x40");  // Interrupt driven to INT1 pad
@@ -245,7 +284,9 @@ class lis3dh extends sensor {
 
         local data = i2c.read(addr, (DATA_X_L[0] | FLAG_SEQ_READ[0]).tochar(), 6);
         local x = 0, y = 0, z = 0;
-        if (data != null) {
+        
+        if (data != null) 
+        {
             x = (data[1] - (data[1]>>7)*256) / 64.0;
             y = (data[3] - (data[3]>>7)*256) / 64.0;
             z = (data[5] - (data[5]>>7)*256) / 64.0;
@@ -257,11 +298,12 @@ class lis3dh extends sensor {
         return null;
     }
 
-  function door_swing(callback) {
-
+  function door_swing(callback) 
+  {
         if (!ready) return null;
 
         // Setup the accelerometer for sleep-polling
+        
         i2c.write(addr, CTRL_REG1 + "\xA7");        // Turn on the sensor, enable X, Y, and Z, ODR = 100 Hz
         i2c.write(addr, CTRL_REG2 + "\xA7");        // High-pass filter disabled
         i2c.write(addr, CTRL_REG3 + "\x40");        // Interrupt driven to INT1 pad
@@ -274,27 +316,28 @@ class lis3dh extends sensor {
         i2c.read(addr, INT1_SRC, 1);                // Clear any interrupts
 
         // Record the mode as free_fall for boot checks
+        
         set_bootreason(name + ".movement_detect");
 
         // Configure wake pin for handling the interrupt
+        
         WAKE_PIN.configure(DIGITAL_IN_WAKEUP, function() {
-
-            // Handle only active high transitions
-            if (WAKE_PIN.read() == 1) {
-
-                // Call the callback
+			// Handle only active high transitions
+            if (WAKE_PIN.read() == 1) 
+            {
+				// Call the callback
                 callback();
             }
 
         }.bindenv(this));
     }
 
-
-  function free_fall_detect(callback) {
-
+  function free_fall_detect(callback) 
+  {
         if (!ready) return null;
 
         // Setup the accelerometer for sleep-polling
+        
         i2c.write(addr, CTRL_REG1 + "\xA7");        // Turn on the sensor, enable X, Y, and Z, ODR = 100 Hz
         i2c.write(addr, CTRL_REG2 + "\x00");        // High-pass filter disabled
         i2c.write(addr, CTRL_REG3 + "\x40");        // Interrupt driven to INT1 pad
@@ -307,17 +350,18 @@ class lis3dh extends sensor {
         i2c.read(addr, INT1_SRC, 1);                // Clear any interrupts
 
         // Record the mode as free_fall for boot checks
+        
         set_bootreason(name + ".free_fall_detect");
 
         // Configure wake pin for handling the interrupt
+        
         WAKE_PIN.configure(DIGITAL_IN_WAKEUP, function() {
-
             // Handle only active high transitions
-            if (WAKE_PIN.read() == 1) {
-
-                // Call the callback
+            if (WAKE_PIN.read() == 1) 
+            {
+				// Call the callback
+				
                 callback();
-
                 imp.wakeup(1, function() {
                     // Clear the interrupt after a small delay
                     i2c.read(addr, INT1_SRC, 1);
@@ -326,21 +370,23 @@ class lis3dh extends sensor {
         }.bindenv(this));
     }
 
-
-  function inertia_detect(callback) {
-
+  function inertia_detect(callback) 
+  {
         if (!ready) return null;
 
         // Work out which axes to exclude
+        
         local init_pos = read();
         local axes = { };
         axes.x <- (math.fabs(init_pos.x) < 0.5);
         axes.y <- (math.fabs(init_pos.y) < 0.5);
         axes.z <- (math.fabs(init_pos.z) < 0.5);
         axes.cfg <- ((axes.x ? 0x02 : 0x00) | (axes.y ? 0x08 : 0x00) | (axes.z ? 0x20 : 0x00)).tochar();
-        // log(format("Initial orientation:  X: %0.02f, Y: %0.02f, Z: %0.02f  =>  0x%02x", init_pos.x, init_pos.y, init_pos.z, axes.cfg[0]));
+        
+        // server.log(format("Initial orientation:  X: %0.02f, Y: %0.02f, Z: %0.02f  =>  0x%02x", init_pos.x, init_pos.y, init_pos.z, axes.cfg[0]));
 
         // Setup the accelerometer for sleep-polling
+        
         i2c.write(addr, CTRL_REG1 + "\xA7");        // Turn on the sensor, enable X, Y, and Z, ODR = 100 Hz
         i2c.write(addr, CTRL_REG2 + "\x00");        // High-pass filter disabled
         i2c.write(addr, CTRL_REG3 + "\x40");        // Interrupt driven to INT1 pad
@@ -353,32 +399,32 @@ class lis3dh extends sensor {
         i2c.read(addr, INT1_SRC, 1);                // Clear any interrupts
 
         // Record the mode as free_fall for boot checks
+        
         set_bootreason(name + ".inertia_detect");
 
         // Configure wakepin for handling the interrupt
+        
         WAKE_PIN.configure(DIGITAL_IN_WAKEUP, function() {
-
             // Handle only active high transitions
-            if (WAKE_PIN.read() == 1) {
-
+            if (WAKE_PIN.read() == 1) 
+            {
                 // Call the callback
+                
                 callback();
-
                 imp.wakeup(0.5, function() {
                     // Clear the interrupt after a small delay
                     i2c.read(addr, INT1_SRC, 1);
                 }.bindenv(this));
             }
-
         }.bindenv(this));
     }
 
-
-  function movement_detect(callback) {
-
+  function movement_detect(callback)
+  {
         if (!ready) return null;
 
         // Setup the accelerometer for sleep-polling
+        
         i2c.write(addr, CTRL_REG1 + "\xA7");        // Turn on the sensor, enable X, Y, and Z, ODR = 100 Hz
         i2c.write(addr, CTRL_REG2 + "\x00");        // High-pass filter disabled
         i2c.write(addr, CTRL_REG3 + "\x40");        // Interrupt driven to INT1 pad
@@ -391,27 +437,28 @@ class lis3dh extends sensor {
         i2c.read(addr, INT1_SRC, 1);                // Clear any interrupts
 
         // Record the mode as free_fall for boot checks
+        
         set_bootreason(name + ".movement_detect");
 
         // Configure wake pin for handling the interrupt
+        
         WAKE_PIN.configure(DIGITAL_IN_WAKEUP, function() {
-
             // Handle only active high transitions
-            if (WAKE_PIN.read() == 1) {
-
+            if (WAKE_PIN.read() == 1) 
+            {
                 // Call the callback
+                
                 callback();
             }
-
         }.bindenv(this));
     }
 
-
-  function position_detect(callback) {
-
+  function position_detect(callback)
+  {
         if (!ready) return null;
 
         // Setup the accelerometer for sleep-polling
+        
         i2c.write(addr, CTRL_REG1 + "\xA7");        // Turn on the sensor, enable X, Y, and Z, ODR = 100 Hz
         i2c.write(addr, CTRL_REG2 + "\x00");        // High-pass filter disabled
         i2c.write(addr, CTRL_REG3 + "\x40");        // Interrupt driven to INT1 pad
@@ -424,28 +471,29 @@ class lis3dh extends sensor {
         i2c.read(addr, INT1_SRC, 1);                // Clear any interrupts
 
         // Configure wake pin for handling the interrupt
+        
         WAKE_PIN.configure(DIGITAL_IN_WAKEUP, function() {
-
             // Handle only active high transitions
-            if (WAKE_PIN.read() == 1) {
-
+            
+            if (WAKE_PIN.read() == 1) 
+            {
                 // Call the callback
+                
                 callback();
             }
-
         }.bindenv(this));
 
         // Record the mode as free_fall for boot checks
+        
         set_bootreason(name + ".position_detect");
-
     }
 
-
-  function click_detect(callback) {
-
+  function click_detect(callback) 
+  {
         if (!ready) return null;
 
         // Setup the accelerometer for sleep-polling
+        
         i2c.write(addr, CTRL_REG1 + "\xA7");        // Turn on the sensor, enable X, Y, and Z, ODR = 100 Hz
         i2c.write(addr, CTRL_REG2 + "\x00");        // High-pass filter disabled
         i2c.write(addr, CTRL_REG3 + "\xC0");        // Interrupt driven to INT1 pad with CLICK detection enabled
@@ -461,56 +509,66 @@ class lis3dh extends sensor {
         i2c.read(addr, TAP_SRC, 1);                 // Clear any interrupts
 
         // Configure wake pin for handling the interrupt
+        
         WAKE_PIN.configure(DIGITAL_IN_WAKEUP, function() {
-
             // Handle only active high transitions
+            
             local reason = i2c.read(addr, TAP_SRC, 1);
-            if (WAKE_PIN.read() == 1) {
+            if (WAKE_PIN.read() == 1) 
+            {
                 local xtap = (reason[0] & 0x01) == 0x01 ? 1 : 0;
                 local ytap = (reason[0] & 0x02) == 0x02 ? 1 : 0;
                 local ztap = (reason[0] & 0x04) == 0x04 ? 1 : 0;
                 local sign = (reason[0] & 0x08) == 0x08 ? -1 : 1;
 
                 // Call the callback
-                // log(format("Clickety clack: [X: %d, Y: %d, Z: %d, Sign: %d]", xtap, ytap, ztap, sign))
+                // server.log(format("Clickety clack: [X: %d, Y: %d, Z: %d, Sign: %d]", xtap, ytap, ztap, sign))
+                
                 callback();
             }
-
         }.bindenv(this));
 
         // Record the mode as free_fall for boot checks
+        
         set_bootreason(name + ".click_detect");
-
     }
 
-    function threshold(thresholds, callback) {
+    function threshold(thresholds, callback) 
+    {
         // Read the accelerometer data
-        read(function (res) {
+        
+        read(function(res) {
             local state = clone last_state;
 
-            if (!("axes" in thresholds) || thresholds.axes.toupper().find("X") != null) {
+            if (!("axes" in thresholds) || thresholds.axes.toupper().find("X") != null) 
+            {
                 if (res.x <= thresholds.low) state.x = "low";
                 else if (res.x >= thresholds.high) state.x = "high";
                 else state.x = "mid";
             }
 
-            if (!("axes" in thresholds) || thresholds.axes.toupper().find("Y") != null) {
+            if (!("axes" in thresholds) || thresholds.axes.toupper().find("Y") != null) 
+            {
                 if (res.y <= thresholds.low) state.y = "low";
                 else if (res.y >= thresholds.high) state.y = "high";
                 else state.y = "mid";
             }
 
-            if (!("axes" in thresholds) || thresholds.axes.toupper().find("Z") != null) {
+            if (!("axes" in thresholds) || thresholds.axes.toupper().find("Z") != null) 
+            {
                 if (res.z <= thresholds.low) state.z = "low";
                 else if (res.z >= thresholds.high) state.z = "high";
                 else state.z = "mid";
             }
 
-            if (last_state.x != state.x || last_state.y != state.y || last_state.z != state.z) {
+            if (last_state.x != state.x || last_state.y != state.y || last_state.z != state.z) 
+            {
                 last_state = clone state;
                 callback(res);
-            } else {
-                imp.wakeup(0.1, function() {
+            } 
+            else 
+            {
+                imp.wakeup(0.1, function(){
                     threshold(thresholds, callback);
                 }.bindenv(this))
             }
@@ -527,22 +585,25 @@ LED_GREEN <- hardware.pinF;
 LED_RED <- hardware.pinE;
 
 // Change Timeouts as desired
+
 ARMED_TIMEOUT <- 10.0;
 DISARMED_TIMEOUT <- 1.0;
 
-class security{
+class Security
+{
     STATE = 4;
-    static ALARM    = 0;
-    static CLEAR    = 1;
-    static ARMED    = 3;
+    static ALARM = 0;
+    static CLEAR = 1;
+    static ARMED = 3;
     static DISARMED = 4;
-    ACCEL           = null;
-    MOVEMENT        = null;
-    READ_CNT        = 0;
-    GREEN_LED       = null;
-    RED_LED         = null;
+    ACCEL = null;
+    MOVEMENT = null;
+    READ_CNT = 0;
+    GREEN_LED = null;
+    RED_LED = null;
 
     // pass an instance of the lis3dh class
+    
     constructor(_accel, _armbtn, _disarmbtn, _greenled, _redled)
     {
         ACCEL = _accel;
@@ -571,36 +632,43 @@ class security{
         }.bindenv(this));
     }
 
-    function readaccel(){
+    function readaccel()
+    {
         accel.test();
         // server.log("reading..")
         local result = null;
         result = accel.read();
 
-        if(result!=null && READ_CNT < 10){
+        if(result!=null && READ_CNT < 10)
+        {
             server.log(READ_CNT + ": " +  result["x"] + " | " + result["y"] + " | " + result["z"]);
-            if (math.fabs(result["z"])>=0.01){
+            
+            if (math.fabs(result["z"])>=0.01)
+            {
                 server.log("door swing");
                 event();
                 return null;
             }
+            
             READ_CNT++;
             imp.wakeup(0.10, function(){
                 readaccel()}.bindenv(this)
                 );
         }
-        else{
+        else
+        {
             READ_CNT = 0;
         }
-
-
     }
 
-    function event(){
-        if (MOVEMENT == null){
+    function event()
+    {
+        if (MOVEMENT == null)
+        {
             MOVEMENT = true;
             GREEN_LED.write(1);
-            switch(STATE){
+            switch(STATE)
+            {
                 case ARMED:
                     server.log("ALARM CONDITION");
                     agent.send("alarm", null)
@@ -608,37 +676,42 @@ class security{
                         clearMovement();
                     }.bindenv(this));
                     break;
+                    
                 case DISARMED:
                     imp.wakeup(DISARMED_TIMEOUT, function(){
                         clearMovement();
                     }.bindenv(this));
                     server.log("FAULT CONDITION");
                     break;
+                    
                 default:
                     break;
-                }
-            server.log("I moved!")
             }
+            server.log("I moved!")
         }
+    }
 
-    function arm(){
+    function arm()
+    {
         STATE = ARMED;
         RED_LED.write(0);
         server.log("System ARMED");
     }
 
-    function disarm(){
+    function disarm()
+    {
         STATE = DISARMED;
         RED_LED.write(1);
         MOVEMENT = null;
         server.log("System DISARMED");
     }
 
-    function clearMovement(){
+    function clearMovement()
+    {
         server.log("timer reset");
         GREEN_LED.write(0);
         MOVEMENT = null;
     }
 }
 
-s <- security(accel, BTN_ARM, BTN_DISARM, LED_GREEN, LED_RED);
+s <- Security(accel, BTN_ARM, BTN_DISARM, LED_GREEN, LED_RED);

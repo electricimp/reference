@@ -446,7 +446,7 @@ function errorHandler(functionCode, exceptionCode) {
     // Handle some errors
 }
 
-function callbackHandler(PDU) {
+function callbackHandler(data) {
     // Generic handler for callbacks from read functions
 }
 
