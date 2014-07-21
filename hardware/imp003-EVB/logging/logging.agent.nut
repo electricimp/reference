@@ -29,7 +29,7 @@ function updatePlotly(temp, lux) {
                     title="Date"
                     type="date"
                     // Set autorange to false to use GRAPH_WINDOW setting
-                    autorange=false
+                    autorange=true
                     range=[format("%i000", timestamp - (GRAPH_WINDOW * 3600)), format("%i000", timestamp)]
                 }
                 yaxis={
