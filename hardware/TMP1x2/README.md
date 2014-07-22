@@ -8,11 +8,11 @@ Usage
 
 ```
 // 8-bit (left-justified I2C address. Just an example.)
-const TMP112_ADDR = 0x30;
+const TMP1x2_ADDR = 0x30;
 
 alert <- hardware.pin1;
 alert.configure(DIGITAL_IN);
 i2c <- hardware.i2c89;
 i2c.configure(CLOCK_SPEED_400_KHZ);
-tempsensor = TMP112(i2c, TMP112_ADDR, alert);
+tempsensor = TMP1x2(i2c, TMP1x2_ADDR, alert);
 ```
