@@ -12,8 +12,6 @@
 //   much earlier than server.onunexpecteddisconnect().
 // - Back off the reconnection attempts to conserve batteries.
 // - Put the device to deep sleep while offline and reattempt to connect on wakeup.
-// - Provide for developer requested connect() and disconnect() functions for manual
-//   override of the defaul behaviour.
 // 
 class Connection {
 
@@ -22,16 +20,42 @@ class Connection {
     connected = null;
     reason = null;
     callbacks = null;
+    blinkup_timer = null;
     
     // .........................................................................
-    constructor() {
+    constructor(doconnect = true) {
         callbacks = {};
         server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, CONNECTION_TIMEOUT);
         server.onunexpecteddisconnect(disconnected.bindenv(this));
         connected = server.isconnected();
-        if (!connected) server.connect(reconnect.bindenv(this), CONNECTION_TIMEOUT);
+        if (doconnect) connect();
     }
     
+    // .........................................................................
+    function connect(withblinkup = true) {
+        if (!connected) server.connect(reconnect.bindenv(this), CONNECTION_TIMEOUT);
+        
+        if (withblinkup) {
+            // Enable BlinkUp for 60 seconds
+            imp.enableblinkup(true);
+            if (blinkup_timer) imp.cancelwakeup(blinkup_timer);
+            blinkup_timer = imp.wakeup(60, function() {
+                blinkup_timer = null;
+                imp.enableblinkup(false);
+            }.bindenv(this))
+            
+        }
+    }
+    
+    // .........................................................................
+    function disconnect() {
+        server.disconnect();
+        if (connected) {
+            connected = false;
+            if ("disconnected" in callbacks) callbacks.disconnected();
+        } 
+    }
+
     // .........................................................................
     function disconnected(_reason) {
         local fireevent = connected;
