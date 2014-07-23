@@ -11,5 +11,5 @@ Driver class for a [Si7021 temperature/humidity sensor](http://www.digikey.com/p
 These sensors us i2c wire protocol where the Electric Imp is the master
 To use:
 
-- tie scl and sdas line to pull-up resistors (10K)
+- tie scl and sdas line to pull-up resistors (4.7K)
 - tie vdd to a decoupling capacitor (0.1uF)
