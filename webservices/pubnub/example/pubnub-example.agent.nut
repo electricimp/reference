@@ -289,3 +289,66 @@ class PubNub {
         });
     }
 }
+
+// publish key, subscribe key, secret key, [uuid]
+// if no uuid is provided, the agent's external unique ID is used
+pubNub <- PubNub(PUBKEY, SUBKEY, SECRETKEY);
+
+// Publish to channel whenever device posts a new datapoint
+device.on("data", function(val) {
+    pubNub.publish("temp_c",val.temp);
+});
+
+// subscribe to our own temperature channel, as well as the widely-used "demo" channel
+pubNub.subscribe(["temp_c", "demo"], function(err, data, tt) {
+    if (err != null) {
+        server.log(err);
+        return;
+    }
+    
+    local logstr = "Received at " + tt + ": "
+    local idx = 1;
+    foreach (channel, value in data) {
+        logstr += (channel + ": "+ value);
+        if (idx++ < data.len()) {
+            logstr += ", ";
+        }
+    }
+    server.log(logstr);
+});
+
+// get up to 50 historical values from the temp_c channel
+pubNub.history("temp_c",50,function(err, data) {
+    if (err != null) {
+        server.error(err);
+    } else {
+        server.log("History: "+http.jsonencode(data));
+    }
+});
+
+// list the channels that this UUID is currently present on
+pubNub.whereNow(function(err,channels) {
+    if (err != null) {
+        server.log(err);
+    }
+    server.log("Currently watching channels: "+http.jsonencode(channels));
+});
+
+// list the UUIDs that are currently watching the temp_c channel
+pubNub.hereNow("temp_c",function(err,result) {
+    if (err != null) {
+        server.log(err);
+    }
+    server.log(result.occupancy + " Total UUIDs watching temp_c: "+http.jsonencode(result.uuids));
+});
+
+// list all channels and UUIDs that are currently using the same subscribe key as us
+pubNub.globalHereNow(function(err,result) {
+    if (err != null) {
+        server.log(err);
+    }
+    server.log("Other Channels Using this Subscribe Key:");
+    foreach (chname, channel in result) {
+        server.log(chname + " (Occupancy: "+channel.occupancy+"): "+http.jsonencode(channel.uuids));
+    }
+});
