@@ -1,10 +1,13 @@
-//Copyright (C) 2014 electric imp, inc.
-//
-//I2C EEPROM, CAT24C Family
-// http://www.onsemi.com/pub_link/Collateral/CAT24C02-D.PDF
-const PAGE_LEN = 16;        // page length in bytes
-const WRITE_TIME = 0.005;   // max write cycle time in seconds
-class CAT24C {
+// Copyright (c) 2014 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
+// I2C EEPROM, Microchip 24FC Family
+// http://ww1.microchip.com/downloads/en/DeviceDoc/21754M.pdf
+const PAGE_LEN = 128; // 128-byte pages
+const WRITE_TIME = 0.005; // 5 ms page write limit
+
+class Eeprom24FC {
     _i2c = null;
     _addr = null;
     
@@ -14,10 +17,8 @@ class CAT24C {
     }
     
     function read(len, offset) {
-        // "Selective Read" by preceding the read with a "dummy write" of just the offset (no data)
-        _i2c.write(_addr, format("%c",offset));
-    
-        local data = _i2c.read(_addr, "", len);
+        // "Random Read": write the offset, then read
+        local data = _i2c.read(_addr, format("%c%c", (offset & 0xFF00) >> 8, offset & 0xff), len);
         if (data == null) {
             server.error(format("I2C Read Failure. Device: 0x%02x Register: 0x%02x",_addr,offset));
             return -1;
@@ -30,7 +31,7 @@ class CAT24C {
         
         while(dataIndex < data.len()) {
             // chunk of data we will send per I2C write. Can be up to 1 page long.
-            local chunk = format("%c",offset);
+            local chunk = format("%c%c",(offset & 0xFF00) >> 8, offset & 0xff);
             // check if this is the first page, and if we'll hit the boundary
             local leftOnPage = PAGE_LEN - (offset % PAGE_LEN);
             // set the chunk length equal to the space left on the page
@@ -49,16 +50,3 @@ class CAT24C {
         }
     }
 }
-
-/* RUNTIME BEGINS HERE =======================================================*/ 
-
-//Initialize the I2C bus
-i2c <- hardware.i2c89;
-i2c.configure(CLOCK_SPEED_100_KHZ);
-// Configure the EEPROM
-eeprom <- CAT24C(i2c);
-// write some test data
-local testStr = "Electric Imp!";
-// write the string to the eepromm, starting at offset 0
-eeprom.write(testStr,0);
-server.log("Read Back: "+eeprom.read(testStr.len(),0));
