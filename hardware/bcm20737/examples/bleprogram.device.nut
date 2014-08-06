@@ -214,21 +214,6 @@ class BCM20737 {
 
 /* GENERAL FUNCTIONS ---------------------------------------------------------*/
 
-function btn1Pressed() {
-    if (btn1.read()) {
-        server.log("Dumping EEPROM to agent");
-        memdump();
-        // debounce
-        imp.sleep(0.2);
-    }
-}
-function btn2Pressed() {
-    if (btn2.read()) {
-        ble.clearExtMemory();
-        // debounce
-        imp.sleep(0.2);
-    }
-}
 function memdump(dummy=null) {
     server.log("Dumping BCM20737 external memory to agent");
     agent.send("start",0);
@@ -255,15 +240,11 @@ agent.on("program", function(imgdata) {
 imp.enableblinkup(true);
 server.log("Initializing");
 
-btn1 <- hardware.pin1;
-btn2 <- hardware.pin6;
 rst_l <- hardware.pin7;
 i2c <- hardware.i2c89;
 wp <- hardware.pin5;
 
 i2c.configure(CLOCK_SPEED_400_KHZ);
-btn1.configure(DIGITAL_IN_PULLDOWN, btn1Pressed); // dump EEPROM to agent
-btn2.configure(DIGITAL_IN_PULLDOWN, btn2Pressed); // erase EEPROM
 rst_l.configure(DIGITAL_IN);
 wp.configure(DIGITAL_IN);
 
