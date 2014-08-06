@@ -1,7 +1,7 @@
 
-# BLE Tracker - Sample BLE112 application
+# BCM20737 Programmer Example
 
-This sample BLE112 application is a Bluetooth Smart device tracker. It continously scans for BLE "peripheral" devices, such as iBeacons, fitness monitors like Fitbit and Nike and TI Sensor Tags. Any device that advertises its presence will be recorded and some devices will output extra information about themselves. The signal level of each visible device is graphed using the Google Charts API.
+This example code shows how to program new application images built for the BCM20737 onto the device via the imp. 
 
 ## Setup
 
