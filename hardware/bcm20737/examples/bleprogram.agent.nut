@@ -20,18 +20,19 @@ http.onrequest(function(req, res) {
     res.header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
 
     if (req.path == "/dl") {
-        server.log("Serving Agent Buffer");
+        server.log("Serving Agent Buffer\n");
         res.send(200, agentbuffer);
     } else if (req.path == "/dump") {
         device.send("dump",0);
-        res.send(200, "Dumping EEPROM");
+        res.send(200, "Dumping EEPROM\n");
     } else if (req.path == "/program") {
-        local img = req.body;
-        server.log(format("Sending %d byte image to device",img.len()));
-        device.send("program", img);
-        res.send(200, "OK");
+        server.log(format("Sending %d byte image to device",req.body.len()));
+        local imgblob = blob(req.body.len());
+        imgblob.writestring(req.body);
+        device.send("program", {ds_img = imgblob, ds_sel = 0, ss_img = null, ss_sel = null});
+        res.send(200, "OK\n");
     } else {
         // send a response to prevent browser hang
-        res.send(200, "No Action");
+        res.send(200, "No Action\n");
     }
 });

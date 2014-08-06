@@ -1,26 +1,25 @@
-// Copyright (c) 2014 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
 // I2C EEPROM, Microchip 24FC Family
 // http://ww1.microchip.com/downloads/en/DeviceDoc/21754M.pdf
 const PAGE_LEN = 128; // 128-byte pages
 const WRITE_TIME = 0.005; // 5 ms page write limit
-
 class Eeprom24FC {
-    _i2c = null;
-    _addr = null;
+    i2c = null;
+    addr = null;
+    SIZE = null;
+    CHUNKSIZE = 8192;
     
-    constructor(i2c, addr=0xA0) {
-        _i2c = i2c;
-        _addr = addr;
+    constructor(_i2c, _wp = null, _size = null, _addr = 0xA0) {
+        i2c = _i2c;
+        addr = _addr;
+        wp = _wp;
+        SIZE = _size;
     }
     
     function read(len, offset) {
         // "Random Read": write the offset, then read
-        local data = _i2c.read(_addr, format("%c%c", (offset & 0xFF00) >> 8, offset & 0xff), len);
+        local data = i2c.read(addr, format("%c%c", (offset & 0xFF00) >> 8, offset & 0xff), len);
         if (data == null) {
-            server.error(format("I2C Read Failure. Device: 0x%02x Register: 0x%02x",_addr,offset));
+            server.error(format("I2C Read Failure. Device: 0x%02x Register: 0x%02x",addr,offset));
             return -1;
         }
         return data;
@@ -28,7 +27,7 @@ class Eeprom24FC {
     
     function write(data, offset) {
         local dataIndex = 0;
-        
+        if (wp) { wp.write(0); }
         while(dataIndex < data.len()) {
             // chunk of data we will send per I2C write. Can be up to 1 page long.
             local chunk = format("%c%c",(offset & 0xFF00) >> 8, offset & 0xff);
@@ -42,11 +41,30 @@ class Eeprom24FC {
             for (local chunkIndex = 0; chunkIndex < chunkLen; chunkIndex++) {
                 chunk += format("%c",data[dataIndex++]);  
             }
-            _i2c.write(_addr, chunk);
+            i2c.write(addr, chunk);
             offset += chunkLen;
             // write takes a finite (and rather long) amount of time. Subsequent writes
             // before the write cycle is completed fail silently. You must wait.
             imp.sleep(WRITE_TIME);
         }
+        if (wp) { wp.write(1) };
+    }
+    
+    // write entire EEPROM to 0x00
+    // Input: None
+    // Return: None
+    function chipErase() {
+        local zerobuffer = blob(CHUNKSIZE);
+        local numchunks = SIZE / CHUNKSIZE;
+        while (!zerobuffer.eos()) {
+            zerobuffer.writen(0x00000000,'i');
+        }
+        wp.configure(DIGITAL_OUT);
+        wp.write(0);
+        for (local i = 0; i < numchunks; i++) {
+            write(zerobuffer, i * CHUNKSIZE);
+            server.log(((i + 1) * CHUNKSIZE)+"/"+(numchunks * CHUNKSIZE)+" bytes erased");
+        }
+        wp.configure(DIGITAL_IN);
     }
 }
