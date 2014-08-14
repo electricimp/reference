@@ -150,21 +150,87 @@ class SX1506 extends SX150x{
                         REGSNSLO   = 0x0C,
                         REGINTSRC  = 0x0E}
 
-    constructor(i2c, address=0x20){
+    constructor(i2c, address=0x40){
         base.constructor(i2c, address);
         _callbacks.resize(16,null);
+        this.reset();
         this.clearAllIrqs();
+    }
+    
+    //Write registers to default values
+    function reset(){
+        writeReg(BANK_A.REGDIR, 0xFF);
+        writeReg(BANK_A.REGDATA, 0xFF);
+        writeReg(BANK_A.REGPULLUP, 0x00);
+        writeReg(BANK_A.REGPULLDN, 0x00);
+        writeReg(BANK_A.REGINTMASK, 0xFF);
+        writeReg(BANK_A.REGSNSHI, 0x00);
+        writeReg(BANK_A.REGSNSLO, 0x00);
+        
+        writeReg(BANK_B.REGDIR, 0xFF);
+        writeReg(BANK_B.REGDATA, 0xFF);
+        writeReg(BANK_B.REGPULLUP, 0x00);
+        writeReg(BANK_B.REGPULLDN, 0x00);
+        writeReg(BANK_A.REGINTMASK, 0xFF);
+        writeReg(BANK_B.REGSNSHI, 0x00);
+        writeReg(BANK_B.REGSNSLO, 0x00);
+    }
+
+    function debug(){
+        server.log(format("A-DATA   (0x%02X): 0x%02X",BANK_A.REGDATA, readReg(BANK_A.REGDATA)));
+        imp.sleep(0.1);
+        server.log(format("A-DIR    (0x%02X): 0x%02X",BANK_A.REGDIR, readReg(BANK_A.REGDIR)));
+        imp.sleep(0.1);
+        server.log(format("A-PULLUP (0x%02X): 0x%02X",BANK_A.REGPULLUP, readReg(BANK_A.REGPULLUP)));
+        imp.sleep(0.1);
+        server.log(format("A-PULLDN (0x%02X): 0x%02X",BANK_A.REGPULLDN, readReg(BANK_A.REGPULLDN)));
+        imp.sleep(0.1);
+        server.log(format("A-INTMASK (0x%02X): 0x%02X",BANK_A.REGINTMASK, readReg(BANK_A.REGINTMASK)));
+        imp.sleep(0.1);
+        server.log(format("A-SNSHI  (0x%02X): 0x%02X",BANK_A.REGSNSHI, readReg(BANK_A.REGSNSHI)));
+        imp.sleep(0.1);
+        server.log(format("A-SNSLO  (0x%02X): 0x%02X",BANK_A.REGSNSLO, readReg(BANK_A.REGSNSLO)));
+        imp.sleep(0.1);
+        server.log(format("B-DATA   (0x%02X): 0x%02X",BANK_B.REGDATA, readReg(BANK_B.REGDATA)));
+        imp.sleep(0.1);
+        server.log(format("B-DIR    (0x%02X): 0x%02X",BANK_B.REGDIR, readReg(BANK_B.REGDIR)));
+        imp.sleep(0.1);
+        server.log(format("B-PULLUP (0x%02X): 0x%02X",BANK_B.REGPULLUP, readReg(BANK_B.REGPULLUP)));
+        imp.sleep(0.1);
+        server.log(format("B-PULLDN (0x%02X): 0x%02X",BANK_B.REGPULLDN, readReg(BANK_B.REGPULLDN)));
+        imp.sleep(0.1);
+        server.log(format("B-INTMASK (0x%02X): 0x%02X",BANK_B.REGINTMASK, readReg(BANK_B.REGINTMASK)));
+        imp.sleep(0.1);
+        server.log(format("B-SNSHI  (0x%02X): 0x%02X",BANK_B.REGSNSHI, readReg(BANK_B.REGSNSHI)));
+        imp.sleep(0.1);
+        server.log(format("B-SNSLO  (0x%02X): 0x%02X",BANK_B.REGSNSLO, readReg(BANK_B.REGSNSLO)));
+        
+        // imp.sleep(0.1);
+        // foreach(idx,val in BANK_A){
+        //     server.log(format("Bank A %s (0x%02X): 0x%02X", idx, val, readReg(val)));
+        //     imp.sleep(0.1);
+        // }
+        // foreach(idx,val in BANK_B){
+        //     server.log(format("Bank B %s (0x%02X): 0x%02X", idx, val, readReg(val)));
+        //     imp.sleep(0.1);
+        // }
+        // for(local i =0; i < 0x2F; i++){
+        //     server.log(format("0x%02X: 0x%02X", i, readReg(i)));
+        // }
+
     }
 
     function bank(gpio){
-        return (gpio > 7) ? BANK_A : BANK_B;
+        return (gpio > 7) ? BANK_B : BANK_A;
     }
 
     // configure whether edges trigger an interrupt for specified GPIO
     function setIrqEdges( gpio, rising, falling) {
+        local bank = bank(gpio);
+        gpio = gpio % 8;
         local mask = 0x03 << ((gpio & 3) << 1);
         local data = (2*falling + rising) << ((gpio & 3) << 1);
-        writeMasked(gpio >= 4 ? REGSNSHI : REGSNSLO, data, mask);
+        writeMasked(gpio >= 4 ? bank.REGSNSHI : bank.REGSNSLO, data, mask);
     }
 
     function clearAllIrqs() {
