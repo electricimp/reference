@@ -17,6 +17,8 @@ Hookup
 - GND (imp) --> 10kΩ resistor --> PWR S (amp)
 - PIN5 (imp) --> IN+ (amp)
 - GND (imp) --> IN- (amp)
+- OUT+ (amp) --> Speaker +
+- OUT- (amp) --> Speaker -
 
 Usage
 =====
