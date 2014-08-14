@@ -10,14 +10,13 @@ This example uses the SparkFun [Mono Audio Amp Breakout](https://www.sparkfun.co
 
 Hookup
 ------
-3v3 (imp) --> PWR+ (amp)
-GND (imp) --> PWR- (amp)
 
-PIN2 (imp) --> PWR S (amp)
-GND (imp) --> 10kΩ resistor --> PWR S (amp)
-
-PIN5 (imp) --> IN+ (amp)
-GND (imp) --> IN- (amp)
+- 3v3 (imp) --> PWR+ (amp)
+- GND (imp) --> PWR- (amp)
+- PIN2 (imp) --> PWR S (amp)
+- GND (imp) --> 10kΩ resistor --> PWR S (amp)
+- PIN5 (imp) --> IN+ (amp)
+- GND (imp) --> IN- (amp)
 
 Usage
 =====
