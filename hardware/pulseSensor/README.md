@@ -12,7 +12,10 @@ Usage
 Example instantiation:
 
 ```
-pulse <- PulseSensor(hardware.pin2, function(state) {
-	server.log(state);	// 1 or 0
+pulse <- PulseSensor(hardware.pin2, function() {
+	// do something
 });
+
+// start reading values
+pulse.start();
 ```

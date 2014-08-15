@@ -1,70 +1,132 @@
- class PulseSensor {
- 	_pulsePin = null;
- 	
- 	// polling
- 	_onChange = null;
- 	_pollTimer = null;
- 	_pollWakeup = null;
- 	_threshold = null;
- 	_lastValue = null;
- 		
- 	constructor(pin, onChange = null, pollTimer = 0.1, threshold = 35000) {
- 		_pulsePin = pin;
- 		_pulsePin.configure(ANALOG_IN);
- 		
- 		_threshold = threshold;
- 		_onChange = onChange;
- 		_pollTimer = pollTimer;
- 		
- 		start();
- 	}
- 	
- 	function read() {
- 		return _pulsePin.read();
- 	}
- 	
- 	function readState() {
- 		if (read() >= _threshold) {
- 		    return 1;
- 		} else {
- 		    return 0;
- 		}
- 	}
- 	
- 	function start() {
- 		if (_pollTimer != null) {
- 			_lastValue = readState();
- 			_poll();
- 		}
- 	}
- 	
- 	function stop() {
- 		if (_pollWakeup != null) {
- 			imp.cancelwakeup(_pollWakeup);
- 			_pollWakeup = null;
- 		}
- 	}
- 
- 	/******************** PRIVATE FUNCTIONS ********************/
- 	function _poll() {
- 		_pollTimer = imp.wakeup(0.1, _poll.bindenv(this));
- 		local val = readState();
- 		if (val != _lastValue) {
- 			_lastValue = val;
- 			_onChange(val);
- 		}
- 	}
- }
- 
- led <- hardware.pin7;
- led.configure(DIGITAL_OUT);
- 
- pulse <- PulseSensor(hardware.pin2, function(state) {
- 	led.write(state);
- 	local pinValues = {
- 		pin2 = hardware.pin2.read(),
-    	voltage = hardware.voltage()
- 	}	
- 	
- 	agent.send("impValues", pinValues);	
- });
+class Pulse {
+    _pin = null;
+    _buffers = null;
+    
+    // on beat callback
+    _onbeat = null;
+    
+    // public variables
+    BPM = null;
+    SampleCounter = null;
+    
+    // variables for analysis
+    _ibi = null;
+    _lastBeatTime = null;
+    _peak = null;
+    _trough = null;
+    _threshold = null;
+    _amp = null;
+    _firstBeat = null;
+    _secondBeat = null;
+    _rate = null;
+    
+    _pulse = null;
+    
+    constructor(pin, onBeat, sampleHz = 1000, bufferSize = 250, numBuffers = 2) {
+        // setup sample and buffer
+        _buffers = array(numBuffers);
+        for(local i = 0; i < numBuffers; i++) _buffers[i]=blob(bufferSize);
+        
+        hardware.sampler.configure(pin, sampleHz, _buffers, _onBufferFull.bindenv(this));
+        
+        // setup callback
+        _onbeat = onBeat;
+        
+        //initialize variables for analysis
+        BPM = 0.0;
+        _ibi = 100.0;
+        _pulse = false;
+        
+        _amp = 100.0;
+        SampleCounter = 0;
+        _rate = array(10);
+        _reset();
+    }
+    
+    function start() {
+        _reset();
+        hardware.sampler.start();
+    }
+    
+    function stop() {
+        hardware.sampler.stop()
+    }
+    
+    function _reset() {
+        _threshold = 512.0;
+        _peak = 512.0;
+        _trough = 512.0;
+        _lastBeatTime = SampleCounter;
+        _firstBeat = true;
+        _secondBeat = false;
+    }
+    
+    function _onBufferFull(samples, length) {
+        if (samples == null) return;
+        
+        local end = SampleCounter + (length / 2);
+        
+        for(SampleCounter; SampleCounter < end; SampleCounter++) {
+            local Signal = samples.readn('w') / 65535.0 * 1024.0;
+            local N = SampleCounter - _lastBeatTime;
+            
+            if(Signal < _threshold && N > (_ibi/5.0)*3.0 && Signal < _trough) {
+                _trough = Signal;
+            }
+            
+            if(Signal > _threshold && Signal > _peak){
+                _peak = Signal;
+            } 
+    
+            //  NOW IT'S TIME TO LOOK FOR THE HEART BEAT
+            // signal surges up in value every time there is a pulse
+            if (N > 250){
+                if ( (Signal > _threshold) && (_pulse == false) && (N > (_ibi/5)*3) ){        
+                    _pulse = true;
+                    _ibi = SampleCounter - _lastBeatTime;
+                    _lastBeatTime = SampleCounter;
+        
+                    if(_secondBeat){
+                        _secondBeat = false;
+                        for(local i=0; i<=9; i++){
+                            _rate[i] = _ibi;
+                        }
+                    }
+        
+                    if(_firstBeat){
+                        _firstBeat = false;
+                        _secondBeat = true;
+                        continue;
+                    }
+
+                    // keep a running total of the last 10 IBI values
+                    local runningTotal = 0;
+                    
+                    for(local i=0; i<=8; i++){
+                        _rate[i] = _rate[i+1];
+                        runningTotal += _rate[i];
+                    }
+            
+                    _rate[9] = _ibi;
+                    runningTotal += _rate[9];
+                    runningTotal /= 10.0;
+                    BPM = 60000.0 / runningTotal;
+
+                    if(_onbeat != null) {
+                        _onbeat();
+                    }
+                }
+                
+                if (Signal < _threshold && _pulse == true){
+                    _pulse = false;
+                    _amp = _peak - _trough;
+                    _threshold = _amp/2.0 + _trough;
+                    _peak = _threshold;
+                    _trough = _threshold;
+                }
+    
+                if (N > 2500) _reset();
+            }                       
+        }        
+    }
+}
