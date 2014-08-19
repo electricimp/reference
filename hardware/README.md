@@ -1,7 +1,7 @@
 # Hardware
 | Name | Description |
 | ---- | ----------- |
-| [CAT24C](CAT24C) | i2c EEPROM |
+| [CAT24C](eeprom/CAT24C) | i2c EEPROM |
 | [DHT11](DHT11) | Temperature / Humidity Sensor |
 | [DHT22](DHT22) | Temperature / Humidity Sensor |
 | [Epaper](Epaper) | Pervasive Displays ePaper Panel |
