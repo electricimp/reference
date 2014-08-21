@@ -66,6 +66,6 @@ i2c.configure(CLOCK_SPEED_100_KHZ);
 eeprom <- CAT24C32(i2c);
 // write some test data
 local testStr = "Electric Imp CAT24C32!";
-// write the string to the eepromm, starting at offset 0x1234
+// write the string to the eepromm, starting at offset 0x0123
 eeprom.write(testStr,0x0123);
 server.log("Read back: " + eeprom.read(testStr.len(),0x0123));
