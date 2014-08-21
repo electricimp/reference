@@ -5,6 +5,8 @@
 //I2C EEPROM, ON Semi CAT24C32 Family
 // http://www.onsemi.com/pub_link/Collateral/CAT24C32-D.PDF
 
+//20140820 Nick Garner: Modified CAT24C Class to accommodate two byte offset
+
 const PAGE_LEN = 32;        // page length in bytes
 const WRITE_TIME = 0.005;   // max write cycle time in seconds
 class CAT24C32 {
