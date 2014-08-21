@@ -4,6 +4,7 @@ Driver for an I2C EEPROM (CAT24C32). Basic Read and Write commands accommodating
 
 Contributors
 ===================================
+Tom Byrne
 Nick Garner (Pignology)
 
 Usage
