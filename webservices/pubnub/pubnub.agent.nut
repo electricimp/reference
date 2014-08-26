@@ -18,6 +18,8 @@ class PubNub {
     _secretKey = null;
     _uuid = null
     
+    _subscribe_request = null;
+    
     // Class ctor. Specify your publish key, subscribe key, secret key, and optional UUID
     // If you do not provide a UUID, the Agent ID will be used
     constructor(publishKey, subscribeKey, secretKey, uuid = null) {
@@ -55,8 +57,10 @@ class PubNub {
     //              Ex: [ 1, "Sent", "14067353030261382" ]
     //      If no callback is provided, _defaultPublishCallback is used
     function publish(channel, data, callback = null) {
-        local url = format("%s/publish/%s/%s/%s/%s/%s/%s?uuid=%s", _pubNubBase, _publishKey, _subscribeKey, _secretKey, channel, "0", http.jsonencode(data), _uuid);
-        
+
+        local msg = http.urlencode({m=http.jsonencode(data)}).slice(2);
+        local url = format("%s/publish/%s/%s/%s/%s/%s/%s?uuid=%s", _pubNubBase, _publishKey, _subscribeKey, _secretKey, channel, "0", msg, _uuid);
+
         http.get(url).sendasync(function(resp) {
             local err = null;
             local data = null;
@@ -99,7 +103,13 @@ class PubNub {
             channelidx++;
         }
         local url = format("%s/subscribe/%s/%s/0/%s?uuid=%s", _pubNubBase, _subscribeKey, channellist, tt.tostring(), _uuid);
-        http.get(url).sendasync( function(resp) {
+
+        if (_subscribe_request) _subscribe_request.cancel();
+
+        _subscribe_request = http.get(url);
+        _subscribe_request.sendasync( function(resp) {
+
+            _subscribe_request = null;
             local err = null;
             local data = null;
             local messages = null;
@@ -134,11 +144,12 @@ class PubNub {
                 }
             }
             
+            // callback
+            callback(err, result, tt);            
+
             // re-start polling loop
             // channels and callback are still in scope because we got here with bindenv
-            this.subscribe(channels,callback,tt);
-            // callback
-            callback(err, result, tt);
+            this.subscribe(channels,callback,tt);            
         }.bindenv(this));
     }
     
@@ -190,8 +201,9 @@ class PubNub {
     //      callback (function) - called when results are returned, takes two parameters
     //          err - null on success
     //          channels (array) - list of channels for which this UUID is "present"
-    function whereNow(callback) {
-        local url = format("%s/sub-key/%s/uuid/%s",_presenceBase,_subscribeKey,_uuid);
+    function whereNow(callback, uuid=null) {
+        if (uuid == null) uuid=_uuid;
+        local url = format("%s/sub-key/%s/uuid/%s",_presenceBase,_subscribeKey,uuid);
         http.get(url).sendasync(function(resp) {
             local err = null;
             local data = null;
