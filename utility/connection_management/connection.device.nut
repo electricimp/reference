@@ -8,32 +8,88 @@
 // Then all your network requests, like server.log(), will fail without freezing the CPU.
 // 
 // This class can be extended, if required, to do a few more things:
-// - Regularly check server.isconnected() which will indicate a disconnected state 
-//   much earlier than server.onunexpecteddisconnect().
 // - Back off the reconnection attempts to conserve batteries.
 // - Put the device to deep sleep while offline and reattempt to connect on wakeup.
 // 
 class Connection {
 
     static CONNECTION_TIMEOUT = 30;
+    static CHECK_TIMEOUT = 5;
+    static MAX_LOGS = 100;
     
     connected = null;
+    connecting = false;
+    stayconnected = true;
     reason = null;
     callbacks = null;
     blinkup_timer = null;
+    logs = null;
     
     // .........................................................................
-    constructor(doconnect = true) {
+    constructor(_do_connect = true) {
         callbacks = {};
+        logs = [];
         server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, CONNECTION_TIMEOUT);
-        server.onunexpecteddisconnect(disconnected.bindenv(this));
         connected = server.isconnected();
-        if (doconnect) connect();
+        imp.wakeup(CHECK_TIMEOUT, _check.bindenv(this));
+        
+        if (_do_connect && !connected) imp.wakeup(0, connect.bindenv(this));
+        else if (connected) imp.wakeup(0, _reconnect.bindenv(this));
+    }
+    
+    
+    // .........................................................................
+    function _check() {
+        imp.wakeup(CHECK_TIMEOUT, _check.bindenv(this));
+        if (!server.isconnected() && !connecting && stayconnected) {
+            // We aren't connected or connecting, so we should try
+            _disconnected(NOT_CONNECTED, true);
+        }
+    }
+    
+
+    // .........................................................................
+    function _disconnected(_reason, _do_reconnect = false) {
+        local fireevent = connected;
+        connected = false;
+        connecting = false;
+        reason = _reason;
+        if (fireevent && "disconnected" in callbacks) callbacks.disconnected();
+        if (_do_reconnect) connect();
     }
     
     // .........................................................................
+    function _reconnect(_state = null) {
+        if (_state == SERVER_CONNECTED || _state == null) {
+            connected = true;
+            connecting = false;
+            
+            // Dump the logs
+            while (logs.len() > 0) {
+                local logo = logs[0];
+                logs.remove(0);
+                local d = date(logo.ts);
+                local msg = format("%04d-%02d-%02d %02d:%02d:%02d UTC %s", d.year, d.month+1, d.day, d.hour, d.min, d.sec, logo.msg);
+                if (logo.err) server.error(msg);
+                else          server.log(msg);
+            }
+            
+            if ("connected" in callbacks) callbacks.connected(SERVER_CONNECTED);
+        } else {
+            connected = false;
+            connecting = false;
+            connect();
+        }
+    }
+    
+    
+    // .........................................................................
     function connect(withblinkup = true) {
-        if (!connected) server.connect(reconnect.bindenv(this), CONNECTION_TIMEOUT);
+        stayconnected = true;
+        if (!connected && !connecting) {
+            server.connect(_reconnect.bindenv(this), CONNECTION_TIMEOUT);
+            connecting = true;
+        }
         
         if (withblinkup) {
             // Enable BlinkUp for 60 seconds
@@ -49,36 +105,14 @@ class Connection {
     
     // .........................................................................
     function disconnect() {
+        stayconnected = false;
         server.disconnect();
-        if (connected) {
-            connected = false;
-            if ("disconnected" in callbacks) callbacks.disconnected();
-        } 
+        _disconnected(NOT_CONNECTED, false);
     }
 
     // .........................................................................
-    function disconnected(_reason) {
-        local fireevent = connected;
-        connected = false;
-        reason = _reason;
-        server.connect(reconnect.bindenv(this), CONNECTION_TIMEOUT);
-        if (fireevent && "disconnected" in callbacks) callbacks.disconnected();
-    }
-    
-    // .........................................................................
-    // Reconnect on network failure
-    function reconnect(_state) {
-        if (_state == SERVER_CONNECTED) {
-            connected = true;
-            if ("reconnected" in callbacks) callbacks.reconnected();
-        } else {
-            server.connect(reconnect.bindenv(this), CONNECTION_TIMEOUT);
-        }
-    }
-    
-    // .........................................................................
     function isconnected() {
-        return connected;
+        return connected == true;
     }
 
     // .........................................................................
@@ -88,32 +122,33 @@ class Connection {
     }
 
     // .........................................................................
-    function onreconnect(_reconnected = null) {
-        if (_reconnected == null) delete callbacks["reconnected"];
-        else callbacks["reconnected"] <- _reconnected;
+    function onconnect(_connected = null) {
+        if (_connected == null) delete callbacks["connected"];
+        else callbacks["connected"] <- _connected;
+    }
+
+    // .........................................................................
+    function log(msg, err=false) {
+        if (server.isconnected()) server.log(msg);
+        else logs.push({msg=msg, err=err, ts=time()})
+        if (logs.len() > MAX_LOGS) logs.remove(0);
+    }
+
+    // .........................................................................
+    function error(msg) {
+        log(msg, true);
     }
 
 }
 
 
-
 // ------------------[ Example usage ]------------------
 
-led_red  <- hardware.pin1;
-led_grn  <- hardware.pin2;
-led_grn.configure(DIGITAL_OUT); 
-led_red.configure(DIGITAL_OUT); 
-led_grn.write(1);
-led_red.write(1);
-
-function changed_status() {
-    if (cm.isconnected()) server.log("Connected");
-    led_grn.write(cm.isconnected() ? 0 : 1);
-    led_red.write(cm.isconnected() ? 1 : 0);
-} 
-
 cm <- Connection();
-cm.ondisconnect(changed_status);
-cm.onreconnect(changed_status);
-changed_status();
+cm.onconnect(function(reason=null) {
+    cm.log("Connected")
+});
+cm.ondisconnect(function(reason=null) {
+    cm.error("Disconnected")
+});
 
