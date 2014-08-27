@@ -1,3 +1,6 @@
+// Copyright (c) 2014 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
 /*
 BGLib for Squirrel
 ==================

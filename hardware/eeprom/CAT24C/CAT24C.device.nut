@@ -1,6 +1,8 @@
-//Copyright (C) 2014 electric imp, inc.
-//
-//I2C EEPROM, CAT24C Family
+// Copyright (c) 2014 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
+//I2C EEPROM, ON Semi CAT24C Family
 // http://www.onsemi.com/pub_link/Collateral/CAT24C02-D.PDF
 const PAGE_LEN = 16;        // page length in bytes
 const WRITE_TIME = 0.005;   // max write cycle time in seconds
