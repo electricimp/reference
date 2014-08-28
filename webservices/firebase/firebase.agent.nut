@@ -5,7 +5,7 @@ class Firebase {
     auth = null;            // Auth key (if auth is enabled)
     baseUrl = null;         // Firebase base url
     prefixUrl = "";         // Prefix added to all url paths (after the baseUrl and before the Path)
-    
+
     // For REST calls:
     defaultHeaders = { "Content-Type": "application/json" };
     
@@ -14,7 +14,10 @@ class Firebase {
     streamingRequest = null;    // The request object of the streaming request
     data = null;                // Current snapshot of what we're streaming
     callbacks = null;           // List of callbacks for streaming request
+    
     keepAliveTimer = null;      // Wakeup timer that watches for a dead Firebase socket
+    kaPath = null;              // stream parameters to allow a restart on keepalive
+    kaOnError = null;
 
     /***************************************************************************
      * Constructor
@@ -24,7 +27,7 @@ class Firebase {
      *      auth - the auth token for your Firebase
      **************************************************************************/
     constructor(_db, _auth = null, domain = "firebaseio.com") {
-        const KEEP_ALIVE = 120;
+        const KEEP_ALIVE = 60;
         
         db = _db;
         baseUrl = "https://" + db + "." + domain;
@@ -40,37 +43,53 @@ class Firebase {
      *      true -  otherwise
      * Parameters:
      *      path - the path of the node we're listending to (without .json)
-     *      autoReconnect - set to false to close stream after first timeout
      *      onError - custom error handler for streaming API 
      **************************************************************************/
-    function stream(path = "", autoReconnect = true, onError = null) {
+    function stream(path = "", onError = null) {
         // if we already have a stream open, don't open a new one
         if (isStreaming()) return false;
+
+        // Keep a backup of these for future reconnects
+        kaPath = path;
+        kaOnError = onError;
 
         if (onError == null) onError = _defaultErrorHandler.bindenv(this);
         streamingRequest = http.get(_buildUrl(path), streamingHeaders);
 
         streamingRequest.sendasync(
 
-            function(resp) {
+            // This is called when the stream exits
+            function (resp) {
                 streamingRequest = null;
-                if (resp.statuscode == 307) {
-                    if("location" in resp.headers) {
-                        // set new location
-                        local location = resp.headers["location"];
-                        local p = location.find(".firebaseio.com")+16;
-                        baseUrl = location.slice(0, p);
-                        return stream(path, autoReconnect, onError);
-                    }
-                } else if (resp.statuscode == 28 && autoReconnect) {
-                    // if we timed out and have autoreconnect set
-                    return stream(path, autoReconnect, onError);
+                if (resp.statuscode == 307 && "location" in resp.headers) {
+                    // set new location
+                    local location = resp.headers["location"];
+                    local p = location.find(".firebaseio.com")+16;
+                    baseUrl = location.slice(0, p);
+                    // server.log("Redirecting to " + baseUrl);
+                    return stream(path, onError);
+                } else if (resp.statuscode == 28 || resp.statuscode == 429) {
+                    // if we timed out, just reconnect after a small delay
+                    imp.wakeup(1, function() {
+                        return stream(path, onError);
+                    }.bindenv(this))
                 } else {
-                    server.error("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
+                    // Reconnect unless the stream after an error
+                    server.error("Stream closed with error " + resp.statuscode);
+                    imp.wakeup(1, function() {
+                        return stream(path, onError);
+                    }.bindenv(this))
                 }
             }.bindenv(this),
             
+            
+            // This is called whenever there is new data
             function(messageString) {
+                
+                // Tickle the keep alive timer
+                if (keepAliveTimer) imp.cancelwakeup(keepAliveTimer);
+                keepAliveTimer = imp.wakeup(KEEP_ALIVE, _keepAliveExpired.bindenv(this))
+
                 // server.log("MessageString: " + messageString);
                 local messages = _parseEventMessage(messageString);
                 foreach (message in messages) {
@@ -103,13 +122,18 @@ class Firebase {
                         
                     }
                 }
-            }.bindenv(this)
+            }.bindenv(this),
+            
+            // Stay connected as long as possible
+            NO_TIMEOUT
             
         );
         
         // Tickle the keepalive timer
         if (keepAliveTimer) imp.cancelwakeup(keepAliveTimer);
         keepAliveTimer = imp.wakeup(KEEP_ALIVE, _keepAliveExpired.bindenv(this))
+        
+        // server.log("New stream successfully started")
         
         // Return true if we opened the stream
         return true;
@@ -183,9 +207,7 @@ class Firebase {
      **************************************************************************/    
      function read(path, callback = null) {
         http.get(_buildUrl(path), defaultHeaders).sendasync(function(res) {
-            if (res.statuscode != 200) {
-                server.error("Read: Firebase response: " + res.statuscode + " => " + res.body)
-            } else {
+            if (callback) {
                 local data = null;
                 try {
                     data = http.jsondecode(res.body);
@@ -193,7 +215,9 @@ class Firebase {
                     server.error("Read: JSON Error: " + res.body);
                     return;
                 }
-                if (callback) callback(data);
+                callback(data);
+            } else if (res.statuscode != 200) {
+                server.error("Read: Firebase response: " + res.statuscode + " => " + res.body)
             }
         }.bindenv(this));
     }
@@ -212,10 +236,10 @@ class Firebase {
     function push(path, data, priority = null, callback = null) {
         if (priority != null && typeof data == "table") data[".priority"] <- priority;
         http.post(_buildUrl(path), defaultHeaders, http.jsonencode(data)).sendasync(function(res) {
-            if (res.statuscode != 200) {
+            if (callback) callback(res);
+            else if (res.statuscode != 200) {
                 server.error("Push: Firebase responded " + res.statuscode + " to changes to " + path)
             }
-            if (callback) callback(res);
         }.bindenv(this));
     }
     
@@ -233,10 +257,10 @@ class Firebase {
      **************************************************************************/    
     function write(path, data, callback = null) {
         http.put(_buildUrl(path), defaultHeaders, http.jsonencode(data)).sendasync(function(res) {
-            if (res.statuscode != 200) {
+            if (callback) callback(res);
+            else if (res.statuscode != 200) {
                 server.error("Write: Firebase responded " + res.statuscode + " to changes to " + path)
             }
-            if (callback) callback(res);
         }.bindenv(this));
     }
     
@@ -254,10 +278,10 @@ class Firebase {
      **************************************************************************/    
     function update(path, data, callback = null) {
         http.request("PATCH", _buildUrl(path), defaultHeaders, http.jsonencode(data)).sendasync(function(res) {
-            if (res.statuscode != 200) {
+            if (callback) callback(res);
+            else if (res.statuscode != 200) {
                 server.error("Update: Firebase responded " + res.statuscode + " to changes to " + path)
             }
-            if (callback) callback(res);
         }.bindenv(this));
     }
     
@@ -273,10 +297,10 @@ class Firebase {
      **************************************************************************/        
     function remove(path, callback = null) {
         http.httpdelete(_buildUrl(path), defaultHeaders).sendasync(function(res) {
-            if (res.statuscode != 200) {
+            if (callback) callback(res);
+            else if (res.statuscode != 200) {
                 server.error("Delete: Firebase responded " + res.statuscode + " to changes to " + path)
             }
-            if (callback) callback(res);
         });
     }
     
@@ -301,11 +325,19 @@ class Firebase {
 
     // Default error handler
     function _defaultErrorHandler(errors) {
-        foreach(error in errors) {
+        foreach (error in errors) {
             server.error("ERROR " + error.code + ": " + error.message);
         }
     }
 
+    // No keep alive has been seen for a while, lets reconnect
+    function _keepAliveExpired() {
+        keepAliveTimer = null;
+        server.error("Keep alive timer expired. Reconnecting stream.")
+        closeStream();
+        stream(kaPath, kaOnError);
+    }    
+    
     // parses event messages
     function _parseEventMessage(text) {
         
@@ -330,13 +362,10 @@ class Firebase {
                 continue;
             }
     
-            // Tickle the keep alive timer
-            if (keepAliveTimer) imp.cancelwakeup(keepAliveTimer);
-            keepAliveTimer = imp.wakeup(KEEP_ALIVE, _keepAliveExpired.bindenv(this))
-            
             // get the event
             local eventLine = lines[0];
             local event = eventLine.slice(7);
+            // server.log(event);
             if(event.tolower() == "keep-alive") continue;
             
             // get the data
@@ -348,7 +377,7 @@ class Firebase {
             try {
                 d = http.jsondecode(dataString);
             } catch (e) {
-                server.log("Exception while decoding (" + dataString.len() + " bytes): " + dataString);
+                server.error("Exception while decoding (" + dataString.len() + " bytes): " + dataString);
                 throw e;
             }
     
@@ -495,11 +524,9 @@ class Firebase {
         return changed_data;
     }
     
-    // No keep alive has been seen for a while, lets reconnect
-    function _keepAliveExpired() {
-        closeStream();
-    }    
 }
+
+
 
 // Sample instantiation
 const FIREBASENAME = "your firebase";
