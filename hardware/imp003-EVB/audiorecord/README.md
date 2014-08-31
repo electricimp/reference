@@ -1,5 +1,5 @@
 ## Waveform Record Class
-This this class shows a simple example of how to wrap the [Sampler](http://electricimp.com/docs/api/hardware/sampler/) class to record analog waveforms. 
+This class shows a simple example of how to wrap the [Sampler](http://electricimp.com/docs/api/hardware/sampler/) class to record analog waveforms. 
 
 In this example, every buffer is sent directly to the agent as it appears at the samplesReady callback from the sampler. Note that depending on your hardware design, this method of handling samples can cause noise in the resulting waveform, as operating the WiFi transmitter while recording causes significant [power supply load transients](http://electricimp.com/docs/resources/designing_analog_hw).
 

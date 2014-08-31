@@ -101,7 +101,11 @@ function processWAV(wav) {
         return false;
     }
     if (params.wavSize / params.numChannels > maxFileSize) {
-        server.error("WAV file too big to fit on flash");
+        if (maxFileSize == 0) {
+            server.error("Device hasn't reported flash size - is it online?");
+        } else {
+            server.error("WAV file too big to fit on flash");
+        }
         return false;
     }
     // Strip headers, perform necessary conversions, and send to device
@@ -160,17 +164,13 @@ http.onrequest(function(req, res) {
             res.send(500, "Invalid WAV file!\n");
         }
     // Fetch the WAV from a given URL
-    } else if (req.path == "/url" || req.path == "/formUrl") {
+    } else if (req.path == "/url") {
         // Arbitrary limit on the URL length to keep things friendly
         if (req.body.len() > 2048) {
             res.send(500, "Fetch URL too long\n");
             return;
         }
-        local fetchURL = req.body;
-        // If this was a form submission, we need to decode the data
-        if (req.path == "/formUrl") {
-            fetchURL = http.urldecode(fetchURL).url;
-        }
+        local fetchURL = http.urldecode(req.body).url;
         // First, we get the filesize using a HEAD request to make sure it's not too big
         // And then we handle the response in fetchAudio()
         server.log("Fetching WAV file from " + fetchURL);
