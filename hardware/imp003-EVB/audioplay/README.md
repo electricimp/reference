@@ -23,6 +23,7 @@ Simply visit `https://agent.electricimp.com/<your_agent_ID>`, enter the URL of t
 ### Playing the audio
 
 After you send audio to the agent, the device will perform a sequence of tasks, displaying the current status by lighting an LED:
+
 1. **Red** - Erase enough flash sectors to fit the new audio
 2. **Blue** - Download the raw audio data and save it to the flash
 3. **Green** - Ready to play audio
