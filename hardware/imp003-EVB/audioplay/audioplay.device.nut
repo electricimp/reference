@@ -59,7 +59,7 @@ function play() {
     if (numBuffers == 1) {
         buffers = [blob(params.wavSize)];
     } else if (numBuffers == 2) {
-        buffers = [blob(BUFFER_SIZE), blob(params.wavSize)];
+        buffers = [blob(BUFFER_SIZE), blob(params.wavSize - BUFFER_SIZE)];
     } else {
         buffers = [blob(BUFFER_SIZE), blob(BUFFER_SIZE)];
     }
