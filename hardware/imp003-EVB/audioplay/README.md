@@ -1,4 +1,4 @@
-## Waveform Record Class
+## Audio Playback
 This example demonstrates how to use the imp003's [Fixed-Frequency DAC](http://electricimp.com/docs/api/hardware/fixedfrequencydac/) to play audio.
 
 ### Getting audio to the agent
@@ -24,8 +24,8 @@ Simply visit `https://agent.electricimp.com/<your_agent_ID>`, enter the URL of t
 
 After you send audio to the agent, the device will perform a sequence of tasks, displaying the current status by lighting an LED:
 
-1. **Red** - Erase enough flash sectors to fit the new audio
-2. **Blue** - Download the raw audio data and save it to the flash
+1. **Red** - Erasing enough flash sectors to fit the new audio
+2. **Blue** - Downloading the raw audio data and saving it to the flash
 3. **Green** - Ready to play audio
 
 Once the green light turns on, press Button 1 to begin playback! After audio data has been written to flash, the device will be able to play it back even from cold boot. Any time the LED is green, audio data is valid and able to be played.
