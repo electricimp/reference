@@ -2,12 +2,18 @@
 // -----------------------------------------------------------------------------
 // USB Host Shield pinouts
 //
-// 1- CS (not sure if it's active high/low)
-// 2- MISO
-// 5- SCLK
-// 7- MOSI
-// 8- RESET (also not sure about active high/low)
-// 9- Interrupt (not sure if this is useful for anything)
+// 1 - 
+// 2 - MISO - SPI output
+// 5 - SCLK - SPI clock
+// 6 - TP1 - Test point 1 (not connected)
+// 7 - MOSI - SPI input
+// 8 - LED1 - Green LED 
+// 9 - LED2 - Green LED
+// A - CS_L - SPI cable select
+// B - RES_L - USB Reset
+// C - INT - USB Interrupt (input)
+// D - 
+// E - TP2 - Test point 2 (not connected)
 //
 // Maxim's product page
 // http://www.maximintegrated.com/en/products/interface/controllers-expanders/MAX3421E.html
@@ -1832,9 +1838,10 @@ class Mouse extends HIDDriver {
 
 // -----------------------------------------------------------------------------
 spi <- hardware.spi257;
-cs <- hardware.pin1;
-reset <- hardware.pin8;
-int <- hardware.pin9;
+cs <- hardware.pinA;
+reset <- hardware.pinB;
+int <- hardware.pinC;
+imp.enableblinkup(true);
 
 // Load the main USB host controller and the HID interface
 usb <- USB(spi, cs, reset, int);
