@@ -1,6 +1,6 @@
 
 // -----------------------------------------------------------------------------
-// USB Host Shield pinouts
+// MAX3421E - USB Host Shield pinouts
 //
 // 1 - 
 // 2 - MISO - SPI output
@@ -18,31 +18,18 @@
 // Maxim's product page
 // http://www.maximintegrated.com/en/products/interface/controllers-expanders/MAX3421E.html
 // 
-// A really good USB primer
-// http://www.beyondlogic.org/usbnutshell/usb5.shtml - The descriptors
-// http://www.beyondlogic.org/usbnutshell/usb6.shtml - The packet structure
-// http://www.usbmadesimple.co.uk/index.html
+// Some useful source code that formed the inspiration for much of the code here.
+// https://github.com/felis/USB_Host_Shield_2.0/
 //
 // Some of the official specs
 // http://www.usb.org/developers/devclass_docs/
 // http://www.usb.org/developers/hidpage/ 
 // http://www.usb.org/developers/devclass_docs/HID1_11.
 //
-// Some vaguely useful source code. Much of this code was inspired by 
-// https://github.com/felis/USB_Host_Shield_2.0/
-//
-// Notes:
-// 
-// While this code functions well, it needs a good clean up. It was written as part of an 
-// exploration of the MAX3421e chip but without much knowledge about the chip and about the
-// USB protocol.
-//
-// This code supports standard keyboard and mouse devices but only one at a time. 
-//
-// Hubs are not supported and this code will not function if a hub is connected.
-// 
-// I have some code that will extend this class for use with an FTDI cable or other 
-// equivalent devices that use Bulk Transfer mode. But it is not ready yet.
+// A really good USB primer
+// http://www.beyondlogic.org/usbnutshell/usb5.shtml - The descriptors
+// http://www.beyondlogic.org/usbnutshell/usb6.shtml - The packet structure
+// http://www.usbmadesimple.co.uk/index.html
 //
 
 // -----------------------------------------------------------------------------
@@ -165,7 +152,7 @@ function max_constants() {
     const bmFRAMEIRQ       = 0x40
     const bmHXFRDNIRQ      = 0x80
     
-    const rHIEN			 = 0xd0    //26<<3
+    const rHIEN          = 0xd0    //26<<3
     
     // HIEN Bits 
     const bmBUSEVENTIE     = 0x01
@@ -177,7 +164,7 @@ function max_constants() {
     const bmFRAMEIE        = 0x40
     const bmHXFRDNIE       = 0x80
     
-    const rMODE			 = 0xd8    //27<<3
+    const rMODE          = 0xd8    //27<<3
     
     // MODE Bits 
     const bmHOST           = 0x01
@@ -299,7 +286,7 @@ function usb_constants() {
     const USB_DESCRIPTOR_INTERFACE_POWER  = 0x08    // bDescriptorType for Interface Power.
     const USB_DESCRIPTOR_OTG              = 0x09    // bDescriptorType for an OTG Descriptor.
     
-    const HID_DESCRIPTOR_HID			= 0x21
+    const HID_DESCRIPTOR_HID            = 0x21
     
     
     
@@ -325,61 +312,62 @@ function usb_constants() {
     // From UsbCore.h
     
     // Common setup data constant combinations  
-    // bmREQ_GET_DESCR    = USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_DEVICE     //get descriptor request type
-    // bmREQ_SET          = USB_SETUP_HOST_TO_DEVICE|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_DEVICE     //set request type for all but 'set feature' and 'set interface'
-    // bmREQ_CL_GET_INTF  = USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_CLASS|USB_SETUP_RECIPIENT_INTERFACE     //get interface request type
+    const bmREQ_GET_DESCR    = 0x80; // USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_DEVICE     //get descriptor request type
+    const bmREQ_SET          = 0x00; // USB_SETUP_HOST_TO_DEVICE|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_DEVICE     //set request type for all but 'set feature' and 'set interface'
+    const bmREQ_CL_GET_INTF  = 0xa1; // USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_CLASS|USB_SETUP_RECIPIENT_INTERFACE     //get interface request type
     
-    // D7		data transfer direction (0 - host-to-device, 1 - device-to-host)
-    // D6-5		Type (0- standard, 1 - class, 2 - vendor, 3 - reserved)
-    // D4-0		Recipient (0 - device, 1 - interface, 2 - endpoint, 3 - other, 4..31 - reserved)
+    
+    // D7       data transfer direction (0 - host-to-device, 1 - device-to-host)
+    // D6-5     Type (0- standard, 1 - class, 2 - vendor, 3 - reserved)
+    // D4-0     Recipient (0 - device, 1 - interface, 2 - endpoint, 3 - other, 4..31 - reserved)
     
     // USB Device Classes
-    const USB_CLASS_USE_CLASS_INFO		= 0x00	// Use Class Info in the Interface Descriptors
-    const USB_CLASS_AUDIO				= 0x01	// Audio
-    const USB_CLASS_COM_AND_CDC_CTRL	= 0x02	// Communications and CDC Control
-    const USB_CLASS_HID					= 0x03	// HID
-    const USB_CLASS_PHYSICAL			= 0x05	// Physical
-    const USB_CLASS_IMAGE				= 0x06	// Image
-    const USB_CLASS_PRINTER				= 0x07	// Printer
-    const USB_CLASS_MASS_STORAGE		= 0x08	// Mass Storage
-    const USB_CLASS_HUB					= 0x09	// Hub
-    const USB_CLASS_CDC_DATA			= 0x0a	// CDC-Data
-    const USB_CLASS_SMART_CARD			= 0x0b	// Smart-Card
-    const USB_CLASS_CONTENT_SECURITY	= 0x0d	// Content Security
-    const USB_CLASS_VIDEO				= 0x0e	// Video
-    const USB_CLASS_PERSONAL_HEALTH		= 0x0f	// Personal Healthcare
-    const USB_CLASS_DIAGNOSTIC_DEVICE	= 0xdc	// Diagnostic Device
-    const USB_CLASS_WIRELESS_CTRL		= 0xe0	// Wireless Controller
-    const USB_CLASS_MISC				= 0xef	// Miscellaneous
-    const USB_CLASS_APP_SPECIFIC		= 0xfe	// Application Specific
-    const USB_CLASS_VENDOR_SPECIFIC		= 0xff	// Vendor Specific
+    const USB_CLASS_USE_CLASS_INFO      = 0x00  // Use Class Info in the Interface Descriptors
+    const USB_CLASS_AUDIO               = 0x01  // Audio
+    const USB_CLASS_COM_AND_CDC_CTRL    = 0x02  // Communications and CDC Control
+    const USB_CLASS_HID                 = 0x03  // HID
+    const USB_CLASS_PHYSICAL            = 0x05  // Physical
+    const USB_CLASS_IMAGE               = 0x06  // Image
+    const USB_CLASS_PRINTER             = 0x07  // Printer
+    const USB_CLASS_MASS_STORAGE        = 0x08  // Mass Storage
+    const USB_CLASS_HUB                 = 0x09  // Hub
+    const USB_CLASS_CDC_DATA            = 0x0a  // CDC-Data
+    const USB_CLASS_SMART_CARD          = 0x0b  // Smart-Card
+    const USB_CLASS_CONTENT_SECURITY    = 0x0d  // Content Security
+    const USB_CLASS_VIDEO               = 0x0e  // Video
+    const USB_CLASS_PERSONAL_HEALTH     = 0x0f  // Personal Healthcare
+    const USB_CLASS_DIAGNOSTIC_DEVICE   = 0xdc  // Diagnostic Device
+    const USB_CLASS_WIRELESS_CTRL       = 0xe0  // Wireless Controller
+    const USB_CLASS_MISC                = 0xef  // Miscellaneous
+    const USB_CLASS_APP_SPECIFIC        = 0xfe  // Application Specific
+    const USB_CLASS_VENDOR_SPECIFIC     = 0xff  // Vendor Specific
     
     // Additional Error Codes
-    const USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED		= 0xD1
-    const USB_DEV_CONFIG_ERROR_DEVICE_INIT_INCOMPLETE	= 0xD2
-    const USB_ERROR_UNABLE_TO_REGISTER_DEVICE_CLASS		= 0xD3
-    const USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL		= 0xD4
-    const USB_ERROR_HUB_ADDRESS_OVERFLOW				= 0xD5
-    const USB_ERROR_ADDRESS_NOT_FOUND_IN_POOL			= 0xD6
-    const USB_ERROR_EPINFO_IS_NULL						= 0xD7
-    const USB_ERROR_INVALID_ARGUMENT					= 0xD8
-    const USB_ERROR_CLASS_INSTANCE_ALREADY_IN_USE		= 0xD9
-    const USB_ERROR_INVALID_MAX_PKT_SIZE				= 0xDA
-    const USB_ERROR_EP_NOT_FOUND_IN_TBL					= 0xDB
+    const USB_DEV_CONFIG_ERROR_DEVICE_NOT_SUPPORTED     = 0xD1
+    const USB_DEV_CONFIG_ERROR_DEVICE_INIT_INCOMPLETE   = 0xD2
+    const USB_ERROR_UNABLE_TO_REGISTER_DEVICE_CLASS     = 0xD3
+    const USB_ERROR_OUT_OF_ADDRESS_SPACE_IN_POOL        = 0xD4
+    const USB_ERROR_HUB_ADDRESS_OVERFLOW                = 0xD5
+    const USB_ERROR_ADDRESS_NOT_FOUND_IN_POOL           = 0xD6
+    const USB_ERROR_EPINFO_IS_NULL                      = 0xD7
+    const USB_ERROR_INVALID_ARGUMENT                    = 0xD8
+    const USB_ERROR_CLASS_INSTANCE_ALREADY_IN_USE       = 0xD9
+    const USB_ERROR_INVALID_MAX_PKT_SIZE                = 0xDA
+    const USB_ERROR_EP_NOT_FOUND_IN_TBL                 = 0xDB
     const USB_ERROR_CONFIG_REQUIRES_ADDITIONAL_RESET    = 0xE0
     const USB_ERROR_FailGetDevDescr                     = 0xE1
     const USB_ERROR_FailSetDevTblEntry                  = 0xE2
     const USB_ERROR_FailGetConfDescr                    = 0xE3
-    const USB_ERROR_TRANSFER_TIMEOUT					= 0xFF
+    const USB_ERROR_TRANSFER_TIMEOUT                    = 0xFF
     
-    const USB_XFER_TIMEOUT		= 10000 //30000    // (5000) USB transfer timeout in milliseconds, per section 9.2.6.1 of USB 2.0 spec
-    //const USB_NAK_LIMIT		= 32000   //NAK limit for a transfer. 0 means NAKs are not counted
-    const USB_RETRY_LIMIT		= 3       // 3 retry limit for a transfer
-    const USB_SETTLE_DELAY		= 200     //settle delay in milliseconds
+    const USB_XFER_TIMEOUT      = 10000 //30000    // (5000) USB transfer timeout in milliseconds, per section 9.2.6.1 of USB 2.0 spec
+    //const USB_NAK_LIMIT       = 32000   //NAK limit for a transfer. 0 means NAKs are not counted
+    const USB_RETRY_LIMIT       = 3       // 3 retry limit for a transfer
+    const USB_SETTLE_DELAY      = 200     //settle delay in milliseconds
     
-    const USB_NUMDEVICES		= 16	//number of USB devices
-    //const HUB_MAX_HUBS		= 7	// maximum number of hubs that can be attached to the host controller
-    const HUB_PORT_RESET_DELAY	= 20	// hub port reset delay 10 ms recomended, can be up to 20 ms
+    const USB_NUMDEVICES        = 16    //number of USB devices
+    //const HUB_MAX_HUBS        = 7 // maximum number of hubs that can be attached to the host controller
+    const HUB_PORT_RESET_DELAY  = 20    // hub port reset delay 10 ms recomended, can be up to 20 ms
     
     // USB state machine states 
     const USB_STATE_MASK                                      = 0xf0
@@ -429,9 +417,68 @@ function hid_constants() {
     const UHS_HID_BOOT_KEY_ZERO2         = 0x62
     const UHS_HID_BOOT_KEY_PERIOD        = 0x63
 
-    
+    /* HID requests */
+    const bmREQ_HIDOUT      = 0x21; // USB_SETUP_HOST_TO_DEVICE|USB_SETUP_TYPE_CLASS|USB_SETUP_RECIPIENT_INTERFACE;
+    const bmREQ_HIDIN       = 0xa1; // USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_CLASS|USB_SETUP_RECIPIENT_INTERFACE;
+    const bmREQ_HIDREPORT   = 0x81; // USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_INTERFACE;
+
 }
 
+function ftdi_constants() {
+
+    const bmREQ_FTDI_OUT = 0x40;
+    const bmREQ_FTDI_IN  = 0xC0;
+    
+    const FT232AM = 0x0200;
+    const FT232BM = 0x0400;
+    const FT2232  = 0x0500;
+    const FT232R  = 0x0600;
+
+    // Commands
+    const FTDI_SIO_RESET                    = 0 /* Reset the port */
+    const FTDI_SIO_MODEM_CTRL               = 1 /* Set the modem control register */
+    const FTDI_SIO_SET_FLOW_CTRL            = 2 /* Set flow control register */
+    const FTDI_SIO_SET_BAUD_RATE            = 3 /* Set baud rate */
+    const FTDI_SIO_SET_DATA                 = 4 /* Set the data characteristics of the port */
+    const FTDI_SIO_GET_MODEM_STATUS         = 5 /* Retrieve current value of modem status register */
+    const FTDI_SIO_SET_EVENT_CHAR           = 6 /* Set the event character */
+    const FTDI_SIO_SET_ERROR_CHAR           = 7 /* Set the error character */
+    
+    const FTDI_SIO_RESET_SIO                = 0
+    const FTDI_SIO_RESET_PURGE_RX           = 1
+    const FTDI_SIO_RESET_PURGE_TX           = 2
+    
+    const FTDI_SIO_SET_DATA_PARITY_NONE     = 0x000
+    const FTDI_SIO_SET_DATA_PARITY_ODD      = 0x100
+    const FTDI_SIO_SET_DATA_PARITY_EVEN     = 0x200
+    const FTDI_SIO_SET_DATA_PARITY_MARK     = 0x300
+    const FTDI_SIO_SET_DATA_PARITY_SPACE    = 0x400
+    const FTDI_SIO_SET_DATA_STOP_BITS_1     = 0x000
+    const FTDI_SIO_SET_DATA_STOP_BITS_15    = 0x800
+    const FTDI_SIO_SET_DATA_STOP_BITS_2     = 0x1000
+    const FTDI_SIO_SET_BREAK                = 0x4000
+    
+    const FTDI_SIO_DISABLE_FLOW_CTRL        = 0x000
+    const FTDI_SIO_RTS_CTS_HS               = 0x100
+    const FTDI_SIO_DTR_DSR_HS               = 0x200
+    const FTDI_SIO_XON_XOFF_HS              = 0x400
+    
+    const FTDI_SIO_CTS_MASK                 = 0x10
+    const FTDI_SIO_DSR_MASK                 = 0x20
+    const FTDI_SIO_RI_MASK                  = 0x40
+    const FTDI_SIO_RLSD_MASK                = 0x80
+    
+    // FTDI_SIO_SET_DTR_MASK            = 0x1
+    // FTDI_SIO_SET_DTR_HIGH            = ( 1 | ( FTDI_SIO_SET_DTR_MASK << 8))
+    // FTDI_SIO_SET_DTR_LOW             = ( 0 | ( FTDI_SIO_SET_DTR_MASK << 8))
+    // FTDI_SIO_SET_RTS_MASK            = 0x2
+    // FTDI_SIO_SET_RTS_HIGH            = ( 2 | ( FTDI_SIO_SET_RTS_MASK << 8 ))
+    // FTDI_SIO_SET_RTS_LOW             = ( 0 | ( FTDI_SIO_SET_RTS_MASK << 8 ))
+
+}
+
+
+// -----------------------------------------------------------------------------
 function trace(str, label = "") {
     
     if (label == "CONFIG") {
@@ -531,7 +578,6 @@ function trace(str, label = "") {
     }
     
 }
-
 
 
 // -----------------------------------------------------------------------------
@@ -700,8 +746,6 @@ class MAX3421E {
     _rst_l = null;
     _int = null;
     
-    _cb_connected = null;
-    
     _running = false;
     _config = null;
     
@@ -713,11 +757,10 @@ class MAX3421E {
         _int = int;
         
         _spi.configure(CLOCK_IDLE_LOW | MSB_FIRST, 15000);
-        _cs_l.configure(DIGITAL_OUT); _cs_l.write(1);
-        _rst_l.configure(DIGITAL_OUT); _rst_l.write(1);
+        _cs_l.configure(DIGITAL_OUT, 1);
+        _rst_l.configure(DIGITAL_OUT, 1);
         _int.configure(DIGITAL_IN, interrupt.bindenv(this));
         
-        max_constants();
         hard_reset();
         init();
         
@@ -787,10 +830,8 @@ class MAX3421E {
         if (probe_result == LSHOST || probe_result == FSHOST) {
             local lowspeed = (probe_result == LSHOST);
             imp.wakeup(0, function() {
-                if (_cb_connected) {    
-                    busreset(lowspeed);
-                    _cb_connected(true, _config, lowspeed);
-                }
+                busreset(lowspeed);
+                connect(true, _config, lowspeed);
             }.bindenv(this))
         }
     }
@@ -885,10 +926,10 @@ class MAX3421E {
             local state_change = (probe_result != null);
             local connected = (probe_result != 0);
             local lowspeed = (probe_result == LSHOST);
-            if (state_change && _cb_connected) {
+            if (state_change) {
                 if (connected != _running) {
                     busreset(lowspeed);
-                    _cb_connected(connected, _config, lowspeed);
+                    connect(connected, _config, lowspeed);
                 } 
                 if (!connected) _running = false;
             }
@@ -910,10 +951,6 @@ class MAX3421E {
         }
     }
     
-    function on_connected(callback) {
-        _cb_connected = callback;
-    }
-    
     function is_running() {
         return _running;
     }
@@ -924,21 +961,21 @@ class MAX3421E {
 class USB extends MAX3421E {
     
     // Stores the toggle values for each endpoint
-    toggles = null;
-    lastAddrEp = null;
+    _toggles = null;
+    _lastAddrEp = null;
+    _poller = null;
+    _drivers = null;
+    _driver = null;
+    
 
-    // These should be constants
-    bmREQ_GET_DESCR    = USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_DEVICE     //get descriptor request type
-    bmREQ_SET          = USB_SETUP_HOST_TO_DEVICE|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_DEVICE     //set request type for all but 'set feature' and 'set interface'
-    bmREQ_CL_GET_INTF  = USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_CLASS|USB_SETUP_RECIPIENT_INTERFACE     //get interface request type
-    
-    
     constructor(spi, cs_l, rst_l, int) {
-
-        base.constructor(spi, cs_l, rst_l, int);
-        usb_constants();
-        toggles = {};
+    
+        const POLL_RATE = 1;
         
+        base.constructor(spi, cs_l, rst_l, int);
+        _toggles = {};
+        _drivers = [];
+        _poller = imp.wakeup(POLL_RATE, poll.bindenv(this))
     }
 
     function init() {
@@ -949,12 +986,12 @@ class USB extends MAX3421E {
         
         // Backup the toggle bits
         local curAddrEp = format("%d:%d", addr, ep&0x0F);
-        if (lastAddrEp != null && lastAddrEp != curAddrEp) {
+        if (_lastAddrEp != null && _lastAddrEp != curAddrEp) {
             local oldtoggle = regRd(rHRSL) & (bmRCVTOGRD | bmSNDTOGRD);
             local newtoggle = ((oldtoggle & bmRCVTOGRD) ? bmRCVTOG1 : bmRCVTOG0)
                             | ((oldtoggle & bmSNDTOGRD) ? bmSNDTOG1 : bmSNDTOG0);
-            toggles[lastAddrEp] <- newtoggle;
-            // server.log(format("*** Storing toggles 0x%02X for ep %s", toggles[lastAddrEp], lastAddrEp))
+            _toggles[_lastAddrEp] <- newtoggle;
+            // server.log(format("*** Storing toggles 0x%02X for ep %s", _toggles[lastAddrEp], lastAddrEp))
         }
         
         //set peripheral address
@@ -973,16 +1010,16 @@ class USB extends MAX3421E {
             newToggles = bmRCVTOG1 | bmSNDTOG1;
             // server.log(format("*** Initialising toggles to 0x%02X for ep %s", newToggles, curAddrEp))
 
-        } else if ((curAddrEp != lastAddrEp) && !(curAddrEp in toggles)) {
+        } else if ((curAddrEp != _lastAddrEp) && !(curAddrEp in _toggles)) {
             
             // Set the new toggle bits
             newToggles = bmRCVTOG0 | bmSNDTOG0;
             // server.log(format("*** Initialising toggles to 0x%02X for ep %s", newToggles, curAddrEp))
             
-        } else if ((lastAddrEp != curAddrEp) && (curAddrEp in toggles)) {
+        } else if ((_lastAddrEp != curAddrEp) && (curAddrEp in _toggles)) {
             
             // Restore the previous toggle bits for this AddrEp
-            newToggles = toggles[curAddrEp];
+            newToggles = _toggles[curAddrEp];
             // server.log(format("*** Restoring toggles 0x%02X for ep %s", newToggles, curAddrEp))
             
         } 
@@ -991,7 +1028,7 @@ class USB extends MAX3421E {
             // Now set the new toggles, if we have them
             regWr(rHCTL, newToggles);
         }
-        lastAddrEp = curAddrEp;  
+        _lastAddrEp = curAddrEp;  
     }
     
     function ctrlReq(addr, ep, bmReqType, bRequest, wValLo, wValHi, wInd, total = 0, nBytes = null, data = null) {
@@ -1411,48 +1448,21 @@ class USB extends MAX3421E {
         imp.sleep(0.3);
         
         // Remove the old toggle
-        if ("0:0" in toggles) delete toggles["0:0"];
+        if ("0:0" in _toggles) delete _toggles["0:0"];
         
         // Set the configuration
         ctrlReq(addr, 0, bmREQ_SET, USB_REQUEST_SET_CONFIGURATION, configuration, 0x00, 0x0000, 0x0000, 0x0000);
 
     }
 
-    
-}
 
-
-// -----------------------------------------------------------------------------
-class HIDBoot {
-
-    _usb = null;
-    _poller = null;
-    _drivers = null;
-    _driver = null;
-    _config = null;
-
-    /* HID requests */
-    bmREQ_HIDOUT      = USB_SETUP_HOST_TO_DEVICE|USB_SETUP_TYPE_CLASS|USB_SETUP_RECIPIENT_INTERFACE;
-    bmREQ_HIDIN       = USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_CLASS|USB_SETUP_RECIPIENT_INTERFACE;
-    bmREQ_HIDREPORT   = USB_SETUP_DEVICE_TO_HOST|USB_SETUP_TYPE_STANDARD|USB_SETUP_RECIPIENT_INTERFACE;
-        
-    
-    constructor(usb) {
-        
-        const POLL_RATE = 1;
-        
-        _usb = usb;
-        _usb.on_connected(connect.bindenv(this))
-        _drivers = [];
-        _poller = imp.wakeup(POLL_RATE, poll.bindenv(this))
-
-    }    
-    
+    // -----------------------------------------------------------------------------
+    // These were originally in class HIDBoot
     function connect(connected, config, lowspeed) {
         if (connected && config) {
             _driver = null;
             _config = config;
-            _usb.setAddressAndConfig(1, 1);
+            setAddressAndConfig(1, 1);
 
             // Find the right driver and throw the connect event
             foreach (driver in _drivers) {
@@ -1465,6 +1475,7 @@ class HIDBoot {
             
             if (!_driver) {
                 server.error("Failed to locate a matching driver");
+                trace(_config, "CONFIG");
             }
             
         } else if (_driver) {
@@ -1477,7 +1488,7 @@ class HIDBoot {
     
     function poll() {
         local interval = POLL_RATE;
-        if (_driver && _usb.is_running()) {
+        if (_driver && is_running()) {
             local i = _driver.poll();
             if (typeof i == "integer" || typeof i == "float") interval = i;
         }
@@ -1487,31 +1498,30 @@ class HIDBoot {
     function register(driver) {
         _drivers.push(driver);
     }
-
-    function setReport(addr, ep, iface, report_type, report_id, data) {
-        return _usb.ctrlReq(addr, ep, bmREQ_HIDOUT, HID_REQUEST_SET_REPORT, report_id, report_type, iface, data.len(), data.len(), data);
-    }
-    
     
 }
 
 
-// -----------------------------------------------------------------------------
-class HIDDriver {
 
-    _hid = null;
+// -----------------------------------------------------------------------------
+class DriverBase {
+
+    _usb = null;
     _registration = null;
     _poller_endpoint = null;
     _config = null;
-    
-    constructor(hid) {
 
-        _hid = hid;
+    _on_load = null;
+    _on_unload = null;
+    
+    constructor(usb) {
+
+        _usb = usb;
         register();
     }
     
     function register() {
-        _hid.register(this);
+        _usb.register(this);
     }
     
     function match(config) {
@@ -1519,9 +1529,33 @@ class HIDDriver {
     }
 
     function connect(connected, config=null) {
-        server.log("Unhandled connect event")
+        if (connected) {
+            _config = config;
+            imp.wakeup(1, load.bindenv(this))
+        } else {
+            _config = null;
+            _poller_endpoint = null;
+            imp.wakeup(0, unload.bindenv(this))
+        }
+        
     }
     
+    function load() {
+        if (_on_load) _on_load();
+    }
+
+    function unload() {
+        if (_on_unload) _on_unload();
+    }
+
+    function on_load(callback) {
+        _on_load = callback;
+    }
+
+    function on_unload(callback) {
+        _on_unload = callback;
+    }
+
     function poll() {
         
     }
@@ -1534,7 +1568,7 @@ class HIDDriver {
 
 
 // -----------------------------------------------------------------------------
-class Keyboard extends HIDDriver {
+class Keyboard extends DriverBase {
 
     _last_scan = null;
     _mods = null;
@@ -1543,8 +1577,8 @@ class Keyboard extends HIDDriver {
     _on_key_down = null;
     _on_key_up = null;
 
-    constructor(hid) {
-        base.constructor(hid);
+    constructor(usb) {
+        base.constructor(usb);
         _last_scan = blob(8);
         _mods = {num=false, caps=false, scroll=false};
     }
@@ -1567,15 +1601,13 @@ class Keyboard extends HIDDriver {
     }
 
     function connect(connected, config=null) {
+        base.connect(connected, config);
         if (connected) {
-            _config = config;
             for (local i = 0; i < _last_scan.len(); i++) _last_scan[i] = 0x00;
             _mods = {num=false, caps=false, scroll=false};
             animate_leds();
             server.log("Keyboard driver loaded")
         } else {
-            _config = null;
-            _poller_endpoint = null;
             server.log("Keyboard driver unloaded")
         }
     }
@@ -1586,7 +1618,7 @@ class Keyboard extends HIDDriver {
         local wMaxPacketSize = _poller_endpoint.wMaxPacketSize;
         local data = blob(_config.bMaxPacketSize0);
         
-        if (_hid._usb.inTransfer(1, bEndpointAddress, data, wMaxPacketSize, wMaxPacketSize) == hrSUCCESS) {
+        if (_usb.inTransfer(1, bEndpointAddress, data, wMaxPacketSize, wMaxPacketSize) == hrSUCCESS) {
             response(data);
         }
         
@@ -1660,9 +1692,13 @@ class Keyboard extends HIDDriver {
         if (_mods.caps) _leds[0] = _leds[0] | 0x02;
         if (_mods.scroll) _leds[0] = _leds[0] | 0x04;
         
-        local addr = 1;
-        _hid.setReport(addr, 0, 0, 2, 0, _leds);
+        setReport(1, 0, 0, 2, 0, _leds);
     }
+    
+    function setReport(addr, ep, iface, report_type, report_id, data) {
+        return _usb.ctrlReq(addr, ep, bmREQ_HIDOUT, HID_REQUEST_SET_REPORT, report_id, report_type, iface, data.len(), data.len(), data);
+    }
+    
     
     function VALUE_WITHIN(val, min, max) {
         return val >= min && val <= max;
@@ -1720,7 +1756,7 @@ class Keyboard extends HIDDriver {
 
 
 // -----------------------------------------------------------------------------
-class Mouse extends HIDDriver {
+class Mouse extends DriverBase {
 
     _last_scan = null;
     _buttons = null;
@@ -1730,8 +1766,8 @@ class Mouse extends HIDDriver {
     _on_button_down = null;
     _on_button_up = null;
 
-    constructor(hid) {
-        base.constructor(hid);
+    constructor(usb) {
+        base.constructor(usb);
         _last_scan = blob(4);
         _buttons = {left=false, right=false, middle=false};
     }
@@ -1754,15 +1790,12 @@ class Mouse extends HIDDriver {
     }
     
     function connect(connected, config=null) {
-        
+        base.connect(connected, config);
         if (connected) {
-            _config = config;
             for (local i = 0; i < _last_scan.len(); i++) _last_scan[i] = 0x00;
             _buttons = {left=false, right=false, middle=false};
             server.log("Mouse driver loaded")
         } else {
-            _config = null;
-            _poller_endpoint = null;
             server.log("Mouse driver unloaded")
         }
 
@@ -1774,7 +1807,7 @@ class Mouse extends HIDDriver {
         local wMaxPacketSize = _poller_endpoint.wMaxPacketSize;
         local data = blob(_config.bMaxPacketSize0);
         
-        if (_hid._usb.inTransfer(1, bEndpointAddress, data, wMaxPacketSize, wMaxPacketSize) == hrSUCCESS) {
+        if (_usb.inTransfer(1, bEndpointAddress, data, wMaxPacketSize, wMaxPacketSize) == hrSUCCESS) {
             response(data);
         }
         
@@ -1831,25 +1864,177 @@ class Mouse extends HIDDriver {
     function on_button_up(callback) {
         _on_button_up = callback;
     }
+
+
+}
+
+
+// -----------------------------------------------------------------------------
+class FTDI extends DriverBase {
+
+    _buffer = null;
+
+    _on_receive = null;
     
+    _baud = null;
+    _bits = null;
+    _parity = null;
+    _stop_bits = null;
+    _options = null;
+
+
+    constructor(usb, baud=115200, bits=8, parity=PARITY_NONE, stop_bits=1, options=NO_CTSRTS) {
+
+        base.constructor(usb);
+        
+        _buffer = blob();
+        _baud = baud;
+        _bits = bits;
+        _parity = parity;
+        _stop_bits = stop_bits;
+        _options = options;
+        
+    }
+    
+    
+    function match(config) {
+
+        if (!config || !("aConfigs" in config)) return false;
+        if (config.aConfigs.len() == 0 || config.aConfigs[0].aInterfaces.len() == 0 || config.aConfigs[0].aInterfaces[0].aEndPoints.len() == 0) return false;
+        
+        if (config.idVendor == 0x403 && [0x232, 0x6001, 0x6007, 0x6008, 0x6009].find(config.idProduct) != null) {
+            return true;
+        }
+        return false;
+        
+    }
+    
+    function connect(connected, config=null) {
+        
+        base.connect(connected, config);
+        if (connected) {
+            server.log("FTDI driver loaded")
+        } else {
+            server.log("FTDI driver unloaded")
+        }
+
+    }
+    
+    function poll() {
+
+        do {
+            local datain = blob();
+            local inresp = _usb.inTransfer(1, 1, datain, 64, 64);
+            
+            // The first two bytes are line status data
+            if (datain.len() < 3) break;
+
+            // We have a buffer, process it.
+            trace(datain, "RECV");
+            datain.seek(2);
+            local _buffer = datain.readblob(datain.len()-2);
+            if (_on_receive) _on_receive(_buffer);
+
+        } while (true);
+        
+        return 0.001;
+    }
+    
+    function send(msg=null) {
+        
+        trace(msg, "SENT");
+        local dataout = blob(msg.len());
+        if (typeof msg == "string") dataout.writestring(msg);
+        else if (typeof msg == "blob") dataout.writeblob(msg);
+
+        // server.log("Sending: " + msg);
+        return _usb.outTransfer(1, 2, dataout, 64);
+    }
+    
+    function load() {
+        // Set the baud rate
+        SetBaudRate(_baud);
+        
+        // Set the flow control
+        local protocol = (_options & NO_CTSRTS) ? FTDI_SIO_DISABLE_FLOW_CTRL : FTDI_SIO_RTS_CTS_HS;
+        SetFlowControl(protocol);
+        
+        // Now notify the base class
+        base.load();
+    }
+    
+    function SetBaudRate(baud) {
+        
+        local baud_value, baud_index = 0;
+        local divisor3 = 48000000 / 2 / baud; // divisor shifted 3 bits to the left
+
+        if (_config.bcdDevice == FT232AM) {
+            
+            if ((divisor3 & 0x07) == 0x07) {
+                divisor3++; // round x.7/8 up to x+1
+            }
+
+            baud_value = divisor3 >> 3;
+            divisor3 = divisor3 & 0x7;
+
+            if (divisor3 == 1) baud_value = baud_value | 0xc000; // 0.125
+            else if (divisor3 >= 4) baud_value = baud_value | 0x4000; // 0.5
+            else if (divisor3 != 0) baud_value = baud_value | 0x8000; // 0.25
+            if (baud_value == 1) baud_value = 0; /* special case for maximum baud rate */
+            
+        } else {
+            local divfrac = [0, 3, 2, 0, 1, 1, 2, 3];
+            local divindex = [0, 0, 0, 1, 0, 1, 1, 1];
+
+            baud_value = divisor3 >> 3;
+            baud_value = baud_value | (divfrac[divisor3 & 0x7] << 14);
+            
+            baud_index = divindex[divisor3 & 0x7];
+
+            /* Deal with special cases for highest baud rates. */
+            if (baud_value == 1) baud_value = 0; // 1.0
+            else if (baud_value == 0x4001) baud_value = 1; // 1.5
+        }
+        
+        return _usb.ctrlReq(1, 0, bmREQ_FTDI_OUT, FTDI_SIO_SET_BAUD_RATE, baud_value & 0xff, baud_value >> 8, baud_index);
+    }
+    
+    function SetFlowControl(protocol, xon = 0x11, xoff = 0x13) {
+        return _usb.ctrlReq(1, 0, bmREQ_FTDI_OUT, FTDI_SIO_SET_FLOW_CTRL, xon, xoff, protocol << 8);
+    }
+    
+    function SetModemControl(signal) {
+        return _usb.ctrlReq(1, 0, bmREQ_FTDI_OUT, FTDI_SIO_MODEM_CTRL, signal & 0xff, signal >> 8);
+    }
+
+    function SetData(databm) {
+        return _usb.ctrlReq(1, 0, bmREQ_FTDI_OUT, FTDI_SIO_SET_DATA, databm & 0xff, databm >> 8);
+    }
+    
+    function on_receive(callback) {
+        _on_receive = callback;
+    }
+
 }
 
 
 
 // -----------------------------------------------------------------------------
-spi <- hardware.spi257;
-cs <- hardware.pinA;
-reset <- hardware.pinB;
-int <- hardware.pinC;
 imp.enableblinkup(true);
+
+// Alias the hardware pins (support both imp001 and imp002 layout)
+spi   <- hardware.spi257;
+cs    <- "pinA" in hardware ? hardware.pinA : hardware.pin1;
+reset <- "pinB" in hardware ? hardware.pinB : hardware.pin8;
+int   <- "pinC" in hardware ? hardware.pinC : hardware.pin9;
+
 
 // Load the main USB host controller and the HID interface
 usb <- USB(spi, cs, reset, int);
-hid <- HIDBoot(usb);
 
 
 // Keyboard driver
-keyboard <- Keyboard(hid);
+keyboard <- Keyboard(usb);
 keyboard.on_key_down(function(mod, key) {
     local asc = keyboard.oem_to_ascii(mod, key);
     if (asc != null) server.log(format("Key pressed: %c", asc))
@@ -1858,7 +2043,7 @@ keyboard.on_key_down(function(mod, key) {
 
 
 // Mouse driver
-mouse <- Mouse(hid);
+mouse <- Mouse(usb);
 mouse.on_move(function(x, y) {
     server.log("Move: " + x + ", " + y)  
 })
@@ -1872,4 +2057,10 @@ mouse.on_button_up(function(btn) {
     server.log("Up: " + btn)
 })
 
-server.log("Imp USB host ready");
+
+// FTDI driver
+ftdi <- FTDI(usb, 115200, 8, PARITY_NONE, 1, NO_CTSRTS);
+// Echo whatever we get back
+ftdi.on_receive(ftdi.send.bindenv(ftdi)); 
+
+
