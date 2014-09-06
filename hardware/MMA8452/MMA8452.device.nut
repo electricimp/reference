@@ -77,20 +77,35 @@ class MMA8452 {
 
     function wake() {
         local reg = blob(1);
-        reg.writestring(_i2c.read(_addr, REGISTERS.CTRL_REG1, 1));
+        local readResult = _i2c.read(_addr, REGISTERS.CTRL_REG1, 1)
+        if (!readResult) {
+            server.error("Error reading from device");
+            return;
+        }
+        reg.writestring(readResult);
         _i2c.write(_addr, format("%s%c", REGISTERS.CTRL_REG1, reg[0] | 0x01));
     }
 
     function sleep() {
         local reg = blob(1);
-        reg.writestring(_i2c.read(_addr, REGISTERS.CTRL_REG1, 1));
+        local readResult = _i2c.read(_addr, REGISTERS.CTRL_REG1, 1)
+        if (!readResult) {
+            server.error("Error reading from device");
+            return;
+        }
+        reg.writestring(readResult);
         _i2c.write(_addr, format("%s%c", REGISTERS.CTRL_REG1, reg[0] & 0xFE));
     }
 
     function read() {
         // Reads the status register + 3x 2-byte data registers
         local reg = blob(7);
-        reg.writestring(_i2c.read(_addr, REGISTERS.STATUS, 7));
+        local readResult = _i2c.read(_addr, REGISTERS.STATUS, 7)
+        if (!readResult) {
+            server.error("Error reading from device");
+            return null;
+        }
+        reg.writestring(readResult);
         local data = {
             x = (reg[1] << 4) | (reg[2] >> 4),
             y = (reg[3] << 4) | (reg[4] >> 4),
@@ -106,6 +121,9 @@ class MMA8452 {
 
     function readG() {
         local data = read();
+        if (data == null) {
+            return null;
+        }
         data.x = data.x * _fs / 2048.0;
         data.y = data.y * _fs / 2048.0;
         data.z = data.z * _fs / 2048.0;
@@ -122,8 +140,10 @@ function readAccel() {
 
 function readAccelG() {
     local data = accel.readG();
-    server.log(format("x = %.02f, y = %.02f, z = %.02f", data.x, data.y, data.z));
-    imp.wakeup(1, readAccelG);
+    if (data) {
+        server.log(format("x = %.02f, y = %.02f, z = %.02f", data.x, data.y, data.z));
+        imp.wakeup(1, readAccelG);
+    }
 }
 
 accel <- MMA8452(hardware.i2c89);
