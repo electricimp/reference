@@ -271,12 +271,5 @@ agent.on("newImgInv", function(data) {
 agent.on("newImgNorm", function(data) {
     display.drawScreen(data);
     display.stop();
-})
-
-agent.on("clear", function(val) {
-    server.log("Force-clearing screen.");
-    display.start();
-    display.white()
-    display.stop();
 });
 
