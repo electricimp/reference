@@ -23,7 +23,7 @@ You can get near instantaneous results for a Twitter search by using the streami
 
 	function onTweet(tweetData) {
 		// log the tweet, and who tweeted it (there is a LOT more info in tweetData)
-		server.log(format("%s - %s", tweet.text, tweet.user.screen_name));
+		server.log(format("%s - %s", tweetData.text, tweetData.user.screen_name));
 	}
 	
 	twitter.stream("searchTerm", onTweet);
