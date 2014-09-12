@@ -2,28 +2,11 @@
 // This file is licensed under the MIT License
 // http://opensource.org/licenses/MIT
 
-server.log("Agent Running at "+http.agenturl());
-
-// The device spends most of its time asleep when on battery power, 
-// So the agent keeps track of parameters like the current image and display size.
 const WIDTH = 264;
 const HEIGHT = 176;
 
 PIXELS <- HEIGHT * WIDTH;
-BYTES_PER_SCREEN <- PIXELS / 4;
-
-imgData <- {};
-// resize image blobs to display dimensions
-imgData.curImg <- blob(BYTES_PER_SCREEN);
-imgData.curImgInv <- blob(BYTES_PER_SCREEN);
-imgData.nxtImg <- blob(BYTES_PER_SCREEN);
-imgData.nxtImgInv <- blob(BYTES_PER_SCREEN);
-
-// fill the current image blobs with dummy data
-for (local i = 0; i < BYTES_PER_SCREEN; i++) {
-    imgData.curImg.writen(0xAA,'b');
-	imgData.curImgInv.writen(0xFF,'b');
-}
+BYTES_PER_SCREEN <- (PIXELS / 4) + (HEIGHT / 4);
 
 /*
  * Input: WIF image data (blob)
@@ -38,9 +21,11 @@ function unpackWIF(packedData) {
 
 	// length of actual data is the length of the blob minus the first four bytes (dimensions)
 	local datalen = packedData.len() - 4;
-	local retVal = {height = null, width = null, normal = blob(datalen*2), inverted = blob(datalen*2)};
+	local retVal = {height = null, width = null, normal = [], inverted = []};
 	retVal.height = packedData.readn('w');
 	retVal.width = packedData.readn('w');
+	retVal.normal = array(retVal.height);
+	retVal.inverted = array(retVal.height);
 	server.log("Unpacking WIF Image, Height = "+retVal.height+" px, Width = "+retVal.width+" px");
 
 	/*
@@ -56,11 +41,11 @@ function unpackWIF(packedData) {
 	 * white pixel is 0b10
 	 * "don't care" is 0b00 or 0b01
 	 * WIF does not support don't-care bits
-	 *
 	 */
 
 	for (local row = 0; row < retVal.height; row++) {
-		//for (local col = 0; col < (retVal.width / 8); col++) {
+		retVal.normal[row] = blob(((retVal.width * 2) + (retVal.height * 2)) / 8);
+		retVal.inverted[row] = blob(((retVal.width * 2) + (retVal.height * 2)) / 8);
 		for (local col = (retVal.width / 8) - 1; col >= 0; col--) {
 			local packedByte = packedData.readn('b');
 			local unpackedWordEven = 0x00;
@@ -73,11 +58,11 @@ function unpackWIF(packedData) {
 				if (!(bit % 2)) {
 					// even pixels become odd pixels because the screen is drawn right to left
 					if (packedByte & (0x01 << bit)) {
-						unpackedWordOdd = unpackedWordOdd | (0x03 << (6-bit));
-						unpackedWordOddInv = unpackedWordOddInv | (0x02 << (6-bit));
+						unpackedWordOdd = unpackedWordOdd | (0x03 << (6 - bit));
+						unpackedWordOddInv = unpackedWordOddInv | (0x02 << (6 - bit));
 					} else {
-						unpackedWordOdd = unpackedWordOdd | (0x02 << (6-bit));
-						unpackedWordOddInv = unpackedWordOddInv | (0x03 << (6-bit));
+						unpackedWordOdd = unpackedWordOdd | (0x02 << (6 - bit));
+						unpackedWordOddInv = unpackedWordOddInv | (0x03 << (6 - bit));
 					}
 				} else {
 					// odd pixel becomes even pixel
@@ -91,12 +76,23 @@ function unpackWIF(packedData) {
 				}
 			}
 
-			retVal.normal[(row * (retVal.width/4))+col] = unpackedWordEven;
-			retVal.inverted[(row * (retVal.width/4))+col] = unpackedWordEvenInv;
-			retVal.normal[(row * (retVal.width/4))+(retVal.width/4) - col - 1] = unpackedWordOdd;
-			retVal.inverted[(row * (retVal.width/4))+(retVal.width/4) - col - 1] = unpackedWordOddInv;
-
+			// the first (width * 3 / 16) bytes are even pixels in descending order [D(264, y), D(262,y)...]
+			retVal.normal[row][col] = unpackedWordEven;
+			retVal.inverted[row][col] = unpackedWordEvenInv;
+			// the last (width * 3 / 16) bytes are odd piels in ascending order
+			retVal.normal[row][(retVal.width / 4) + (retVal.height / 4) - col - 1] = unpackedWordOdd;
+			retVal.inverted[row][(retVal.width / 4) + (retVal.height / 4) - col - 1] = unpackedWordOddInv;
 		} // end of col
+		// (height / 4) bytes in the middle are "scan bytes" (for each line, "0b11" = write this line, "0b00" = don't write this line)
+		for (local i = (retVal.width / 8); i < ((retVal.width / 8) + (retVal.height / 4)); i++) {
+		    if (i - (retVal.width / 8) == math.floor(row / 4)) {
+		        retVal.normal[row][i] = (0xC0 >> (2 * (row % 4)));
+		        retVal.inverted[row][i] = (0xC0 >> (2 * (row % 4)));
+		    } else {
+		        retVal.normal[row][i] = 0x00;
+		        retVal.inverted[row][i] = 0x00;
+		    }
+		}
 	} // end of row
 
 	server.log("Done Unpacking WIF File.");
@@ -104,14 +100,40 @@ function unpackWIF(packedData) {
 	return retVal;
 }
 
+function createBlankImg() {
+    local screenData = array(HEIGHT);
+	for (local row = 0; row < HEIGHT; row++) {
+	    screenData[row] = blob(((WIDTH * 2) + (HEIGHT * 2)) / 8);
+	    for (local i = 0; i < (WIDTH / 8); i++) {
+	        screenData[row][i] = 0xAA;
+	    }
+	    for (local j = (WIDTH / 8); j < ((WIDTH / 8) + (HEIGHT / 4)); j++) {
+	        if ((j - (WIDTH / 8)) == math.floor(row / 4)) {
+		        screenData[row][j] = (0xC0 >> (2 * (row % 4)));
+		    } else {
+		        screenData[row][j] = 0x00;
+		    }
+	    }
+	    for (local k = ((WIDTH / 8) + (HEIGHT / 4)); k < ((WIDTH * 2) + (HEIGHT * 2)) / 8; k++) {
+	        screenData[row][k] = 0xAA;
+	    }
+	}
+	return screenData;
+}
+
+server.log("Creating a blank image...");
+
+imgData <- {};
+local white = createBlankImg();
+imgData.curImg      <- white;
+imgData.curImgInv   <- white;
+imgData.nxtImg      <- white;
+imgData.nxtImgInv   <- white;
+
 /* DEVICE EVENT HANDLERS ----------------------------------------------------*/
 
-// Tell the device how big the screen is and what it has on it when it wakes up and asks.
-device.on("params_req",function(data) {
-    local dispParams = {};
-    dispParams.height <- HEIGHT;
-    dispParams.width <- WIDTH;
-	device.send("params_res",dispParams);
+device.on("readyForWhite", function(data) {
+    device.send("white", white);
 });
 
 device.on("readyForNewImgInv", function(data) {
@@ -120,7 +142,6 @@ device.on("readyForNewImgInv", function(data) {
 
 device.on("readyForNewImgNorm", function(data) {
     device.send("newImgNorm", imgData.nxtImg);
-    
     // now move the "next image" data to "current image" in the image data table.
     imgData.curImg = imgData.nxtImg;
     imgData.curImgInv = imgData.nxtImgInv;
@@ -136,13 +157,14 @@ http.onrequest(function(request, res) {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers","Origin, X-Requested-With, Content-Type, Accept");
     res.header("Access-Control-Allow-Methods", "POST, GET, OPTIONS");
-
-    if (request.path == "/WIFimage" || request.path == "/WIFimage/") {
+    local path = request.path.tolower();
+    if (path == "/wifimage") {
     	// return right away to keep things responsive
     	res.send(200, "OK\n");
 
     	// incoming data has to be base64decoded so we can get a blob right away
-    	local data = http.base64decode(request.body);
+    	local data = blob(request.body.len());
+    	data.writestring(request.body);
     	server.log("Got new data, len "+data.len());
 
     	// unpack the WIF image data
@@ -151,16 +173,16 @@ http.onrequest(function(request, res) {
     	imgData.nxtImgInv = newImgData.inverted;
 
     	// send the inverted version of the image currently on the screen to start the display update process
-        server.log("Sending new data to device, len: "+imgData.curImgInv.len());
-        device.send("newImgStart",imgData.curImgInv);
+        server.log("Sending new data to device");
+        device.send("newImg", imgData.curImgInv);
         
-    } else if (request.path == "/clear" || request.path == "/clear/") {
+    } else if (path == "/clear") {
     	res.send(200, "OK\n");
-
     	device.send("clear", 0);
-    	server.log("Requesting Screen Clear.");
     } else {
     	server.log("Agent got unknown request");
     	res.send(200, "OK\n");
     }
 });
+
+server.log("Agent Ready");
