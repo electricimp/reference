@@ -6,7 +6,7 @@ This class makes it simple for an imp to read an NTC ("Negative Temperature Coef
 ## Hardware
 A resistive divider can be formed with the thermistor on the top or the bottom; this class allows for either configuration. The top of the divider should be connected to the same rail as the Imp's VDDA pin (or VDD pin, in the case of the Imp card, as VDD and VDDA are internally connected). The bottom of the divider should be connected to ground.
 
-The resitance fixed (bias) resistor of the voltage divider should be equal to the resistance of the thermistor at T0 (the nominal reistance of the thermistor).  This is to allow the class to be independent of the absolute resitance values.
+The resitance of the fixed (bias) resistor of the voltage divider must be equal to the resistance of the thermistor at T0 (the nominal reistance of the thermistor).  This allows the class to be independent of the absolute resitance values and simplifies the calculations for the temperature.
 
 The center of the divider must be connected to a pin capable of analog input. On the Imp card, any pin can be used as an analog input. On the Imp module, only some pins can be configured this way, so check the [Imp Pin Mux Chart](http://electricimp.com/docs/hardware/imp/pinmux/).
 
