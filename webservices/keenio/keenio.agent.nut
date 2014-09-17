@@ -37,6 +37,22 @@ class KeenIO {
         }
     }
     
+    /***************************************************************************
+    * Parameters: 
+    *   ts - the unix timestamp of the event
+    *   millis - optional parameter to specify the milliseconds of the timestamp
+    *
+    * Returns: 
+    * 	A formated KeenIO timestamp that can be inserted into the Keen event
+    ***************************************************************************/    
+    function getTimestamp(ts, millis = 0) {
+        local m = ((millis % 1000) + "000000").slice(0, 6);
+        local d = date(ts);
+    
+        return format("%04i-%02i-%02iT%02i:%02i:%02i.%sZ", d.year, d.month+1, d.day, d.hour, d.min, d.sec, m);
+    }
+    
+
     /*************** Private Functions - (DO NOT CALL EXTERNALLY) ***************/
     function _buildUrl(eventCollection, projectId = null, apiKey = null) {
         if (projectId == null) projectId = _projectId;
