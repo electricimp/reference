@@ -355,9 +355,9 @@ function generateStoredDataPoints()
     value = (value / 4095.0) * 3.3;   // Scale and convert to voltage
     graphString.writestring(format("[%.3f, %f], ", i / sampleRate, value));
     i++;
-    if (j%100 == 0){
-        server.log("Generate Graph Func mem: " + imp.getmemoryfree())
-    }
+    // if (j%100 == 0){
+    //     server.log("Generate Graph Func mem: " + imp.getmemoryfree())
+    // }
   }
   server.log(format("Graph generated with %i values: ", data.len()/2));
   //server.log(graphString);
