@@ -80,7 +80,7 @@ class SX150x{
 
     //configure which callback should be called for each pin transition
     function setCallback(gpio, callback){
-        _callbacks.insert(gpio,callback);
+        _callbacks[gpio] = callback;
     }
 
     function callback(){

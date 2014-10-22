@@ -90,7 +90,7 @@ class Twitter {
                 // connection timeout
                 server.log("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
                 // if we have autoreconnect set
-                if (resp.statuscode == 28) {
+                if (resp.statuscode == 28 || resp.statuscode == 200) {
                     stream(searchTerms, onTweet, onError);
                 } else if (resp.statuscode == 420) {
                     imp.wakeup(_reconnectTimeout, function() { stream(searchTerms, onTweet, onError); }.bindenv(this));

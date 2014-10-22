@@ -162,7 +162,6 @@ http.onrequest(function(request, res) {
     	// return right away to keep things responsive
     	res.send(200, "OK\n");
 
-    	// incoming data has to be base64decoded so we can get a blob right away
     	local data = blob(request.body.len());
     	data.writestring(request.body);
     	server.log("Got new data, len "+data.len());
