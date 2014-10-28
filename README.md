@@ -40,6 +40,12 @@ Code Conventions
 ----------------
 Please use the following cade conventions in your Squirrel:
 
+### Semi-colons
+- All lines should be semi-colon terminated
+  - e.g. ```server.log("hello world");```
+
+### Naming Conventions
+
 - Constants should be ALLCAPS with underscores between words
   - e.g ```const MAX_SIZE = 12;```
 - Class/Tables names should be UpperCamelCased
