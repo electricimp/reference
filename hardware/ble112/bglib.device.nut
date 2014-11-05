@@ -2001,25 +2001,3 @@ class BGLib {
     */
     
 }
-
-
-
-//-------------------------------[ Example code ]------------------------------------
-
-ble112 <- BGLib(hardware.uart1289, hardware.pinB, hardware.pinA);
-
-//..............................................................................
-server.log("Imp booted.");
-
-ble112.reboot();
-ble112.on("system_boot", function(event) {
-
-    // Ping the device, make sure we can see it
-    ble112.system_hello(function(response) {
-
-        server.log("BLE112 booted.");
-        
-    })
-    
-})
-

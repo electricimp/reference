@@ -3,7 +3,7 @@
 // http://www.broadcom.com/products/wiced/smart/
 // This class encapuslates reprogramming the "WICED Smart" module by holding it in reset
 // and re-writing its image on EEPROM or SPI FLASH
-class BCM20737 {
+class BCM2073x {
     // external memory for device contains at minimum a static section and a dynamic section
     // may contain two static sections
     // if provided image does not include a static section (e.g. over-the-air upgrade images), 
@@ -60,8 +60,7 @@ class BCM20737 {
     function dumpExtMemory(newDataCallback) {
         local numchunks = mem_size / block_size;
         // Hold BLE chip in reset
-        rst_l.configure(DIGITAL_OUT);
-        rst_l.write(0);
+        rst_l.configure(DIGITAL_OUT, 0);
         for (local i = 0; i < numchunks; i++) {
             local buffer = blob(block_size);
             buffer.writestring(ext_mem.read(block_size, i * block_size));
@@ -73,8 +72,7 @@ class BCM20737 {
     
     // Helper: holds BCM in reset and wraps chip erase methods for whatever external storage is present
     function clearExtMemory() {
-        rst_l.configure(DIGITAL_OUT);
-        rst_l.write(0);
+        rst_l.configure(DIGITAL_OUT, 0);
         ext_mem.chipErase();
         rst_l.configure(DIGITAL_IN);
     }
@@ -119,8 +117,7 @@ class BCM20737 {
             }
         }
         // Hold BCM in reset
-        rst_l.configure(DIGITAL_OUT);
-        rst_l.write(0);
+        rst_l.configure(DIGITAL_OUT, 0);
         // write the dynamic image to the external memory
         ext_mem.write(ds_img, ds_offset);
         // copy the start address of the dynamic image into the static image and
