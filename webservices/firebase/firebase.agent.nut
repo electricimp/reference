@@ -529,8 +529,8 @@ class Firebase {
 
 
 // Sample instantiation
-const FIREBASENAME = "your firebase";
-const FIREBASESECRET = "your secret or token";
+//const FIREBASENAME = "your firebase";
+//const FIREBASESECRET = "your secret or token";
 
-firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
+//firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
 
