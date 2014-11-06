@@ -2,7 +2,7 @@
 // Parses a hex string and turns it into an integer
 function hextoint(str) {
     local hex = 0x0000;
-    foreach (ch in str) {
+    foreach (ch in str.toupper()) {
         local nibble;
         if (ch >= '0' && ch <= '9') {
             nibble = (ch - '0');
