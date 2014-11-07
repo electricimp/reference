@@ -19,7 +19,7 @@ class Modbus {
     _genericHandler     = null;
     _errorHandler       = null;
 
-    // uart: preconfigured UART or UART-like object (e.g. RS485 class instance)
+    // uart: unconfigured UART or UART-like object (e.g. RS485 class instance)
     // genericHandler: callback handler to be used when not overriding on a per-function basis
     // errorHandler: callback handler for Modbus exceptions
     constructor(uart, baudRate, dataBits, parity, stopBits, genericHandler, errorHandler, timeout = 1) {
