@@ -11,6 +11,9 @@ const ZERO      = 0xC0;
 const ONE       = 0xF8;
 const SPICLK    = 7500; // kHz
 
+// This class requires the use of SPI257 to support neopixel timing.
+const SPICLK = 3750; // kHz
+
 // This is used for timing testing only
 us <- hardware.micros.bindenv(hardware);
 
@@ -203,6 +206,7 @@ class NeoWeather extends NeoPixels {
      * Factor is 1 to 10 and scales the number of new raindrops per refresh.
      */
     function snow(factor) {
+        local NUMCOLORS = 1;
         // cancel any previous effect currently running
         if (wakehandle) { imp.cancelwakeup(wakehandle); }
  
@@ -512,6 +516,9 @@ class NeoWeather extends NeoPixels {
 agent.on("seteffect", function(val) {
     local cond = null;
     local temp = null;
+    
+    server.log("Got new conditions from agent: "+val);
+    
     try {
         cond = val.conditions;
         temp = val.temperature;
@@ -554,11 +561,11 @@ agent.on("seteffect", function(val) {
         }
     } else if (cond.find("Snow") != null) {
         if (cond.find("Light") != null) {
-            display.snow(0);
+            display.snow(2);
         } else if (cond.find("Heavy") != null) {
-            display.snow(4);
+            display.snow(8);
         } else {
-            display.rain(2);
+            display.snow(4);
         }
     } else if (cond.find("Ice") != null) {
         display.ice();
@@ -586,4 +593,7 @@ spi <- hardware.spi257;
 spi.configure(MSB_FIRST, SPICLK);
 display <- NeoWeather(spi, NUMPIXELS);
 
-server.log("ready.");
+server.log("Ready, running impOS "+imp.getsoftwareversion());
+
+//let the agent know we've just booted, which will trigger a weather update.
+agent.send("start", 0);

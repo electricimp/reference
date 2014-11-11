@@ -10,7 +10,7 @@ WEBPAGE <- null;
 
 // Add your own wunderground API Key here. 
 // Register for free at http://api.wunderground.com/weather/api/
-const WUNDERGROUND_KEY = "YOUR KEY HERE";
+const WUNDERGROUND_KEY = "YOUR WEATHERUNDERGROUND KEY";
 local WUNDERGROUND_URL = "http://api.wunderground.com/api/";
 local LOCATIONSTR = "94041";
 savedata <- server.load();
@@ -179,8 +179,9 @@ function getConditions() {
             forecastString += ("Wind "+weather.wind_mph+". ");
             forecastString += weather.observation_time;
             server.log(forecastString);
+            server.log("Sending conditions to device.");
             device.send("seteffect", {conditions = weather.weather, temperature = weather.temp_c});
-            
+            server.log("Conditions sent.");    
         } catch (e) {
             server.error("Wunderground error: " + e)
         }
