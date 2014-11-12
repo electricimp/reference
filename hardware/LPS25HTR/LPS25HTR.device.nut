@@ -35,15 +35,15 @@ class LPS25HTR {
     
     // -------------------------------------------------------------------------
     function twos_comp(value, mask) {
-		value = ~(value & mask) + 1;
-		return value & mask;
-	}
+        value = ~(value & mask) + 1;
+        return value & mask;
+    }
 
     // -------------------------------------------------------------------------
     function get_device_id() {
         return _i2c.read(_addr, WHO_AM_I, 1);
     }
-	
+    
     // -------------------------------------------------------------------------
     // Set the number of readings taken and internally averaged to give a pressure result
     // Selector field is 2 bits
@@ -63,7 +63,7 @@ class LPS25HTR {
         }
         local val = _i2c.read(_addr, RES_CONF, 1);
         val = ((val & 0xFC) | npts);
-        _i2c.write(_addr, RES_CONF, format("%c", val & 0xff));
+        _i2c.write(_addr, format("%c%c",RES_CONF, val & 0xff));
     }    
     
     // -------------------------------------------------------------------------
@@ -85,7 +85,7 @@ class LPS25HTR {
         }
         local val = _i2c.read(_addr, RES_CONF, 1);
         val = (val & 0xF3) | (npts << 2);
-        _i2c.write(_addr, RES_CONF, format("%c", val & 0xff));
+        _i2c.write(_addr, format("%c%c",RES_CONF, val & 0xff));
     }    
 
     // -------------------------------------------------------------------------
@@ -96,7 +96,7 @@ class LPS25HTR {
         } else {
             val = val | 0x80;
         }
-        _i2c.write(_addr, CTRL_REG1, format("%c", val & 0xff));
+        _i2c.write(_addr, format("%c%c", CTRL_REG1, val & 0xff));
     }
     
     // -------------------------------------------------------------------------
@@ -107,7 +107,7 @@ class LPS25HTR {
         } else {
             val = val | 0x08;
         }
-        _i2c.write(_addr, CTRL_REG1, format("%c", val & 0xff));
+        _i2c.write(_addr, format("%c%c", CTRL_REG1, val & 0xff));
     }
     
     // -------------------------------------------------------------------------
@@ -118,12 +118,12 @@ class LPS25HTR {
         } else {
             val = val | 0x40;
         }
-        _i2c.write(_addr, CTRL_REG2, format("%c", val & 0xff));
+        _i2c.write(_addr, format("%c%c", CTRL_REG2, val & 0xff));
     }
     
     // -------------------------------------------------------------------------
     function soft_reset(state) {
-        _i2c.write(_addr, CTRL_REG2, format("%c", 0x04));
+        _i2c.write(_addr, format("%c%c", CTRL_REG2, 0x04));
     }
     
     // -------------------------------------------------------------------------
@@ -134,7 +134,7 @@ class LPS25HTR {
         } else {
             val = val & 0x7F;
         }
-        _i2c.write(_addr, CTRL_REG3, format("%c", val & 0xff));
+        _i2c.write(_addr, format("%c%c", CTRL_REG3, val & 0xff));
     }
     
     // -------------------------------------------------------------------------
@@ -145,7 +145,7 @@ class LPS25HTR {
         } else {
             val = val & 0xBF;
         }
-        _i2c.write(_addr, CTRL_REG3, format("%c", val & 0xff));
+        _i2c.write(_addr, format("%c%c", CTRL_REG3, val & 0xff));
     }
     
     // -------------------------------------------------------------------------
@@ -160,13 +160,13 @@ class LPS25HTR {
         if (diff_press_high) {
             val = val | 0x01;
         }
-        _i2c.write(_addr, CTRL_REG1, format("%c", val & 0xff));
+        _i2c.write(_addr, format("%c%c", CTRL_REG1, val & 0xff));
     }    
     
     // -------------------------------------------------------------------------
     function set_press_thresh(press_thresh) {
-        _i2c.write(_addr, THS_P_H, format("%c", (press_thresh & 0xff00) >> 8));
-        _i2c.write(_addr, THS_P_L, format("%c", (press_thresh & 0xff)));
+        _i2c.write(_addr, format("%c%c", THS_P_H, (press_thresh & 0xff00) >> 8));
+        _i2c.write(_addr, format("%c%c", THS_P_L, (press_thresh & 0xff)));
     }  
     
     // -------------------------------------------------------------------------
