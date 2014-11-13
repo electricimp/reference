@@ -20,6 +20,7 @@
 | [lineUART](lineUART) | UART wrapper class that buffers line-by-line
 | [lis3dh](lis3dh) | Accelerometer
 | [LPS25HTR](LPS25HTR) | Air Pressure / Temperature Sensor |
+| [LSM9DS0TR](LSM9DS0TR) | Inertial Measurement Unit (Accel + Magnetometer + Gyro) |
 | [max31855](max31855) | Adafruit MAX31855 Thermocouple Board
 | [MAX72XX](MAX72XX) | 7-Segment Display Driver
 | [modbus](modbus) | Modbus RTU Master (for PLCs, etc)
