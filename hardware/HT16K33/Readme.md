@@ -1,0 +1,7 @@
+Squirrel classes for LED displays based on the Holtek HT16K33 controller
+
+- HT16K33BIG: for 1.2-inch 4-digit, 7-segment LED displays driven by the HT16K33 controller
+  For example: http://www.adafruit.com/products/1270
+- HT16K33SEGMENT: for 0.56-inch 4-digit, 7-segment LED displays driven by the HT16K33 controller
+  For example: http://www.adafruit.com/products/878
+  
