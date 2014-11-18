@@ -1,16 +1,18 @@
 #Thermistor Class
-This class makes it simple for an imp to read an NTC ("Negative Temperature Coefficient") Thermistor and determine the temperature. Thermistors are essentially temperature-dependent resistors. To use as a thermometer, a thermistor is used as half of a resistive divider, where the voltage across the full divider is known. The Imp then reads the voltage at the center of the divider to determine the resistance of the thermistor, [from which the temperature can be derived.](http://en.wikipedia.org/wiki/Thermistor) 
+This class makes it simple for an imp to read an NTC ("Negative Temperature Coefficient") Thermistor and determine the temperature. Thermistors are essentially temperature-dependent resistors. To use as a thermometer, a thermistor is used as half of a resistive divider, where the voltage across the full divider is known. The Imp then reads the voltage at the center of the divider to determine the ratio of resistance of the thermistor and the bias resistor (also the nominal resistance of the thermistor), [from which the temperature can be derived.](http://en.wikipedia.org/wiki/Thermistor) 
 
 
 #How To Use
 ## Hardware
-A resistive divider can be formed with the thermistor on the top or the bottom; this class allows for either configuration. The top of the divider should be connected to the same rail as the Imp's VDDA pin (or VDD pin, in the case of the Imp card, as VDD and VDDA are internally connected). The bottom of the divider should be connected to ground. 
+A resistive divider can be formed with the thermistor on the top or the bottom; this class allows for either configuration. The top of the divider should be connected to the same rail as the Imp's VDDA pin (or VDD pin, in the case of the Imp card, as VDD and VDDA are internally connected). The bottom of the divider should be connected to ground.
+
+The resitance of the fixed (bias) resistor of the voltage divider must be equal to the resistance of the thermistor at T0 (the nominal reistance of the thermistor).  This allows the class to be independent of the absolute resitance values and simplifies the calculations for the temperature.
 
 The center of the divider must be connected to a pin capable of analog input. On the Imp card, any pin can be used as an analog input. On the Imp module, only some pins can be configured this way, so check the [Imp Pin Mux Chart](http://electricimp.com/docs/hardware/imp/pinmux/).
 
 ##Software
-The thermistor class takes four to six parameters (4 required, 2 optional):
-temp_sns, b_therm, t0_therm, r_therm, 10, false);
+The thermistor class takes four to five parameters (3 required, 2 optional):
+temp_sns, b_therm, t0_therm, 10, false);
 
 | Parameter Name | Description | Optional/Required |
 |----------------|-------------|-------------------|
