@@ -1,5 +1,13 @@
 class HT16K337SEGMENT
 {
+	// Squirrel class for 0.56-inch 4-digit, 7-segment LED displays driven by the HT16K33 controller
+	// For example: http://www.adafruit.com/products/878
+	// Communicates with any imp I2C bus
+ 
+	// Written by Tony Smith (@smittytone) October 2014
+	// Version 1.0
+	// Copyright (c) 2014, Electric Imp, Inc.
+	
 	// HT16K33 registers and HT16K33-specific constants
 
 	HT16K33_REGISTER_DISPLAY_ON  = "\x81"
