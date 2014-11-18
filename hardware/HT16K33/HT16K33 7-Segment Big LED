@@ -29,7 +29,9 @@ class HT16K33BIG
 
 	constructor(impBus, ht16k33Address = 0x70)
 	{
-		// The parameter is whichever imp I2C bus is to be used for the HT16K33
+		// Parameters:
+		// 1. Whichever imp I2C bus is to be used for the HT16K33
+		// 2. The HT16K33's I2C address (default: 0x70)
 
 		_led = impBus
 		_ledAddress = ht16k33Address << 1
