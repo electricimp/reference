@@ -1,18 +1,13 @@
-// Weather Effects Driver for WS2812 "Neopixel" LED Driver
+// WS2812 "Neopixel" LED Driver
 // Copyright (C) 2014 Electric Imp, inc.
-// 
+//
 // Uses SPI to emulate 1-wire
 // http://learn.adafruit.com/adafruit-neopixel-uberguide/advanced-coding
- 
-/* CONSTS AND GLOBALS --------------------------------------------------------*/
 
-// constants for using SPI to emulate 1-wire
-const ZERO      = 0xC0;
-const ONE       = 0xF8;
-const SPICLK    = 7500; // kHz
 
-// This class requires the use of SPI257 to support neopixel timing.
-const SPICLK = 3750; // kHz
+// This class requires the use of SPI257, which must be run at 7.5MHz 
+// to support neopixel timing.
+const SPICLK = 7500; // kHz
 
 // This is used for timing testing only
 us <- hardware.micros.bindenv(hardware);
@@ -44,6 +39,7 @@ class NeoPixels {
         this.spi = _spi;
         this.frameSize = _frameSize;
         this.frame = blob(frameSize*BYTESPERPIXEL + 1);
+        this.frame[frameSize*BYTESPERPIXEL] = 0;
         
         // prepare the bits array and the clearblob blob
         initialize();
@@ -74,8 +70,7 @@ class NeoPixels {
         for(local j = 0; j < BYTESPERPIXEL; j++) {
             clearblob.writen(ZERO, 'b');
         }
-        // must have a null at the end to drive MOSI low
-        clearblob.writen(0x00,'b');
+        
     }
 
     // sets a pixel in the frame buffer
