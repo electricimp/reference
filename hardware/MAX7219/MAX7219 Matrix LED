@@ -133,7 +133,7 @@ class MAX7219
 
 	clk = null
 	din = null
-	cs = null
+	cs_l = null    // _l indicates active low
 	inverseVideoFlag = false
 	rotateFlag = false
 
@@ -151,12 +151,12 @@ class MAX7219
 		
 		clk = clockPin
 		din = dataPin
-		cs = selectPin
+		cs_l = selectPin
 
 		// Set these pins as digital outputs
 
 		clk.configure(DIGITAL_OUT)
-		cs.configure(DIGITAL_OUT)
+		cs_l.configure(DIGITAL_OUT)
 		din.configure(DIGITAL_OUT)
 
 		// Set screen rotation flag
@@ -197,10 +197,10 @@ class MAX7219
 		// Writes data to the LED in the MAX7219’s 16-bit serial format, which puts the
 		// register address in the first eight bits then the data in the second set of eight bits.
 
-		cs.write(0)
+		cs_l.write(0)
 		writeByte(regAddress)
 		writeByte(value)
-		cs.write(1)
+		cs_l.write(1)
 	}
 
 	function clearDisplay()
