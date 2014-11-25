@@ -93,7 +93,10 @@ class CHARLCD
 
 		_lcdWidth = chars
 		_lcdHeight = rows
-
+		
+		// displayFunction combines basic LCD parameters: mode (4- or 8-bit); one or multiple
+		// HD44780s; and character pixel matrix size (5x8 or 5x10)
+		
 		local displayFunction = LCD_4BITMODE | LCD_1LINE | LCD_5x8DOTS
 		if (_lcdHeight > 1) displayFunction = displayFunction | LCD_2LINE
 
@@ -121,6 +124,8 @@ class CHARLCD
 		displayOn()
 		clearScreen()
 
+		// displayFunction combines basic LCD presentation parameters
+		
 		local displayMode = LCD_ENTRYLEFT | LCD_ENTRYSHIFTDECREMENT
 		sendCommand(LCD_ENTRYMODESET | displayMode)
 
