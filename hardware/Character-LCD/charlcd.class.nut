@@ -1,4 +1,4 @@
-class LCD
+class CHARLCD
 {
 	// A Squirrel class to drive an 8 x 1 to 20 x 4 character LCD driven by a Hitachi HD44780 controller
 	// via an MCP23008 interface chip on an Adafruit I2C backpack [http://www.adafruit.com/product/292]
