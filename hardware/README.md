@@ -10,6 +10,7 @@
 | [Epaper](Epaper) | Pervasive Displays ePaper Panel |
 | [expGpio](expGpio) | GPIO Expander (Abstract class)
 | [FT800_EVE](FT800_EVE) | Embedded Video Engine |
+| [HC-SR04](HC-SR04) | Ultrasonic Range Sensor |
 | [hih6131](hih6131) | Humidity Sensor
 | [imp.o.scope](imp.o.scope) | "Oscilloscope" with web graphing
 | [imp003-EVB](imp003-EVB) | Example code for the imp003 Evaluation Board
