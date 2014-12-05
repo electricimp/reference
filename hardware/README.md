@@ -26,6 +26,7 @@
 | [MAX72XX](MAX72XX) | 7-Segment Display Driver
 | [modbus](modbus) | Modbus RTU Master (for PLCs, etc)
 | [MPL115](MPL115) | Barometric Pressure / Temperature Sensor
+| [PA6H](PA6H) | GPS Module |
 | [pcd8544](pcd8544) | "Nokia 5110" Monochrome LCD
 | [pcf8563](pcf8563) | Realtime Clock
 | [pulseSensor](pulseSensor) | Analog Pulse Sensor
