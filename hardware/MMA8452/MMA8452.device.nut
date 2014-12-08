@@ -1,9 +1,9 @@
 class MMA8452 {
 
 	// Freescale MMA8452 Accelerometer
-    // Datasheet: http://cache.freescale.com/files/sensors/doc/data_sheet/MMA8452Q.pdf?fasp=1
+	// Datasheet: http://cache.freescale.com/files/sensors/doc/data_sheet/MMA8452Q.pdf?fasp=1
     
-    // Copyright 2014 Electric Imp
+	// Copyright 2014 Electric Imp
 	// Issued under the MIT license (MIT)
 
 	// Permission is hereby granted, free of charge, to any person obtaining a copy
