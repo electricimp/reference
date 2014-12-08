@@ -4,6 +4,8 @@ class HT16K33QUAD
 	// For example: http://www.adafruit.com/product/1912
 	// Communicates with any imp I2C bus
 
+	// Availibility: Device
+
 	// Written by Tony Smith (@smittytone) August/September 2014
 	// Version 1.0
 	
