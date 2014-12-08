@@ -24,8 +24,10 @@ class BGLIB {
     // ==================
 
     // This implements the BGLib library for Bluegiga's BLE112 Bluetooth Smart module.
- 
-    // It assumes you have connected from the Imp to the BLE112:
+
+    // Availibility: Device
+
+	// It assumes you have connected from the Imp to the BLE112:
  
     // - UART (uart1289 is recommended as flow control is important)
     // - Wake pin (optional depending on BLE112 configuration)
