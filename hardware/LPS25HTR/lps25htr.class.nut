@@ -1,7 +1,9 @@
 class LPS25HTR {
 
-    // Air Pressure Sensor LPS25HTR
-    // http://www.st.com/web/en/resource/technical/document/datasheet/DM00066332.pdf
+	// Air Pressure Sensor LPS25HTR
+	// http://www.st.com/web/en/resource/technical/document/datasheet/DM00066332.pdf
+
+	// Availibility: Device
 
 	// Copyright 2014 Electric Imp
 	// Issued under the MIT license (MIT)
