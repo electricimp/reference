@@ -5,6 +5,8 @@ class NeoPixels {
 	
 	// See https://electricimp.com/docs/resources/neopixels/
     
+	// Availibility: Device
+
 	// Copyright 2014 Electric Imp
 	// Issued under the MIT license (MIT)
 
