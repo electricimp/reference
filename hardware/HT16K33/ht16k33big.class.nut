@@ -4,6 +4,8 @@ class HT16K33BIG
 	// For example: http://www.adafruit.com/products/1270
 	// Communicates with any imp I2C bus
  
+	// Availibility: Device
+
 	// Written by Tony Smith (@smittytone) October 2014
 	// Version 1.0
 	// Copyright 2014 Electric Imp
