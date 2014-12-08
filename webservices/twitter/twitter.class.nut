@@ -6,7 +6,11 @@ const AUTH_TOKEN = "";
 const TOKEN_SECRET = "";
 
 class Twitter {
-
+	
+	// Twitter access class
+	// Requires: Twitter account from which the above keys can be accessed
+	// Availability: Agent
+	
 	// Copyright 2014 Electric Imp
 	// Issued under the MIT license (MIT)
 
