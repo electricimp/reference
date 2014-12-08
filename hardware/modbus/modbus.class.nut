@@ -2,6 +2,8 @@ class Modbus {
 
 	// Modbus RTU Master
 
+	// Availibility: Device
+
 	// Copyright 2014 Electric Imp
 	// Issued under the MIT license (MIT)
 
