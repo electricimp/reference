@@ -90,66 +90,82 @@ class PA6H {
         _fix    = fix;
         
         _uart_baud = DEFAULT_BAUD;
-        _uart.configure(_uart_baud, 8, PARITY_NONE, 1, NO_CTSRTS, _uartCallback.bindenv(this));
+        _uart.configure(_uart_baud, 8, PARITY_NONE, 2, NO_CTSRTS, _uartCallback.bindenv(this));
     }
     
     // -------------------------------------------------------------------------
-    function setBaud(baud) {
-        if (baud == _uart_baud) return;
-        if ((baud != 9600) && (baud != 57600)) throw format("Unsupported baud (%d); supported rates are 9600 and 57600",baud);
-        if (baud == 57600) _sendCmd(PMTK_SET_BAUD_57600);
-        else _sendCmd(PMTK_SET_BAUD_9600);
-        _uart_baud = baud;
-        _uart.configure(_uart_baud, 8, PARITY_NONE, 1, NO_CTSRTS, _uartCallback.bindenv(this));
+    function _sendCmd(cmdStr) {
+        _uart.write(cmdStr);
+        _uart.write("\x0D\x0A");
+        _uart.flush();
+    }   
+    
+    // -------------------------------------------------------------------------
+    // Parse a UTC timestamp from 
+    // 064951.000 hhmmss.sss
+    // Into
+    // 06:09:51.000
+    function _parseUTC(ts) {
+        local result = "";
+        result = result + (ts.slice(0,2)+ ":" + ts.slice(2,4) + ":" + ts.slice(4,ts.len()));
+        return result;
+    }
+    
+    // -------------------------------------------------------------------------
+    // Parse a lat/lon coordinate from
+    // 
+    // ddmm.mmmm or dddmm.mmmm
+    //
+    // uhh.. this is a stub right now
+    function _parseCoordinate(coordinatestring) {
+        return coordinatestring;
     }
     
     // -------------------------------------------------------------------------
     function _uartCallback() {
-        _uart_buffer += _uart.readstring(80);
         //server.log(_uart_buffer);
+        _uart_buffer += _uart.readstring(80);
         local packets = split(_uart_buffer,"$");
-        for (local i = 0; i < packets.len() - 1; i++) {
-            try {
-                local len = packets[i].len()
-                _parse(packets[i]);
-                _uart_buffer = _uart_buffer.slice(len,_uart_buffer.len());
-            } catch (err) {
-                _uart_buffer = "";
-                server.error(err+", Pkt: "+packets[i]);
+        for (local i = 0; i < packets.len(); i++) {
+            // make sure we can see the end of the packet before trying to parse
+            if (packets[i].find("\r\n")) {
+                //try {
+                    local len = packets[i].len()
+                    _parse(packets[i]);
+                    _uart_buffer = _uart_buffer.slice(len + 1,_uart_buffer.len());
+                //} catch (err) {
+                //   _uart_buffer = "";
+                //   server.log(err+", Pkt: "+packets[i]);
+                //}
             }
         }
     }
-    
-    // -------------------------------------------------------------------------
-    function _parse(packetstr) {
-        //server.log(packetstr);
-        // Device is just telling us it just cold-booted and the data is garbage
-        if ("PMTK" in packetstr) { return }
-        packetstr = strip(packetstr);
 
+    // -------------------------------------------------------------------------
+    function _parse(packetstr_raw) {
+        //server.log(packetstr_raw);
+        // "PMTKxxxx" is a system command packet; ignore for now
+        if (packetstr_raw.find("PMTK") != null) { return }
+        packetstr_raw = split(strip(packetstr_raw),"*");
+        local packetstr = packetstr_raw[0];
+        //server.log(packetstr);
+        local checksum = packetstr_raw[1];
+        //server.log(checksum);
+        
+        // string split swallows repeated split characters, 
+        // so workaround with string find for now
         //local fields = split(packetstr,",");
         local fields = [];
         local start = 0;
         local end = 0;
         do {
-        	end = packetstr.find(",",start);
-        	if (end != null) {
-        	    local field = packetstr.slice(start,end);
-        	    fields.push(field);
-        		start = end+1;
-        	}
+            end = packetstr.find(",",start);
+            if (end != null) {
+                fields.push(packetstr.slice(start,end));
+                start = end+1;
+            }
         } while (end != null);
-        local field = packetstr.slice(start,packetstr.len());
-        
-        // local start = 0;
-        // local end = packetstr.find(",");
-        // while (end) {
-        //     local field = copy.slice(start,end);
-        //     fields.push(field);
-        //     start = end;
-        //     end = copy.find(",",start+1);
-        //     server.log(field+" | "+copy);
-        // }
+        fields.push(packetstr.slice(start,packetstr.len()));
         
         local hdr = fields[0];
         switch (hdr) {
@@ -157,34 +173,33 @@ class PA6H {
                 // time, position, and fix data
                 // Ex: "$GPGGA,064951.000,2307.1256,N,12016.4438,E,1,8,0.95,39.9,M,17.8,M,,*65 "
                 // UTC Time 064951.000 hhmmss.sss
-                _last_pos_data.time <- fields[1];
+                _last_pos_data.time <- _parseUTC(fields[1]);
                 // Latitude 2307.1256 ddmm.mmmm
-                _last_pos_data.lat <- fields[2];
+                _last_pos_data.lat <- _parseCoordinate(fields[2]);
                 // N/S Indicator N N=north or S=south
                 _last_pos_data.ns <- fields[3];
                 // Longitude 12016.4438 dddmm.mmmm
-                _last_pos_data.lon <- fields[4];
+                _last_pos_data.lon <- _parseCoordinate(fields[4]);
                 // E/W Indicator E E=east or W=west
                 _last_pos_data.ew <- fields[5];
                 // Position Fix
                 _last_pos_data.fix <- fields[6];
                 // Satellites Used 8 Range 0 to 14
-                _last_pos_data.sats_used <- fields[7];
+                _last_pos_data.sats_used <- fields[7].tointeger();
                 // HDOP 0.95 Horizontal Dilution of Precision
-                _last_pos_data.hdop <- fields[8];
+                _last_pos_data.hdop <- fields[8].tofloat();
                 // MSL Altitude 39.9 meters Antenna Altitude above/below mean-sea-level
-                _last_pos_data.msl <- fields[9];
+                _last_pos_data.msl <- fields[9].tofloat();
                 // Units M meters Units of antenna altitude
-                _last_pos_data.units_alt <- fields[10];
+                _last_pos_data.units_alt <- fields[10].tofloat();
                 // Geoidal Separation 17.8 meters
-                _last_pos_data.geoidal_sep <- fields[11];
+                _last_pos_data.geoidal_sep <- fields[11].tofloat();
                 // Units M meters Units of geoids separation
                 _last_pos_data.units_sep <- fields[12];
                 // Age of Diff. Corr. second Null fields when DGPS is not used
                 _last_pos_data.diff_corr <- fields[13];
-                // Checksum
-                local checksum = fields[14];
-                if (_position_update_cb) _position_update_cb();
+
+                if (_position_update_cb) _position_update_cb(_last_pos_data);
                 break;
             case "GPGSA":
                 // DOP and Active Satellites Data
@@ -197,67 +212,66 @@ class PA6H {
                 // "3" = 3D (>= 4 SVs used)
                 _last_pos_data.mode2 <- fields[2];
                 // Satellites Used on Channel 1
-                _last_pos_data.sats_used_1 <- fields[3];
-                _last_pos_data.sats_used_2 <- fields[4];
-                _last_pos_data.sats_used_3 <- fields[5];
-                _last_pos_data.sats_used_4 <- fields[6];                
-                _last_pos_data.sats_used_5 <- fields[7];
-                _last_pos_data.sats_used_6 <- fields[8];                
-                _last_pos_data.sats_used_7 <- fields[9];
-                _last_pos_data.sats_used_8 <- fields[10];
-                _last_pos_data.sats_used_9 <- fields[11];
-                _last_pos_data.sats_used_10 <- fields[12];                
-                _last_pos_data.sats_used_11 <- fields[13];
-                _last_pos_data.sats_used_12 <- fields[14];
+                _last_pos_data.sats_used_1 <- fields[3].tointeger();
+                _last_pos_data.sats_used_2 <- fields[4].tointeger();
+                _last_pos_data.sats_used_3 <- fields[5].tointeger();
+                _last_pos_data.sats_used_4 <- fields[6].tointeger();                
+                _last_pos_data.sats_used_5 <- fields[7].tointeger();
+                _last_pos_data.sats_used_6 <- fields[8].tointeger();                
+                _last_pos_data.sats_used_7 <- fields[9].tointeger();
+                _last_pos_data.sats_used_8 <- fields[10].tointeger();
+                _last_pos_data.sats_used_9 <- fields[11].tointeger();
+                _last_pos_data.sats_used_10 <- fields[12].tointeger();                
+                _last_pos_data.sats_used_11 <- fields[13].tointeger();
+                _last_pos_data.sats_used_12 <- fields[14].tointeger();
                 // Positional Dilution of Precision
-                _last_pos_data.pdop <- fields[15];
+                _last_pos_data.pdop <- fields[15].tofloat();
                 // Horizontal Dilution of Precision
-                _last_pos_data.hdop <- fields[16];
+                _last_pos_data.hdop <- fields[16].tofloat();
                 // Vertical Dilution of Precision
-                _last_pos_data.vdop <- fields[17];
-                // checksum
-                local checksum = fields[18];
-                if (_dop_update_cb) _dop_update_cb();
+                _last_pos_data.vdop <- fields[17].tofloat();
+
+                if (_dop_update_cb) _dop_update_cb(_last_pos_data);
                 break;
             case "GPGSV":
                 // GNSS Satellites in View
                 // Ex: "$GPGSV,3,1,09,29,36,029,42,21,46,314,43,26,44,020,43,15,21,321,39*7D"
                 // Number of Messages (3)
-                local num_messages = fields[1];
-                local message_number = fields[2];
-                _last_pos_data.sats_in_view <- fields[3];
+                local num_messages = fields[1].tointeger();
+                local message_number = fields[2].tointeger();
+                _last_pos_data.sats_in_view <- fields[3].tointeger();
                 if (!"sats" in _last_pos_data) _last_pos_data.sats <- [];
                 local i = 4; // current index in fields
                 while (i < (fields.len() - 4)) {
                     local sat = {};
-                    sat.id <- fields[i++];
-                    sat.elevation <- fields[i++];
-                    sat.azimuth <- fields[i++];
-                    sat.snr <- fields[i++];
+                    sat.id <- fields[i++].tointeger();
+                    sat.elevation <- fields[i++].tofloat();
+                    sat.azimuth <- fields[i++].tofloat();
+                    sat.snr <- fields[i++].tofloat();
                     _last_pos_data.sats.push(sat);
                 }
 
-                if (_sats_update_cb) _sats_update_cb();
+                if (_sats_update_cb) _sats_update_cb(_last_pos_data);
                 break;
             case "GPRMC":
                 // Minimum Recommended Navigation Information
                 // Ex: "$GPRMC,064951.000,A,2307.1256,N,12016.4438,E,0.03,165.48,260406,3.05,W,A*2C "
                 // UTC time hhmmss.sss
-                _last_pos_data.time <- fields[1];
+                _last_pos_data.time <- _parseUTC(fields[1]);
                 // Status A=Valid V=Not Valid
                 _last_pos_data.status <- fields[2];
                 // ddmm.mmmm
-                _last_pos_data.lat <- fields[3];
+                _last_pos_data.lat <- _parseCoordinate(fields[3]);
                 // N/S Indicator
                 _last_pos_data.ns <- fields[4];
                 // ddmm.mmmm
-                _last_pos_data.lon <- fields[5];
+                _last_pos_data.lon <- _parseCoordinate(fields[5]);
                 // E/W Indicator
                 _last_pos_data.ew <- fields[6];
                 // Ground speed in knots
-                _last_pos_data.gs_knots <- fields[7];
+                _last_pos_data.gs_knots <- fields[7].tofloat();
                 // Course over Ground, Degrees True
-                _last_pos_data.true_course <- fields[8];
+                _last_pos_data.true_course <- fields[8].tofloat();
                 // Date, ddmmyy
                 _last_pos_data.date <- fields[9];
                 // Magnetic Variation (Not available)
@@ -265,28 +279,29 @@ class PA6H {
                 // Mode (A = Autonomous, D = Differential, E = Estimated)
                 _last_pos_data.mode <- fields[11];
                 
-                if (_rmc_update_cb) _rms_update_cb();
+                if (_rmc_update_cb) _rmc_update_cb(_last_pos_data);
                 break;
             case "GPVTG":
                 // Course and Speed information relative to ground
                 // Ex: "$GPVTG,165.48,T,,M,0.03,N,0.06,K,A*37 "
                 // Measured Heading, Degrees
-                _last_pos_data.true_course <- fields[1];
+                _last_pos_data.true_course <- fields[1].tofloat();
                 // Course Reference (T = True, M = Magnetic)
                 _last_pos_data.course_ref <- fields[2];
                 // _last_pos_data.course_2 <- fields[3];
                 // _last_pos_data.ref_2 <- fields[4];
                 // Ground Speed in Knots
-                _last_pos_data.gs_knots <- fields[5];
+                _last_pos_data.gs_knots <- fields[5].tofloat();
                 // Ground Speed Units, N = Knots
                 //_last_pos_data.gs_units_1 <- fields[6];
                 // Ground Speed in km/hr
-                _last_pos_data.gs_kmph <- fields[7];
+                _last_pos_data.gs_kmph <- fields[7].tofloat();
                 // Ground Speed Units, K = Km/Hr
                 //_last_pos_data.gs_units_2 <- fields[8];
                 // Mode (A = Autonomous, D = Differential, E = Estimated)
                 _last_pos_data.mode <- fields[9];
-                if (_vtg_update_cb) _vtg_update_cb();
+
+                if (_vtg_update_cb) _vtg_update_cb(_last_pos_data);
                 break;
             case "PGTOP":
                 // Antenna Status Information
@@ -297,9 +312,9 @@ class PA6H {
                 // 1 = Active Antenna Shorted
                 // 2 = Using Internal Antenna
                 // 3 = Using Active Antenna
-                _last_pos_data.ant_status <- fields[2];
+                _last_pos_data.ant_status <- fields[2].tointeger();
                 
-                if (_ant_status_update_cb) _ant_status_update_cb();
+                if (_ant_status_update_cb) _ant_status_update_cb(_last_pos_data);
                 break;
             case "PGSA": 
                 // ???
@@ -307,18 +322,15 @@ class PA6H {
             case "PGACK":
                 // command ACK
                 // do nothing ...?
-                
+                server.log("ACK: "+packetstr);
+                break;
+            case "GPGLL":
+                // no idea what this is
                 break;
             default:
                 throw "Unrecognized Header";
             }
     }   
-    
-    // -------------------------------------------------------------------------
-    function _sendCmd(cmdStr) {
-        _uart.write(cmdStr+"\x0D\x0A");
-        _uart.flush();
-    } 
     
     // -------------------------------------------------------------------------
     function enable() {
@@ -338,6 +350,16 @@ class PA6H {
     // -------------------------------------------------------------------------
     function disable() {
         if (_en) _en.write(0);
+    }
+    
+    // -------------------------------------------------------------------------
+    function setBaud(baud) {
+        if (baud == _uart_baud) return;
+        if ((baud != 9600) && (baud != 57600)) throw format("Unsupported baud (%d); supported rates are 9600 and 57600",baud);
+        if (baud == 57600) _sendCmd(PMTK_SET_BAUD_57600);
+        else _sendCmd(PMTK_SET_BAUD_9600);
+        _uart_baud = baud;
+        _uart.configure(_uart_baud, 8, PARITY_NONE, 1, NO_CTSRTS, _uartCallback.bindenv(this));
     }
     
     // -------------------------------------------------------------------------
@@ -435,7 +457,6 @@ class PA6H {
     }
 }
 
-
 // Ex Instantiation:
 // uart <- hardware.uart57;
 // fix <- hardware.pin8;
@@ -446,3 +467,27 @@ class PA6H {
 // en.configure(DIGITAL_OUT,0);
 
 // gps <- PA6H(uart, en, fix);
+
+// Ex Usage
+
+// server.log("Ready, running "+imp.getsoftwareversion());
+// server.log("Mem: "+imp.getmemoryfree());
+
+// imp.wakeup(1, function() {
+//     // get less data
+//     gps.setModeRMC();
+//     // set RMC data callback
+//     gps.setRmcCallback(function(data) {
+//         server.log(format("At %s UTC: (%s %s, %s %s), making %0.2f Knots at %0.2f True",
+//             data.time,
+//             data.lat,
+//             data.ns,
+//             data.lon, 
+//             data.ew,
+//             data.gs_knots,
+//             data.true_course));
+//     });
+//     // slow down updates
+//     gps.setUpdateRate(10.0);
+//     gps.setReportingRate(10.0);
+// });
