@@ -129,14 +129,14 @@ class PA6H {
         for (local i = 0; i < packets.len(); i++) {
             // make sure we can see the end of the packet before trying to parse
             if (packets[i].find("\r\n")) {
-                //try {
+                try {
                     local len = packets[i].len()
                     _parse(packets[i]);
                     _uart_buffer = _uart_buffer.slice(len + 1,_uart_buffer.len());
-                //} catch (err) {
-                //   _uart_buffer = "";
-                //   server.log(err+", Pkt: "+packets[i]);
-                //}
+                } catch (err) {
+                   _uart_buffer = "";
+                   server.log(err+", Pkt: "+packets[i]);
+                }
             }
         }
     }
