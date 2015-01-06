@@ -4,6 +4,15 @@ class Twitter {
 	// Requires: Twitter account from which the above keys can be accessed
 	// Availability: Agent
 	
+	// Usage: 
+	//   Twitter Keys
+	//   const API_KEY = "";
+	//   const API_SECRET = "";
+	//   const AUTH_TOKEN = "";
+	//   const TOKEN_SECRET = "";
+
+	//   twitter <- Twitter(API_KEY, API_SECRET, AUTH_TOKEN, TOKEN_SECRET)
+	
 	// Copyright 2014 Electric Imp
 	// Issued under the MIT license (MIT)
 
