@@ -1,0 +1,53 @@
+
+// Shift register SN54LS164W
+class SN54LS164W
+{
+    pin_data = null;
+    pin_clr = null;
+    pin_clk = null;
+    
+    channelStates = 0;
+    
+    constructor(data, clear, clock) {
+
+        pin_data = data;
+        pin_data.configure(DIGITAL_OUT, 0);
+        pin_clr = clear;
+        pin_clr.configure(DIGITAL_OUT, 1);
+        pin_clk = clock;
+        pin_clk.configure(DIGITAL_OUT, 1);
+        
+    }
+    
+    function write(channel, state) {
+        if (channel < 0 || channel >= 8) return;
+        
+        if (state) {
+            channelStates = channelStates | (0x01 << channel);
+        } else {
+            channelStates = channelStates & ~(0x01 << channel);
+        }
+        // server.log(format("Setting channel %d to %3s = 0x%02X", channel, state ? "on" : "off", channelStates));
+        
+        // Pulse the clear line
+        pin_clr.write(0);
+        pin_clr.write(1);
+        
+        // Clock out the bits
+        local bit = 0;
+        for (local i = 7; i >= 0; i--) {
+            bit = (channelStates >> i) & 0x01;
+            pin_clk.write(0);
+            pin_data.write(bit);
+            pin_clk.write(1);
+        }
+    
+        return this;
+    }
+    
+    function read(channel) {
+        return (channelStates & (0x01 << channel)) != 0x0;
+    }
+}
+
+

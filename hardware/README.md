@@ -37,6 +37,7 @@
 | [Sharp_LSxxxBx](Sharp_LSxxxBx) | Sharp Memory LCD
 | [SHT10](SHT10) | Temperature / Humidity Sensor
 | [Si7021](Si7021) | Temperature / Humidity Sensor
+| [sn54ls164w](sn54ls164w) | SN54LS164W 8-bit Shift Register
 | [SpiFlash](SpiFlash) | Flash Memory (NOR)
 | [SX150x](SX150x) | GPIO Expander
 | [st7735](st7735) | Color TFT LCD Driver
