@@ -1,10 +1,3 @@
-// Twitter Keys
-
-const API_KEY = "";
-const API_SECRET = "";
-const AUTH_TOKEN = "";
-const TOKEN_SECRET = "";
-
 class Twitter {
 	
 	// Twitter access class
@@ -222,5 +215,3 @@ class Twitter {
 		}
 	}
 }
- 
-twitter <- Twitter(API_KEY, API_SECRET, AUTH_TOKEN, TOKEN_SECRET);
