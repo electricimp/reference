@@ -78,7 +78,7 @@ class LPS25H {
     // -------------------------------------------------------------------------        
     function enable(val) {
         local reg = _read(LPS25H_REG.CTRL_REG1, 1);
-        local res = _write(LPS25H_REG.CTRL_REG1, reg[0] | (0x80 & val << 7));
+        _write(LPS25H_REG.CTRL_REG1, reg[0] | (0x80 & val << 7));
     }
 
     // -------------------------------------------------------------------------        
@@ -129,17 +129,6 @@ class LPS25H {
         local res = _write(LPS25H_REG.RES_CONF, (val & 0xF3) | (npts << 2));
     }    
 
-    // -------------------------------------------------------------------------
-    function setPowerState(state) {
-        local val = _read(LPS25H_REG.CTRL_REG1, 1)[0];
-        if (state == 0) {
-            val = val & 0x7F; 
-        } else {
-            val = val | 0x80;
-        }
-        local res = _write(LPS25H_REG.CTRL_REG1, val & 0xFF);
-    }
-    
     // -------------------------------------------------------------------------
     function setIntEnable(state) {
         local val = _read(LPS25H_REG.CTRL_REG1, 1);
