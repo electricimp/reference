@@ -1,6 +1,6 @@
 // Inertial Measurement Unit LSM9DS0
 // http://www.adafruit.com/datasheets/LSM9DS0.pdf
-class LSM9DS0TR {
+class LSM9DS0 {
     
     static WHO_AM_I_G       = 0x0F;
     static CTRL_REG1_G      = 0x20;
