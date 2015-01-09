@@ -77,20 +77,29 @@ class HT16K33QUAD
 		0x0006, 0x0220, 0x12CE, 0x12ED, 0x0C24, 0x235D, 0x0400, 0x2400, 0x0900, 0x3FC0,
 		0x12C0, 0x0800, 0x00C0, 0x0000, 0x0C00, 0x10BD // Symbols
 		]
-		
+	}
+
+	function init(clearChar = 62, brightness = 15)
+	{
+		// Initialises the display
+		//
+		// Parameters:
+		// 1. Integer index for the _digits[] character matrix to zero the display to; default: space
+		// 2. Integer value for the display brightness, between 0 and 15; default: 15
+
 		// Configure the I2C bus
 
 		_led.configure(CLOCK_SPEED_100_KHZ)
 		
-		// Clear the character buffer
+		// Clear the character buffer (called function tests parameter values)
 
-		clearBuffer(HT16K33_BLANK_CHAR)
+		clearBuffer(clearChar)
 
-		// Set the brightness (which also wipes and power cyles the display)
+		// Set the brightness, which also wipes and power cyles the display (called function tests parameter values)
 
-		setBrightness(15)
+		setBrightness(brightness)
 	}
-
+	
 	function clearBuffer(clearChar = 62)
 	{
 		// Fills the buffer with a blank character, or the _digits[] character matrix whose index is provided
