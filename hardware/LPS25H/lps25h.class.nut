@@ -76,9 +76,14 @@ class LPS25H {
     }
 
     // -------------------------------------------------------------------------        
-    function enable(val) {
-        local reg = _read(LPS25H_REG.CTRL_REG1, 1);
-        _write(LPS25H_REG.CTRL_REG1, reg[0] | (0x80 & val << 7));
+    function enable(state) {
+        local val = _read(LPS25H_REG.CTRL_REG1, 1)[0];
+        if (state) {
+            val = val | 0x80;
+        } else {
+            val = val & 0x7F;
+        }
+        _write(LPS25H_REG.CTRL_REG1, val);
     }
 
     // -------------------------------------------------------------------------        
@@ -132,10 +137,10 @@ class LPS25H {
     // -------------------------------------------------------------------------
     function setIntEnable(state) {
         local val = _read(LPS25H_REG.CTRL_REG1, 1);
-        if (state == 0) {
-            val = val & 0xF7; 
-        } else {
+        if (state) {
             val = val | 0x08;
+        } else {
+            val = val & 0xF7; 
         }
         local res = _write(LPS25H_REG.CTRL_REG1, val & 0xFF);
     }
@@ -143,10 +148,10 @@ class LPS25H {
     // -------------------------------------------------------------------------
     function setFifoEnable(state) {
         local val = _read(LPS25H_REG.CTRL_REG2, 1)[0];
-        if (state == 0) {
-            val = val & 0xAF; 
+        if (state) {
+            val = val | 0x40; 
         } else {
-            val = val | 0x40;
+            val = val & 0xAF;
         }
         local res = _write(LPS25H_REG.CTRL_REG2, val & 0xFF);
     }
@@ -159,10 +164,10 @@ class LPS25H {
     // -------------------------------------------------------------------------
     function setIntActivehigh(state) {
         local val = _read(LPS25H_REG.CTRL_REG3, 1)[0];
-        if (state == 0) {
-            val = val | 0x80; 
-        } else {
+        if (state) {
             val = val & 0x7F;
+        } else {
+            val = val | 0x80;
         }
         local res = _write(LPS25H_REG.CTRL_REG3, val & 0xFF);
     }
@@ -170,10 +175,10 @@ class LPS25H {
     // -------------------------------------------------------------------------
     function setIntPushpull(state) {
         local val = _read(LPS25H_REG.CTRL_REG3, 1)[0];
-        if (state == 0) {
-            val = val | 0x40; 
-        } else {
+        if (state) {
             val = val & 0xBF;
+        } else {
+            val = val | 0x40;
         }
         local res = _write(LPS25H_REG.CTRL_REG3, val & 0xFF);
     }
