@@ -136,7 +136,7 @@ class LPS25H {
 
     // -------------------------------------------------------------------------
     function setIntEnable(state) {
-        local val = _read(LPS25H_REG.CTRL_REG1, 1);
+        local val = _read(LPS25H_REG.CTRL_REG1, 1)[0];
         if (state) {
             val = val | 0x08;
         } else {
