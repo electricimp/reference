@@ -1,6 +1,6 @@
 // Inertial Measurement Unit LSM9DS0
 // http://www.adafruit.com/datasheets/LSM9DS0.pdf
-class LSM9DS0 {
+class LSM9DS0TR {
     
     static WHO_AM_I_G       = 0x0F;
     static CTRL_REG1_G      = 0x20;
@@ -100,13 +100,13 @@ class LSM9DS0 {
     }
     
     // -------------------------------------------------------------------------
-    function twos_comp(value, mask) {
+    function _twosComp(value, mask) {
         value = ~(value & mask) + 1;
         return value & mask;
     }
     
     // -------------------------------------------------------------------------
-    function set_reg_bit(addr, reg, bit, state) {
+    function _setRegBit(addr, reg, bit, state) {
         local val = _i2c.read(addr, format("%c",reg), 1)[0];
         if (state == 0) {
             val = val & ~(0x01 << bit);
@@ -118,121 +118,121 @@ class LSM9DS0 {
     
     // -------------------------------------------------------------------------
     // Return Gyro Device ID (0xD4)
-    function get_device_id_g() {
+    function getDeviceId_G() {
         return _i2c.read(_g_addr, format("%c",WHO_AM_I_G), 1)[0];
     }
     
     // -------------------------------------------------------------------------
     // set power state of the gyro device
     // note that if individual axes were previously disabled, they still will be
-    function set_power_state_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG1_G, 3, state);
+    function setPowerState_G(state) {
+        _setRegBit(_g_addr, CTRL_REG1_G, 3, state);
     }
     
     // -------------------------------------------------------------------------
-    function set_power_state_g_z(state) {
-        set_reg_bit(_g_addr, CTRL_REG1_G, 2, state);
+    function setPowerState_GZ(state) {
+        _setRegBit(_g_addr, CTRL_REG1_G, 2, state);
     }
     
     // -------------------------------------------------------------------------
-    function set_power_state_g_y(state) {
-        set_reg_bit(_g_addr, CTRL_REG1_G, 1, state);
+    function setPowerState_GY(state) {
+        _setRegBit(_g_addr, CTRL_REG1_G, 1, state);
     }
     
     // -------------------------------------------------------------------------
-    function set_power_state_g_z(state) {
-        set_reg_bit(_g_addr, CTRL_REG1_G, 0, state);
+    function setPowerState_GX(state) {
+        _setRegBit(_g_addr, CTRL_REG1_G, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // set high to enable interrupt generation from the gyro
-    function set_int_enable_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG3_G, 7, state);
+    function setIntEnable_G(state) {
+        _setRegBit(_g_addr, CTRL_REG3_G, 7, state);
     }
     
     // -------------------------------------------------------------------------
     // set high to enable active-low interrupt on gyro interrupt
     // set low to enable active-high
-    function set_int_activelow_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG3_G, 5, state);
+    function setIntActivelow_G(state) {
+        _setRegBit(_g_addr, CTRL_REG3_G, 5, state);
     }
     
     // -------------------------------------------------------------------------
     // set high to enable open-drain output on gyro interrupt
     // set low to enable push-pull
-    function set_int_opendrain_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG3_G, 4, state);
+    function setIntOpendrain_G(state) {
+        _setRegBit(_g_addr, CTRL_REG3_G, 4, state);
     }
     
     // -------------------------------------------------------------------------
     // Generate interrupt on data-ready
-    function set_int_drdy_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG3_G, 3, state);
+    function setIntDrdy_G(state) {
+        _setRegBit(_g_addr, CTRL_REG3_G, 3, state);
     }
     
     // -------------------------------------------------------------------------
     // Generate interrupt on FIFO watermark
-    function set_int_drdy_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG3_G, 2, state);
+    function setIntFifoWatermark_G(state) {
+        _setRegBit(_g_addr, CTRL_REG3_G, 2, state);
     }
     
     // -------------------------------------------------------------------------
     // Generate interrupt on FIFO overrun
-    function set_int_drdy_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG3_G, 1, state);
+    function setIntFifoOverrun_G(state) {
+        _setRegBit(_g_addr, CTRL_REG3_G, 1, state);
     }
     
     // -------------------------------------------------------------------------
     // Generate interrupt on FIFO empty
-    function set_int_drdy_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG3_G, 0, state);
+    function setIntFifoEmpty_G(state) {
+        _setRegBit(_g_addr, CTRL_REG3_G, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt latch for gyro interrupts
-    function set_int_latch_en_g(state) {
-        set_reg_bit(_g_addr, INT1_CFG_G, 6, state);
+    function setIntLatchEn_G(state) {
+        _setRegBit(_g_addr, INT1_CFG_G, 6, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt generation on Z high event
-    function set_int_zhigh_en_g(state) {
-        set_reg_bit(_g_addr, INT1_CFG_G, 5, state);
+    function setIntZhighEn_G(state) {
+        _setRegBit(_g_addr, INT1_CFG_G, 5, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt generation on Z low event
-    function set_int_zlow_en_g(state) {
-        set_reg_bit(_g_addr, INT1_CFG_G, 4, state);
+    function setIntZlowEn_G(state) {
+        _setRegBit(_g_addr, INT1_CFG_G, 4, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt generation on Y high event
-    function set_int_yhigh_en_g(state) {
-        set_reg_bit(_g_addr, INT1_CFG_G, 3, state);
+    function setIntYhighEn_G(state) {
+        _setRegBit(_g_addr, INT1_CFG_G, 3, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt generation on Y low event
-    function set_int_ylow_en_g(state) {
-        set_reg_bit(_g_addr, INT1_CFG_G, 2, state);
+    function setIntYlowEn_G(state) {
+        _setRegBit(_g_addr, INT1_CFG_G, 2, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt generation on X high event
-    function set_int_xhigh_en_g(state) {
-        set_reg_bit(_g_addr, INT1_CFG_G, 1, state);
+    function setIntXhighEn_G(state) {
+        _setRegBit(_g_addr, INT1_CFG_G, 1, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt generation on X low event
-    function set_int_xlow_en_g(state) {
-        set_reg_bit(_g_addr, INT1_CFG_G, 0, state);
+    function setIntXlowEn_G(state) {
+        _setRegBit(_g_addr, INT1_CFG_G, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // set the gyro threshold values for interrupt
-    function get_int_ths_g(x_ths, y_ths, z_ths) {
+    function getIntThs_G(x_ths, y_ths, z_ths) {
         _i2c.write(_g_addr, format("%c%c", INT1_THS_XH_G, (x_ths & 0xff00) >> 8));
         _i2c.write(_g_addr, format("%c%c", INT1_THS_XL_G, (x_ths & 0xff)));
         _i2c.write(_g_addr, format("%c%c", INT1_THS_YH_G, (y_ths & 0xff00) >> 8));
@@ -243,44 +243,44 @@ class LSM9DS0 {
     
     // -------------------------------------------------------------------------
     // set number of over-threshold samples to count before throwing interrupt
-    function set_int_duration_g(nsamples) {
+    function setIntDuration_G(nsamples) {
         _i2c.write(_g_addr, format("%c%c", INT1_DURATION_G, nsamples & 0xff));
     }
     
     // -------------------------------------------------------------------------
     // read the interrupt source register to determine what caused an interrupt
-    function get_int_src_g(state) {
+    function getIntSrc_G(state) {
         return _i2c.read(_g_addr, format("%c",INT1_SRC_G), 1)[0];
     }
     
     // -------------------------------------------------------------------------
     // Enable/disable FIFO for gyro
-    function set_fifo_en_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG5_G, 6, state);
+    function setFifoEn_G(state) {
+        _setRegBit(_g_addr, CTRL_REG5_G, 6, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable/disable Gyro High-Pass Filter
-    function set_hpf_en_g(state) {
-        set_reg_bit(_g_addr, CTRL_REG5_G, 4, state);
+    function setHpfEn_G(state) {
+        _setRegBit(_g_addr, CTRL_REG5_G, 4, state);
     }
     
     // -------------------------------------------------------------------------
     // Returns Accel/Magnetometer Device ID (0x49)
-    function get_device_id_xm() {
+    function getDeviceId_XM() {
         return _i2c.read(_xm_addr, format("%c",WHO_AM_I_XM), 1)[0];
     }
     
     // -------------------------------------------------------------------------
     // read the magnetometer's status register
-    function get_status_m() {
+    function getStatus_M() {
         return _i2c.read(_xm_addr, format("%c",STATUS_REG_M), 1)[0];
     }
     
     // -------------------------------------------------------------------------
     // Put magnetometer into continuous-conversion mode
     // IMU comes up with magnetometer powered down
-    function set_mode_cont_m() {
+    function setModeCont_M() {
         local val = _i2c.read(_xm_addr, format("%c",CTRL_REG7_XM), 1)[0] & 0xFC;
         // bits 1:0 determine mode
         // 0b00 -> continuous conversion mode
@@ -289,7 +289,7 @@ class LSM9DS0 {
     
     // -------------------------------------------------------------------------
     // Put magnetometer into single-conversion mode
-    function set_mode_single_m() {
+    function setModeSingle_M() {
         local val = _i2c.read(_xm_addr, format("%c",CTRL_REG7_XM), 1)[0] & 0xFC;
         // 0b01 -> single conversion mode
         val = val | 0x01;
@@ -298,7 +298,7 @@ class LSM9DS0 {
     
     // -------------------------------------------------------------------------
     // Put magnetometer into power-down mode
-    function set_mode_powerdown_m() {
+    function setModePowerdown_M() {
         local val = _i2c.read(_xm_addr, format("%c",CTRL_REG7_XM), 1)[0] & 0xFC;
         // 0b10 or 0b11 -> power-down mode
         val = val | 0x20;
@@ -307,93 +307,93 @@ class LSM9DS0 {
     
     // -------------------------------------------------------------------------
     // Enable interrupt generation on x axis for magnetic data
-    function set_int_en_x_m(state) {
-        set_reg_bit(_xm_addr, INT_CTRL_CTRL_REG_M, 7, state);
+    function setIntEn_MX(state) {
+        _setRegBit(_xm_addr, INT_CTRL_CTRL_REG_M, 7, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable interrupt generation on y axis for magnetic data
-    function set_int_en_y_m(state) {
-        set_reg_bit(_xm_addr, INT_CTRL_CTRL_REG_M, 6, state);
+    function setIntEn_MY(state) {
+        _setRegBit(_xm_addr, INT_CTRL_CTRL_REG_M, 6, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable interrupt generation on z axis for magnetic data
-    function set_int_en_z_m(state) {
-        set_reg_bit(_xm_addr, INT_CTRL_CTRL_REG_M, 5, state);
+    function setIntEn_MZ(state) {
+        _setRegBit(_xm_addr, INT_CTRL_CTRL_REG_M, 5, state);
     }
     
     // -------------------------------------------------------------------------
     // set high to enable interrupt generation from the magnetometer
-    function set_int_en_m(state) {
-        set_reg_bit(_xm_addr, INT_CTRL_CTRL_REG_M, 0, state);
+    function setIntEn_M(state) {
+        _setRegBit(_xm_addr, INT_CTRL_CTRL_REG_M, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // set high to enable active-low interrupt for accel/mag
     // set low to enable active-high
-    function set_int_activelow_xm(state) {
-        set_reg_bit(_xm_addr, INT_CTRL_CTRL_REG_M, 3, state);
+    function setIntActivelow_XM(state) {
+        _setRegBit(_xm_addr, INT_CTRL_CTRL_REG_M, 3, state);
     }
     
     // -------------------------------------------------------------------------
     // set high to enable open-drain output for accel/mag
     // set low to enable push-pull
-    function set_int_opendrain_xm(state) {
-        set_reg_bit(_xm_addr, INT_CTRL_CTRL_REG_M, 4, state);
+    function setIntOpendrain_XM(state) {
+        _setRegBit(_xm_addr, INT_CTRL_CTRL_REG_M, 4, state);
     }
     
     // -------------------------------------------------------------------------
     // enable/disable interrupt latching for accel/magnetometer
     // if set, clear interrupt by reading INT_GEN1_SRC, INT_GEN2_SRC, AND INT_SRC_REG_M
-    function set_int_latch_xm(state) {
-        set_reg_bit(_xm_addr, INT_CTRL_CTRL_REG_M, 2, state);
+    function setIntLatch_XM(state) {
+        _setRegBit(_xm_addr, INT_CTRL_CTRL_REG_M, 2, state);
     }
     
     // -------------------------------------------------------------------------
     // read the interrupt source register to determine what caused an interrupt
-    function get_int_src_m() {
+    function getIntSrc_M() {
         return _i2c.read(_xm_addr, format("%c",INT_SRC_REG_M), 1)[0];
     }
     
     // -------------------------------------------------------------------------
     // set the absolute value of the magnetometer interrupt threshold for all axes
-    function set_int_ths_m(val) {
+    function setIntThs_M(val) {
         _i2c.write(_xm_addr, format("%c%c",INT_THS_H_M, (val & 0xff00) << 8));
         _i2c.write(_xm_addr, format("%c%c",INT_THS_L_M, (val & 0xff)));
     }
     
     // -------------------------------------------------------------------------
-    function set_fifo_en_xm(state) {
-        set_reg_bit(_xm_addr, CTRL_REG0_XM, 6, state);
+    function setFifoEn_XM(state) {
+        _setRegBit(_xm_addr, CTRL_REG0_XM, 6, state);
     }
     
     // -------------------------------------------------------------------------
-    function set_fifo_watermark_en_xm(state) {
-        set_reg_bit(_xm_addr, CTRL_REG0_XM, 5, state);
+    function setFifoWatermarkEn_XM(state) {
+        _setRegBit(_xm_addr, CTRL_REG0_XM, 5, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable/disable high-pass filter for click detection interrupt 
-    function set_hpf_click_xm(state) {
-        set_reg_bit(_xm_addr, CTRL_REG0_XM, 2, state);
+    function setHpfClick_XM(state) {
+        _setRegBit(_xm_addr, CTRL_REG0_XM, 2, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable/disable high-pass filter for interrupt generator 1
-    function set_hpf_int1_xm(state) {
-        set_reg_bit(_xm_addr, CTRL_REG0_XM, 1, state);
+    function setHpfInt1_XM(state) {
+        _setRegBit(_xm_addr, CTRL_REG0_XM, 1, state);
     }
     
     // -------------------------------------------------------------------------
-    function set_hpf_int2_xm(state) {
-        set_reg_bit(_xm_addr, CTRL_REG0_XM, 0, state);
+    function setHpfInt2_XM(state) {
+        _setRegBit(_xm_addr, CTRL_REG0_XM, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // Set Accelerometer Data Rate in Hz
     // IMU comes up with accelerometer disabled; rate must be set to enable
-    function set_datarate_a(rate) {
+    function setDatarate_A(rate) {
         local val = _i2c.read(_xm_addr, format("%c",CTRL_REG1_XM), 1)[0] & 0x0F;
         if (rate == 0) {
             // 0b0000 -> power-down mode
@@ -425,7 +425,7 @@ class LSM9DS0 {
     // -------------------------------------------------------------------------
     // Set Magnetometer Data Rate in Hz
     // IMU comes up with magnetometer data rate set to 3.125 Hz
-    function set_datarate_m(rate) {
+    function setDatarate_M(rate) {
         local val = _i2c.read(_xm_addr, format("%c",CTRL_REG5_XM), 1)[0] & 0xE3;
         if (rate <= 3.125) {
             // rate already set
@@ -446,104 +446,104 @@ class LSM9DS0 {
     
     // -------------------------------------------------------------------------
     // Enable Interrupt Generation on INT1_XM pin on "tap" event
-    function set_tap_int_p1_en(state) {
-        set_reg_bit(_xm_addr, CTRL_REG3_XM, 6, state);
+    function setTapIntEn_P1(state) {
+        _setRegBit(_xm_addr, CTRL_REG3_XM, 6, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Inertial Interrupt Generator 1 on INT1_XM pin
-    function set_inert_int1_p1_en(state) {
-        set_reg_bit(_xm_addr, CTRL_REG3_XM, 5, state);
+    function setInertInt1En_P1(state) {
+        _setRegBit(_xm_addr, CTRL_REG3_XM, 5, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Inertial Interrupt Generator 2 on INT1_XM pin
-    function set_inert_int2_p1_en(state) {
-        set_reg_bit(_xm_addr, CTRL_REG3_XM, 4, state);
+    function setInertInt1En_P2(state) {
+        _setRegBit(_xm_addr, CTRL_REG3_XM, 4, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Magnetic Interrupt on INT1_XM pin
-    function set_mag_int_en_p1(state) {
-        set_reg_bit(_xm_addr, CTRL_REG3_XM, 3, state);
+    function setMagIntEn_P1(state) {
+        _setRegBit(_xm_addr, CTRL_REG3_XM, 3, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Accel Data Ready Interrupt INT1_XM pin
-    function set_accel_drdy_int_en_p1(state) {
-        set_reg_bit(_xm_addr, CTRL_REG3_XM, 2, state);
+    function setAccelDrdyIntEn_P1(state) {
+        _setRegBit(_xm_addr, CTRL_REG3_XM, 2, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Magnetometer Data Ready Interrupt INT1_XM pin
-    function set_mag_drdy_int_en_p1(state) {
-        set_reg_bit(_xm_addr, CTRL_REG3_XM, 1, state);
+    function setMagDrdyIntEn_P1(state) {
+        _setRegBit(_xm_addr, CTRL_REG3_XM, 1, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable FIFO Empty Interrupt INT1_XM pin
-    function set_accel_drdy_int_en_p1(state) {
-        set_reg_bit(_xm_addr, CTRL_REG3_XM, 0, state);
+    function setAccelDrdyIntEn_P1(state) {
+        _setRegBit(_xm_addr, CTRL_REG3_XM, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Interrupt Generation on INT2_XM pin on "tap" event
-    function set_tap_int_en_p2(state) {
-        set_reg_bit(_xm_addr, CTRL_REG4_XM, 6, state);
+    function setTapIntEn_P2(state) {
+        _setRegBit(_xm_addr, CTRL_REG4_XM, 6, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Inertial Interrupt Generator 1 on INT2_XM pin
-    function set_inert_int1_en_p2(state) {
-        set_reg_bit(_xm_addr, CTRL_REG4_XM, 5, state);
+    function setInertInt1En_P2(state) {
+        _setRegBit(_xm_addr, CTRL_REG4_XM, 5, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Inertial Interrupt Generator 2 on INT2_XM pin
-    function set_inert_int2_en_p2(state) {
-        set_reg_bit(_xm_addr, CTRL_REG4_XM, 4, state);
+    function setInertInt2En_P2(state) {
+        _setRegBit(_xm_addr, CTRL_REG4_XM, 4, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Magnetic Interrupt on INT2_XM pin
-    function set_mag_int_en_p2(state) {
-        set_reg_bit(_xm_addr, CTRL_REG4_XM, 3, state);
+    function setMagIntEn_P2(state) {
+        _setRegBit(_xm_addr, CTRL_REG4_XM, 3, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Accel Data Ready Interrupt INT2_XM pin
-    function set_accel_drdy_int_en_p2(state) {
-        set_reg_bit(_xm_addr, CTRL_REG4_XM, 2, state);
+    function setAccelDrdyIntEn_P2(state) {
+        _setRegBit(_xm_addr, CTRL_REG4_XM, 2, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable Magnetometer Data Ready Interrupt INT2_XM pin
     function set_mag_drdy_int_en_p2(state) {
-        set_reg_bit(_xm_addr, CTRL_REG4_XM, 1, state);
+        _setRegBit(_xm_addr, CTRL_REG4_XM, 1, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable FIFO Empty Interrupt INT2_XM pin
-    function set_accel_drdy_int_en_p2(state) {
-        set_reg_bit(_xm_addr, CTRL_REG4_XM, 0, state);
+    function setAccelDrdyIntEn_P2(state) {
+        _setRegBit(_xm_addr, CTRL_REG4_XM, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable / Disable Interrupt Latching on XM_INT1 Pin
-    function set_xmint1_latch_en(state) {
-        set_reg_bit(_xm_addr, CTRL_REG5_XM, 1, state);
+    function setInt1LatchEn_XM(state) {
+        _setRegBit(_xm_addr, CTRL_REG5_XM, 1, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable / Disable Interrupt Latching onh XM_INT1 Pin
-    function set_xmint2_latch_en(state) {
-        set_reg_bit(_xm_addr, CTRL_REG5_XM, 0, state);
+    function setInt2LatchEn_XM(state) {
+        _setRegBit(_xm_addr, CTRL_REG5_XM, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // Enable temperature sensor
-    function set_temp_en(state) {
-        set_reg_bit(_xm_addr, CTRL_REG5_XM, 7, state);
+    function setTempEn(state) {
+        _setRegBit(_xm_addr, CTRL_REG5_XM, 7, state);
         if (state == 0) {
             _temp_enabled = false;
         } else {
@@ -553,203 +553,203 @@ class LSM9DS0 {
 
     // -------------------------------------------------------------------------
     // read the acceleromter's status register
-    function get_status_a() {
+    function getStatus_A() {
         return _i2c.read(_xm_addr, format("%c",STATUS_REG_A), 1)[0];
     }    
     
     // -------------------------------------------------------------------------
-    function get_int1_src_xm(val) {
+    function getInt1Src_XM(val) {
         return _i2c.read(_xm_addr, format("%c",INT_GEN_1_SRC), 1)[0];
     }
     
     // -------------------------------------------------------------------------
-    function get_int2_src_xm(val) {
+    function getInt2Src_XM(val) {
         return _i2c.read(_xm_addr, format("%c",INT_GEN_2_SRC), 1)[0];
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 1 generation on Z high event
-    function set_int1_zhigh_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_1_REG, 5, state);
+    function setInt1ZhighEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_1_REG, 5, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 1 generation on Z low event
-    function set_int1_zlow_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_1_REG, 4, state);
+    function setInt1ZlowEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_1_REG, 4, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 1 generation on Y high event
-    function set_int1_yhigh_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_1_REG, 3, state);
+    function setInt1YhighEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_1_REG, 3, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 1 generation on Y low event
-    function set_int1_ylow_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_1_REG, 2, state);
+    function setInt1YlowEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_1_REG, 2, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 1 generation on X high event
-    function set_int1_xhigh_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_1_REG, 1, state);
+    function setInt1XhighEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_1_REG, 1, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 1 generation on X low event
-    function set_int1_xlow_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_1_REG, 0, state);
+    function setInt1XlowEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_1_REG, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // set the accelerometer threshold value interrupt 1
-    function set_int1_ths_a(ths) {
+    function setInt1Ths_A(ths) {
         _i2c.write(_g_addr, format("%c%c", INT_GEN_1_THS, (ths & 0xff)));
     }
     
     // -------------------------------------------------------------------------
     // set the event duration over threshold before throwing interrupt
     // duration steps and max values depend on selected ODR
-    function set_int1_duration_a(duration) {
+    function setInt1Duration_A(duration) {
         _i2c.write(_g_addr, format("%c%c", INT_GEN_1_DURATION, duration & 0x7f));
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 2 generation on Z high event
-    function set_int2_zhigh_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_2_REG, 5, state);
+    function setInt2ZhighEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_2_REG, 5, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 2 generation on Z low event
-    function set_int2_zlow_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_2_REG, 4, state);
+    function setInt2ZlowEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_2_REG, 4, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 2 generation on Y high event
-    function set_int2_yhigh_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_2_REG, 3, state);
+    function setInt2YhighEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_2_REG, 3, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 2 generation on Y low event
-    function set_int2_ylow_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_2_REG, 2, state);
+    function setInt2YlowEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_2_REG, 2, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 2 generation on X high event
-    function set_int2_xhigh_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_2_REG, 1, state);
+    function setInt2XhighEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_2_REG, 1, state);
     }
     
     // -------------------------------------------------------------------------
     // enable interrupt 2 generation on X low event
-    function set_int2_xlow_en_a(state) {
-        set_reg_bit(_xm_addr, INT_GEN_2_REG, 0, state);
+    function setInt2XlowEn_A(state) {
+        _setRegBit(_xm_addr, INT_GEN_2_REG, 0, state);
     }
     
     // -------------------------------------------------------------------------
     // set the accelerometer threshold value interrupt 2
-    function set_int2_ths_a(ths) {
+    function setInt2Ths_A(ths) {
         _i2c.write(_g_addr, format("%c%c", INT_GEN_2_THS, (ths & 0xff)));
     }
     
     // -------------------------------------------------------------------------
     // set the event duration over threshold before throwing interrupt
     // duration steps and max values depend on selected ODR
-    function set_int2_duration_a(duration) {
+    function setInt2Duration_A(duration) {
         _i2c.write(_g_addr, format("%c%c", INT_GEN_2_DURATION, duration & 0x7f));
     }
     
     // -------------------------------------------------------------------------
     // enable / disable double-click detection on z-axis
-    function set_dblclick_int_en_z(state) {
-        set_reg_bit(_xm_addr, CLICK_CFG, 5, state);
+    function setDblclickIntEn_Z(state) {
+        _setRegBit(_xm_addr, CLICK_CFG, 5, state);
     }
     
     // -------------------------------------------------------------------------
     // enable / disable single-click detection on z-axis
-    function set_snglclick_int_en_z(state) {
-        set_reg_bit(_xm_addr, CLICK_CFG, 4, state);
+    function setSnglclickIntEn_Z(state) {
+        _setRegBit(_xm_addr, CLICK_CFG, 4, state);
     }
     
     // -------------------------------------------------------------------------
     // enable / disable double-click detection on y-axis
-    function set_dblclick_int_en_y(state) {
-        set_reg_bit(_xm_addr, CLICK_CFG, 3, state);
+    function setDblclickIntEn_Y(state) {
+        _setRegBit(_xm_addr, CLICK_CFG, 3, state);
     }
     
     // -------------------------------------------------------------------------
     // enable / disable single-click detection on y-axis
-    function set_snglclick_int_en_y(state) {
-        set_reg_bit(_xm_addr, CLICK_CFG, 2, state);
+    function setSnglclickIntEn_Y(state) {
+        _setRegBit(_xm_addr, CLICK_CFG, 2, state);
     }
     
     // -------------------------------------------------------------------------
     // enable / disable double-click detection on x-axis
-    function set_dblclick_int_en_x(state) {
-        set_reg_bit(_xm_addr, CLICK_CFG, 1, state);
+    function setDblclickIntEn_X(state) {
+        _setRegBit(_xm_addr, CLICK_CFG, 1, state);
     }
     
     // -------------------------------------------------------------------------
     // enable / disable single-click detection on x-axis
-    function set_snglclick_int_en_x(state) {
-        set_reg_bit(_xm_addr, CLICK_CFG, 0, state);
+    function setSnglclickIntEn_X(state) {
+        _setRegBit(_xm_addr, CLICK_CFG, 0, state);
     }
     
     // -------------------------------------------------------------------------
-    function click_int_active() {
+    function clickIntActive() {
         return (0x40 & _i2c.read(_xm_addr, format("%c", CLICK_SRC), 1)[0]); 
     }
     
     // -------------------------------------------------------------------------
-    function dblclick_det() {
+    function dblclickDet() {
         return (0x20 & _i2c.read(_xm_addr, format("%c", CLICK_SRC), 1)[0]); 
     }
     
     // -------------------------------------------------------------------------
-    function snglclick_det() {
+    function snglclickDet() {
         return (0x10 & _i2c.read(_xm_addr, format("%c", CLICK_SRC), 1)[0]); 
     }
     
     // -------------------------------------------------------------------------
-    function click_neg_dir() {
+    function clickNegDir() {
         return (0x08 & _i2c.read(_xm_addr, format("%c", CLICK_SRC), 1)[0]); 
     }
     
     // -------------------------------------------------------------------------
-    function zclick_det() {
+    function zclickDet() {
         return (0x04 & _i2c.read(_xm_addr, format("%c", CLICK_SRC), 1)[0]); 
     }
     
     // -------------------------------------------------------------------------
-    function yclick_det() {
+    function yclickDet() {
         return (0x02 & _i2c.read(_xm_addr, format("%c", CLICK_SRC), 1)[0]); 
     }
     
     // -------------------------------------------------------------------------
-    function xclick_det() {
+    function xclickDet() {
         return (0x01 & _i2c.read(_xm_addr, format("%c", CLICK_SRC), 1)[0]); 
     }
     
     // -------------------------------------------------------------------------
     // set the click detection threshold
-    function set_click_det_ths(ths) {
+    function setClickDetThs(ths) {
         _i2c.write(_xm_addr, format("%c%c", CLICK_THS, (ths & 0x7f)));
     }
     
     // -------------------------------------------------------------------------
     // read the internal temperature sensor in the accelerometer / magnetometer
-    function read_temp() {
-        if (!_temp_enabled) { set_temp_en(1) };
+    function getTemp() {
+        if (!_temp_enabled) { setTempEn(1) };
         local temp = (_i2c.read(_xm_addr, format("%c", OUT_TEMP_H_XM), 1)[0] << 8) + _i2c.read(_xm_addr, format("%c", OUT_TEMP_L_XM), 1)[0];
         temp = temp & 0x0fff; // temp data is 12 bits, 2's comp, right-justified
         if (temp & 0x0800) {
-            return (-1.0) * twos_comp(temp, 0x0fff);
+            return (-1.0) * _twosComp(temp, 0x0fff);
         } else {
             return temp;
         }
@@ -758,26 +758,26 @@ class LSM9DS0 {
     // -------------------------------------------------------------------------
     // Read data from the Gyro
     // Returns a table {x: <data>, y: <data>, z: <data>}
-    function read_g() {
+    function getGyro() {
         local x_raw = (_i2c.read(_g_addr, format("%c", OUT_X_H_G), 1)[0] << 8) + _i2c.read(_g_addr, format("%c", OUT_X_L_G), 1)[0];
         local y_raw = (_i2c.read(_g_addr, format("%c", OUT_Y_H_G), 1)[0] << 8) + _i2c.read(_g_addr, format("%c", OUT_Y_L_G), 1)[0];
         local z_raw = (_i2c.read(_g_addr, format("%c", OUT_Z_H_G), 1)[0] << 8) + _i2c.read(_g_addr, format("%c", OUT_Z_L_G), 1)[0];
         
         local result = {};
         if (x_raw & 0x8000) {
-            result.x <- (-1.0) * twos_comp(x_raw, 0xffff);
+            result.x <- (-1.0) * _twosComp(x_raw, 0xffff);
         } else {
             result.x <- x_raw;
         }
         
         if (y_raw & 0x8000) {
-            result.y <- (-1.0) * twos_comp(y_raw, 0xffff);
+            result.y <- (-1.0) * _twosComp(y_raw, 0xffff);
         } else {
             result.y <- y_raw;
         }
         
         if (z_raw & 0x8000) {
-            result.z <- (-1.0) * twos_comp(z_raw, 0xffff);
+            result.z <- (-1.0) * _twosComp(z_raw, 0xffff);
         } else {
             result.z <- z_raw;
         }
@@ -788,26 +788,26 @@ class LSM9DS0 {
     // -------------------------------------------------------------------------
     // Read data from the Magnetometer
     // Returns a table {x: <data>, y: <data>, z: <data>}
-    function read_m() {
+    function getMag() {
         local x_raw = (_i2c.read(_xm_addr, format("%c", OUT_X_H_M), 1)[0] << 8) + _i2c.read(_xm_addr, format("%c", OUT_X_L_M), 1)[0];
         local y_raw = (_i2c.read(_xm_addr, format("%c", OUT_Y_H_M), 1)[0] << 8) + _i2c.read(_xm_addr, format("%c", OUT_Y_L_M), 1)[0];
         local z_raw = (_i2c.read(_xm_addr, format("%c", OUT_Z_H_M), 1)[0] << 8) + _i2c.read(_xm_addr, format("%c", OUT_Z_L_M), 1)[0];
     
         local result = {};
         if (x_raw & 0x8000) {
-            result.x <- (-1.0) * twos_comp(x_raw, 0xffff);
+            result.x <- (-1.0) * _twosComp(x_raw, 0xffff);
         } else {
             result.x <- x_raw;
         }
         
         if (y_raw & 0x8000) {
-            result.y <- (-1.0) * twos_comp(y_raw, 0xffff);
+            result.y <- (-1.0) * _twosComp(y_raw, 0xffff);
         } else {
             result.y <- y_raw;
         }
         
         if (z_raw & 0x8000) {
-            result.z <- (-1.0) * twos_comp(z_raw, 0xffff);
+            result.z <- (-1.0) * _twosComp(z_raw, 0xffff);
         } else {
             result.z <- z_raw;
         }
@@ -818,7 +818,7 @@ class LSM9DS0 {
     // -------------------------------------------------------------------------
     // Read data from the Accelerometer
     // Returns a table {x: <data>, y: <data>, z: <data>}
-    function read_a() {
+    function getAccel() {
         local x_raw = (_i2c.read(_xm_addr, format("%c", OUT_X_H_A), 1)[0] << 8) + _i2c.read(_xm_addr, format("%c", OUT_X_L_A), 1)[0];
         local y_raw = (_i2c.read(_xm_addr, format("%c", OUT_Y_H_A), 1)[0] << 8) + _i2c.read(_xm_addr, format("%c", OUT_Y_L_A), 1)[0];
         local z_raw = (_i2c.read(_xm_addr, format("%c", OUT_Z_H_A), 1)[0] << 8) + _i2c.read(_xm_addr, format("%c", OUT_Z_L_A), 1)[0];
@@ -827,19 +827,19 @@ class LSM9DS0 {
     
         local result = {};
         if (x_raw & 0x8000) {
-            result.x <- (-1.0) * twos_comp(x_raw, 0xffff);
+            result.x <- (-1.0) * _twosComp(x_raw, 0xffff);
         } else {
             result.x <- x_raw;
         }
         
         if (y_raw & 0x8000) {
-            result.y <- (-1.0) * twos_comp(y_raw, 0xffff);
+            result.y <- (-1.0) * _twosComp(y_raw, 0xffff);
         } else {
             result.y <- y_raw;
         }
         
         if (z_raw & 0x8000) {
-            result.z <- (-1.0) * twos_comp(z_raw, 0xffff);
+            result.z <- (-1.0) * _twosComp(z_raw, 0xffff);
         } else {
             result.z <- z_raw;
         }

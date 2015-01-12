@@ -28,13 +28,13 @@ imu  <- LSM9DS0(i2c, XM_ADDR, G_ADDR);
 The IMU comes out of reset with all three functional blocks disabled. To begin reading them, they must be enabled.
 
 ```
-imu.set_power_state_g(1);
+imu.setPowerState_G(1);
 server.log("Gyro Enabled");
 
-imu.set_datarate_a(3);
+imu.setDatarate_A(3);
 server.log("Accel Enabled at 3.125 Hz");
 
-imu.set_mode_cont_m();
+imu.setModeCont_M();
 server.log("Magnetometer in Continuous Measurement Mode at 3.125 Hz");
 ```
 
@@ -44,9 +44,9 @@ Three methods are implemented to directly read the accelerometer, magnetometer, 
 The LSM9DS0 also allows the user to read the on-chip temperature sensor (which is used to calibrate the other sensors). Note that the value returned by this temperature sensor may be very different from ambient temperature depending on which sensors are enabled. For example, in development the temperature sensor returned approximately room temperature (25&deg;C) with the accelerometer and magnetometer enabled, but approximately 42&deg;C with the gyroscope enabled.
 
 ```
-local acc = imu.read_a();
-local mag = imu.read_m();
-local gyr = imu.read_g();
+local acc = imu.getAccel();
+local mag = imu.getMag();
+local gyr = imu.getGyro();
 server.log(format("Accel: (%0.2f, %0.2f, %0.2f)", acc.x, acc.y, acc.z));
 server.log(format("Mag:   (%0.2f, %0.2f, %0.2f)", mag.x, mag.y, mag.z));
 server.log(format("Gyro:  (%0.2f, %0.2f, %0.2f)", gyr.x, gyr.y, gyr.z));
