@@ -1,4 +1,4 @@
-class HT16K33SEGMENT
+class HT16K33Segment
 {
 	// Squirrel class for 0.56-inch 4-digit, 7-segment LED displays driven by the HT16K33 controller
 	// For example: http://www.adafruit.com/products/878
@@ -50,7 +50,7 @@ class HT16K33SEGMENT
 	constructor(impBus, ht16k33Address = 0x70)
 	{
 		// Parameters:
-		// 1. Whichever imp I2C bus is to be used for the HT16K33
+		// 1. Whichever *configured* imp I2C bus is to be used for the HT16K33
 		// 2. The HT16K33's I2C address (default: 0x70)
 
 		_led = impBus
@@ -66,6 +66,8 @@ class HT16K33SEGMENT
 		[0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F,  // 0-9
 		0x5F, 0x7C, 0x58, 0x5E, 0x7B, 0x71,  // A-F
 		0x00, 0x40] // Space and minus
+		
+		init()
 	}
 
 	function init(clearCharacter = 16, brightness = 15, showColon = false)
@@ -74,10 +76,6 @@ class HT16K33SEGMENT
 		// 1. Integer index for the _digits[] character matrix to zero the display to
 		// 2. Integer value for the display brightness, between 0 and 15
 		// 3. Boolean value - should the colon (_digits[2]) be shown?
-
-		// Configure the I2C bus
-
-		_led.configure(CLOCK_SPEED_400_KHZ)
 
 		// Set the brightness (which of necessity power cyles the dispay)
 
@@ -90,25 +88,25 @@ class HT16K33SEGMENT
 		updateDisplay()
 	}
 
-	function clearBuffer(clearCharacter = 16)
+	function clearBuffer(clearChar = 16)
 	{
 		// Fills the buffer with a blank character, or the _digits[] character matrix whose index is provided
 
-		if (clearCharacter < 0 || clearCharacter > HT16K33_CHAR_COUNT) clearCharacter = HT16K33_BLANK_CHAR
+		if (clearChar < 0 || clearChar > HT16K33_CHAR_COUNT) clearChar = HT16K33_BLANK_CHAR
 
 		// Put the clearCharacter into the buffer except row 2 (colon row)
 
-		_buffer[0] = _digits[clearCharacter]
-		_buffer[1] = _digits[clearCharacter]
-		_buffer[3] = _digits[clearCharacter]
-		_buffer[4] = _digits[clearCharacter]
+		_buffer[0] = _digits[clearChar]
+		_buffer[1] = _digits[clearChar]
+		_buffer[3] = _digits[clearChar]
+		_buffer[4] = _digits[clearChar]
 	}
 
 	function setColon(shouldBeSet)
 	{
 		// Shows or hides the colon row (display row 2) according to the passed bool
 
-		_buffer[2] = 0x00;
+		_buffer[2] = 0x00
 		if (shouldBeSet) _buffer[2] = 0xFF
 	}
 
@@ -197,18 +195,18 @@ class HT16K33SEGMENT
 		powerDown()
 		powerUp()
 
-        // Write the new brightness value to the HT16K33
+        	// Write the new brightness value to the HT16K33
 
 		_led.write(_ledAddress, brightness.tochar() + "\x00")
 		
 		// Restore the buffer and display it
 		
-        foreach (index, value in sbuffer)
+        	foreach (index, value in sbuffer)
 		{
 		    _buffer[index] = sbuffer[index]
 		}
 
-        updateDisplay()
+        	updateDisplay()
 	}
 
 	function powerDown()
