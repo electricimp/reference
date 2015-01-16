@@ -3,6 +3,7 @@
 // http://opensource.org/licenses/MIT
 
 class TMP1x2 {
+
 	// Register addresses
 	static TEMP_REG 		= 0x00;
 	static CONF_REG 		= 0x01;
@@ -35,40 +36,31 @@ class TMP1x2 {
 
 	// interrupt state - some pins require us to poll the interrupt pin
 	_lastIntState 		= null;
-	_pollInterval 		= null;
 	_interruptCallback 	= null;
 
-	// generic temp interrupt
-	function _defaultInterrupt(state) {
-		server.log("Device: TMP1x2 Interrupt Occurred. State = "+state);
-	}
-
 	/*
-	 * Class Constructor. Takes 3 to 5 arguments:
-	 * 		i2c: 					Pre-configured I2C Bus
+	 * Class Constructor. Takes 3 or 4 arguments:
 	 *		addr:  					I2C Slave Address for device. 8-bit address.
-	 * 		intPin: 				Pin to which ALERT line is connected
-	 * 		alertPollInterval: 		Interval (in seconds) at which to poll the ALERT pin (optional)
-	 *		alertCallback:	 		Callback to call on ALERT pin state changes (optional)
+	 * 		i2c: 					Pre-configured I2C Bus.
+	 * 		intPin: 				Pin to which ALERT line is connected. This must support state-change callbacks.
+	 *		interruptCallback:	 	Callback to call on ALERT pin state changes (optional)
 	 */
-	constructor(i2c, addr, intPin, alertPollInterval = 1, alertCallback = null) {
-		_addr	= addr;
-		_i2c 	= i2c;
-		_intPin	= intPin;
+	constructor(addr, i2c, intPin, interruptCallback = null) {
 
 		/* 
 		 * Top-level program should pass in Pre-configured I2C bus.
 		 * This is done to allow multiple devices to be constructed on the bus
 		 * without reconfiguring the bus with each instantiation and causing conflict.
 		 */
-		_intPin.configure(DIGITAL_IN);
+		_addr	= addr;
+		_i2c 	= i2c;
+
+		_intPin	= intPin;
+		_intPin.configure(DIGITAL_IN, _interrupt.bindenv(this));
 		_lastIntState = _intPin.read();
-		_pollInterval = alertPollInterval;
-		if (alertCallback) {
-			_interruptCallback = alertCallback;
-		} else {
-			_interruptCallback = _defaultInterrupt;
-		}
+
+		_interruptCallback = interruptCallback;
+
 		readConf();
 	}
 
@@ -78,8 +70,7 @@ class TMP1x2 {
 	 * Not all imp pins allow state-change callbacks, so ALERT pin interrupts are implemented with polling
 	 *
 	 */ 
-	function pollInterrupt() {
-		imp.wakeup(_pollInterval, pollInterrupt);
+	function _interrupt() {
 		local intState = _intPin.read();
 		if (intState != _lastIntState) {
 			_lastIntState = intState;
@@ -111,13 +102,15 @@ class TMP1x2 {
 	 * Logging is included to prevent this from silently affecting other devices
 	 */
 	function reset() {
-		server.log("TMP1x2 Class issuing General-Call Reset on I2C Bus.");
+
 		_i2c.write(0x00,format("%c",RESET_VAL));
 		// update the configuration register
 		readConf();
 		// reset the thresholds
 		_lowThreshold = 75;
 		_highThreshold = 80;
+		// server.log("TMP1x2 Class issuing General-Call Reset on I2C Bus.");
+
 	}
 
 	/* 
@@ -150,7 +143,6 @@ class TMP1x2 {
 	/*
 	 * Read, parse and log the current state of each field in the configuration register
 	 *
-	 */
 	function printConf() {
 		_conf = _i2c.read(_addr,format("%c",CONF_REG), 2);
 		server.log(format("TMP1x2 Conf Reg at 0x%02x: %02x%02x",_addr,_conf[0],_conf[1]));
@@ -216,26 +208,23 @@ class TMP1x2 {
 		// Conversion Rate
 		local convRate = (_conf[1] & 0xC0) >> 6;
 		switch (convRate) {
-			case 0:
-				server.log("TMP1x2 Conversion Rate Set to 0.25 Hz.");
-				break;
-			case 1:
-				server.log("TMP1x2 Conversion Rate Set to 1 Hz.");
-				break;
-			case 2:
-				server.log("TMP1x2 Conversion Rate Set to 4 Hz.");
-				break;
-			case 3:
-				server.log("TMP1x2 Conversion Rate Set to 8 Hz.");
-				break;
-			default:
+			case 0: convRate = 0.25; break;
+			case 1: convRate = 1; break;
+			case 2: convRate = 4; break;
+			case 3: convRate = 8; break;
+			default: 
 				server.error("TMP1x2 Conversion Rate Invalid: "+format("0x%02x",convRate));
+				convRate = null;
+		}
+		if (convRate != null) {
+			server.log("TMP1x2 Conversion Rate Set to " + convRate + " Hz.");
 		}
 
 		// Fault Queue
 		local faultQueue = (_conf[0] & 0x18) >> 3;
 		server.log(format("TMP1x2 Fault Queue shows %d Consecutive Fault(s).", faultQueue));
 	}
+	*/
 
 	/* 
 	 * Enter or exit low-power shutdown mode
@@ -300,9 +289,10 @@ class TMP1x2 {
 			}
 			newLow = (newLow & mask) << 4;
 		}
-		server.log(format("setLowThreshold setting register to 0x%04x (%d)",newLow,newLow));
 		_i2c.write(_addr, format("%c%c%c",T_LOW_REG,(newLow & 0xFF00) >> 8, (newLow & 0xFF)));
 		_lowThreshold = newLow;
+
+		// server.log(format("setLowThreshold setting register to 0x%04x (%d)",newLow,newLow));		
 	}
 
 	/*
@@ -328,9 +318,10 @@ class TMP1x2 {
 			}
 			newHigh = (newHigh & mask) << 4;
 		}
-		server.log(format("setHighThreshold setting register to 0x%04x (%d)",newHigh,newHigh));
 		_i2c.write(_addr, format("%c%c%c",T_HIGH_REG,(newHigh & 0xFF00) >> 8, (newHigh & 0xFF)));
 		_highThreshold = newHigh;
+
+		// server.log(format("setHighThreshold setting register to 0x%04x (%d)",newHigh,newHigh));
 	}
 
 	/* 
@@ -341,23 +332,24 @@ class TMP1x2 {
 	function getLowThreshold() {
 		local result = _i2c.read(_addr, format("%c",T_LOW_REG), 2);
 		local t_low = (result[0] << 8) + result[1];
-		//server.log(format("getLowThreshold got: 0x%04x (%d)",t_low,t_low));
+		// server.log(format("getLowThreshold got: 0x%04x (%d)",t_low,t_low));
 		local mask = 0x0FFF;
 		local sign_mask = 0x0800;
 		local offset = 4;
 		if (_extendedMode) {
-			//server.log("getLowThreshold: TMP1x2 in extended mode.")
+			// server.log("getLowThreshold: TMP1x2 in extended mode.")
 			sign_mask = 0x1000;
 			mask = 0x1FFF;
 			offset = 3;
 		}
 		t_low = (t_low >> offset) & mask;
 		if (t_low & sign_mask) {
-			//server.log("getLowThreshold: Tlow is negative.");
+			// server.log("getLowThreshold: Tlow is negative.");
 			t_low = -1.0 * (twosComp(t_low,mask));
 		}
-		//server.log(format("getLowThreshold: raw value is 0x%04x (%d)",t_low,t_low));
 		_lowThreshold = (t_low.tofloat() * DEG_PER_COUNT);
+
+		// server.log(format("getLowThreshold: raw value is 0x%04x (%d)",t_low,t_low));
 		return _lowThreshold;
 	}
 
@@ -373,12 +365,14 @@ class TMP1x2 {
 		local sign_mask = 0x0800;
 		local offset = 4;
 		if (_extendedMode) {
+			// server.log("getHighThreshold: TMP1x2 in extended mode.")
 			sign_mask = 0x1000;
 			mask = 0x1FFF;
 			offset = 3;
 		}
 		tHigh = (tHigh >> offset) & mask;
 		if (tHigh & sign_mask) {
+			// server.log("getLowThreshold: Thigh is negative.");
 			tHigh = -1.0 * (twosComp(tHigh,mask));
 		}
 		_highThreshold = (tHigh.tofloat() * DEG_PER_COUNT);
@@ -404,6 +398,7 @@ class TMP1x2 {
 	 * Returns: current temperature in degrees Celsius
 	 */
 	function readTempC() {
+
 		if (_shutdown) {
 			startConversion();
 			_convReady = false;
@@ -412,11 +407,12 @@ class TMP1x2 {
 			while (!_convReady) {
 				readConf();
 				if ((hardware.millis() - start) > timeout) {
-					server.error("Device: TMP1x2 Timed Out waiting for conversion.");
+					server.error("TMP1x2 Timed Out waiting for conversion.");
 					return -999;
 				}
 			}
 		}
+
 		local result = _i2c.read(_addr, format("%c", TEMP_REG), 2);
 		local temp = (result[0] << 8) + result[1];
 
@@ -452,11 +448,3 @@ class TMP1x2 {
 	}
 }
 
-// 8-bit left-justified I2C address (Just an example.)
-const TMP1x2_ADDR = 0x30;
-
-// Alert pin
-hardware.pin1.configure(DIGITAL_IN);
-// i2c bus
-hardware.i2c89.configure(CLOCK_SPEED_400_KHZ);
-tempsensor = TMP1x2(hardware.i2c89, TMP1x2_ADDR, hardware.pin1);

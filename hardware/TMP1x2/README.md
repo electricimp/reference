@@ -7,12 +7,12 @@ Usage
 ===================================
 
 ```
-// 8-bit (left-justified I2C address. Just an example.)
+// 8-bit left-justified I2C address (Just an example.)
 const TMP1x2_ADDR = 0x30;
 
-alert <- hardware.pin1;
-alert.configure(DIGITAL_IN);
-i2c <- hardware.i2c89;
-i2c.configure(CLOCK_SPEED_400_KHZ);
-tempsensor = TMP1x2(i2c, TMP1x2_ADDR, alert);
+// i2c bus
+hardware.i2c89.configure(CLOCK_SPEED_400_KHZ);
+
+tempsensor <- TMP1x2(TMP1x2_ADDR, hardware.i2c89, hardware.pin1);
+
 ```
