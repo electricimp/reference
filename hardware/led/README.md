@@ -11,10 +11,16 @@ Contributors
 Example Code
 ============
 
+Example Instantiation
+
 ```
-//Example Instantiation
 red <- LED(hardware.pin2);
 
-//3 fast blinks followed by 3 slow blinks
-red.blink(3, 0.2, 0.4, function(){ red.blink(3, 0.6, 1.2, function(){server.log("Done blinking")})});
+// 3 fast blinks followed by 3 slow blinks
+red.blink(3, 0.2, 0.4, 
+	function() { 
+		red.blink(3, 0.6, 1.2, function() {
+			server.log("Done blinking");
+		})
+	});
 ```
