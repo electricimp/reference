@@ -75,4 +75,4 @@ License
 =======
 All code in this repository (unless otherwise specificed in the file) is licensed under the MIT License.
 
-See [LICESNE.md](/LICENSE.md) for more information.
+See [LICENSE.md](/LICENSE.md) for more information.
