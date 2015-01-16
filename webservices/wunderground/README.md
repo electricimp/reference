@@ -38,3 +38,23 @@ We've also exposed functionality to get Sunrise / Sunset times for a particular 
 	    server.log(format("Sunrise at %s:%s", data.sunrise.hour, data.sunrise.minute));
     	server.log(format("Sunset at %s:%s", data.sunset.hour, data.sunset.minute));
 	});
+
+## Example use
+
+```
+
+const WUNDERGROUND_KEY = "";
+wunderground <- Wunderground(WUNDERGROUND_KEY, "94022");
+
+wunderground.getSunriseSunset(function(data) {
+    server.log(format("Sunrise at %s:%s", data.sunrise.hour, data.sunrise.minute));
+    server.log(format("Sunset at %s:%s", data.sunset.hour, data.sunset.minute));
+});
+
+wunderground.getConditions(function(data) {
+    // log everything
+    foreach(k, v in data.current_observation) {
+        server.log(k + ": " + v);
+    }
+});
+```

@@ -1,16 +1,17 @@
-// Weather Underground Forecast Agent
-// Copyright (C) 2014 Electric Imp, inc.
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
 
-// Wunderground constants
-// Create your key here: http://www.wunderground.com/weather/api/
-const WUNDERGROUND_KEY = "";
+// Weather Underground Forecast Agent
+// Create your key API here: http://www.wunderground.com/weather/api/
 
 class Wunderground {
+
     _apiKey = null;
-    _baseUrl = "http://api.wunderground.com/api/";
     _location = null;
+    _baseUrl = null;
     
-    /***************************************************************************
+    /*
      * apiKey - your Wunderground API Key
      * Location can be any of the following: 
      *  Country/City ("Australia/Sydney") 
@@ -18,54 +19,59 @@ class Wunderground {
      *  Lat,Lon ("37.776289,-122.395234")  
      *  Zipcode ("94022") 
      *  Airport code ("SFO")
-     **************************************************************************/
-    constructor(apiKey, location) {
-        this._apiKey = apiKey;
-        this._location = location;
+     */
+    constructor(apiKey, location, baseUrl = "http://api.wunderground.com/api/") {
+        _apiKey = apiKey;
+        _location = location;
+        _baseUrl = baseUrl;
     }
     
+    /*
+     * Returns the astonomical data (sunrise/sunset) for your location.
+     */
     function getSunriseSunset(cb = null) {
-        local request = http.get(_buildUrl("astronomy"), {});
-        
+        local url = _buildUrl("astronomy");
         if (cb == null) {
-            local resp = request.sendsync();
+            local resp = _commit(url);
             if (resp.statuscode != 200) {
-                server.log(format("Error fetching sunrise/sunset data: %i - %s", resp.statuscode, resp.body));
+                server.error(format("Error fetching sunrise/sunset data: %i - %s", resp.statuscode, resp.body));
                 return null;
             } else {
-                local data = _parseSunriseSunsetResponse(resp.body);
-                return data;
+                return _parseSunriseSunsetResponse(resp.body);
             }
         } else {
             request.sendasync(function(resp) {
                 if (resp.statuscode != 200) {
                     server.log(format("Error fetching sunrise/sunset data: %i - %s", resp.statuscode, resp.body));
+                    cb(null);
                 } else {
-                    local data = _parseSunriseSunsetResponse(resp.body);
-                    cb(data);
+                    cb(_parseSunriseSunsetResponse(resp.body));
                 }
             }.bindenv(this));
         }
     }
     
+
+    /*
+     * Returns the current weather conditions at your location.
+     */
     function getConditions(cb = null) {
-        local request = http.get(_buildUrl("conditions"), {});
+        local url = _buildUrl("conditions");
         if (cb == null) {
-            local resp = request.sendsync();
+            local resp = _commit(url);
             if (resp.statuscode != 200) {
-                server.log(format("Error fetching sunrise/sunset data: %i - %s", resp.statuscode, resp.body));
+                server.error(format("Error fetching conditions: %i - %s", resp.statuscode, resp.body));
                 return null;
             } else {
-                local data = http.jsondecode(resp.body);
-                return data;
+                return http.jsondecode(resp.body);
             }
         } else {
-            request.sendasync(function(resp) {
+            return _commit(url, function(resp) {
                 if (resp.statuscode != 200) {
-                    server.log(format("Error fetching sunrise/sunset data: %i - %s", resp.statuscode, resp.body));
+                    server.error(format("Error fetching conditions: %i - %s", resp.statuscode, resp.body));
+                    cb(null);
                 } else {
-                    local data = http.jsondecode(resp.body)
-                    cb(data);
+                    cb(http.jsondecode(resp.body));
                 }
             }.bindenv(this));
         }
@@ -76,36 +82,50 @@ class Wunderground {
         return format("%s/%s/%s/q/%s.json", _baseUrl, _apiKey, method, _encode(_location));
     }
 
+    function _encode(str) {
+        return http.urlencode({ s = str }).slice(2);
+    }
+
     function _parseSunriseSunsetResponse(body) {
         try {
             local data = http.jsondecode(body);
-
             return {
                 "sunrise" : data.sun_phase.sunrise,
                 "sunset" : data.sun_phase.sunset,
                 "now" : data.moon_phase.current_time
             };
         } catch (ex) {
-            server.log(format("Error Parsing Response - %s", ex));
+            server.error(format("Error Parsing Response - %s", ex));
             return null;
         }
     }
     
-    function _encode(str) {
-        return http.urlencode({ s = str }).slice(2);
+    /*
+     * Perform the provided HTTP request. Retry after a delay if the result is 429 (throttle).
+     */
+    function _commit(url, cb = null) {
+        // make the request
+        local request = http.get(url);
+        if (cb) {
+            return request.sendasync(function(res) {
+                if (res.statuscode == 429) {
+                    imp.wakeup(1, function() {
+                        _commit(url, cb);
+                    }.bindenv(this))
+                } else {
+                    cb(res);
+                }
+            }.bindenv(this));
+        } else {
+            local res = request.sendsync();
+            if (res.statuscode == 429) {
+                imp.sleep(1);
+                return _commit(url, cb);
+            } else {
+                return res;
+            }
+        }
     }
+
+
 }
-
-wunderground <- Wunderground(WUNDERGROUND_KEY, "94022");
-
-wunderground.getSunriseSunset(function(data) {
-    server.log(format("Sunrise at %s:%s", data.sunrise.hour, data.sunrise.minute));
-    server.log(format("Sunset at %s:%s", data.sunset.hour, data.sunset.minute));
-});
-
-wunderground.getConditions(function(data) {
-    // log everything
-    foreach(k, v in data.current_observation) {
-        server.log(k + ": " + v);
-    }
-});
