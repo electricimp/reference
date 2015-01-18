@@ -1,64 +1,45 @@
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
+// Twitter access class
+// Requires: Twitter account from which the above keys can be accessed
+// Availability: Agent
+
+// Usage: 
+//   Twitter Keys
+//   const API_KEY = "";
+//   const API_SECRET = "";
+//   const AUTH_TOKEN = "";
+//   const TOKEN_SECRET = "";
+
+//   twitter <- Twitter(API_KEY, API_SECRET, AUTH_TOKEN, TOKEN_SECRET)
+
 class Twitter {
 	
-	// Twitter access class
-	// Requires: Twitter account from which the above keys can be accessed
-	// Availability: Agent
-	
-	// Usage: 
-	//   Twitter Keys
-	//   const API_KEY = "";
-	//   const API_SECRET = "";
-	//   const AUTH_TOKEN = "";
-	//   const TOKEN_SECRET = "";
-
-	//   twitter <- Twitter(API_KEY, API_SECRET, AUTH_TOKEN, TOKEN_SECRET)
-	
-	// Copyright 2014 Electric Imp
-	// Issued under the MIT license (MIT)
-
-	// Permission is hereby granted, free of charge, to any person obtaining a copy
-	// of this software and associated documentation files (the "Software"), to deal
-	// in the Software without restriction, including without limitation the rights
-	// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-	// copies of the Software, and to permit persons to whom the Software is
-	// furnished to do so, subject to the following conditions:
-	// 	The above copyright notice and this permission notice shall be included in
-	// 	all copies or substantial portions of the Software.
-
-	// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-	// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-	// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-	// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-	// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-	// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-	// THE SOFTWARE.
-	
+	// URLs
+	static STREAM_URL = "https://stream.twitter.com/1.1/";
+	static TWEET_URL = "https://api.twitter.com/1.1/statuses/update.json";
+    
 	// OAuth
-
 	_consumerKey = null;
 	_consumerSecret = null;
 	_accessToken = null;
 	_accessSecret = null;
     
-	// URLs
-
-	streamUrl = "https://stream.twitter.com/1.1/";
-	tweetUrl = "https://api.twitter.com/1.1/statuses/update.json";
-    
 	// Streaming
-
-	streamingRequest = null;
+	_streamingRequest = null;
 	_reconnectTimeout = null;
 	_buffer = null;
 
 	constructor (consumerKey, consumerSecret, accessToken, accessSecret) {
-		this._consumerKey = consumerKey;
-		this._consumerSecret = consumerSecret;
-		this._accessToken = accessToken;
-		this._accessSecret = accessSecret;
+		_consumerKey = consumerKey;
+		_consumerSecret = consumerSecret;
+		_accessToken = accessToken;
+		_accessSecret = accessSecret;
         
-		this._reconnectTimeout = 60;
-		this._buffer = "";
+		_reconnectTimeout = 60;
+		_buffer = "";
 	}
     
 	/***************************************************************************
@@ -76,11 +57,11 @@ class Twitter {
 
 	function tweet(status, cb = null) {
 		local headers = { };
-		local request = _oAuth1Request(tweetUrl, headers, { "status": status} );
+		local request = _oAuth1Request(TWEET_URL, headers, { "status": status} );
 		if (cb == null) {
 			local response = request.sendsync();
 			if (response && response.statuscode != 200) {
-				server.log(format("Error updating_status tweet. HTTP Status Code %i:\r\n%s", response.statuscode, response.body));
+				server.error(format("Error updating_status tweet. HTTP Status Code %i:\r\n%s", response.statuscode, response.body));
 				return false;
 			} else {
 				return true;
@@ -101,7 +82,7 @@ class Twitter {
 	**************************************************************************/
 
 	function stream(searchTerms, onTweet, onError = null) {
-		server.log("Opening stream for: " + searchTerms);
+		// server.log("Opening stream for: " + searchTerms);
 
 		// Set default error handler
 
@@ -110,22 +91,26 @@ class Twitter {
 		local method = "statuses/filter.json"
 		local headers = { };
 		local post = { track = searchTerms };
-		local request = _oAuth1Request(streamUrl + method, headers, post);
+		local request = _oAuth1Request(STREAM_URL + method, headers, post);
         
-		this.streamingRequest = request.sendasync(
+		_streamingRequest = request.sendasync(
+
+			// Handle the end of the stream
 			function(resp) {
 				// connection timeout
-				server.log("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
+				// server.log("Stream Closed (" + resp.statuscode + ": " + resp.body +")");
 				
 				// if we have autoreconnect set
 				if (resp.statuscode == 28 || resp.statuscode == 200) {
 					stream(searchTerms, onTweet, onError);
-				} else if (resp.statuscode == 420) {
+				} else if (resp.statuscode == 420 || resp.statuscode == 429) {
 					imp.wakeup(_reconnectTimeout, function() { stream(searchTerms, onTweet, onError); }.bindenv(this));
 					_reconnectTimeout *= 2;
 				}
 			}.bindenv(this),
             
+
+            // Handle a new packet in the middle of the stream
 			function(body) {
 				try {
 				if (body.len() == 2) {
@@ -149,9 +134,7 @@ class Twitter {
 				if (data == null) return;
 
 				// if it's an error
-
 				if ("errors" in data) {
-					server.log("Got an error");
 					onError(data.errors);
 					return;
 				} 
@@ -177,12 +160,11 @@ class Twitter {
 	}
 
 	function _oAuth1Request(postUrl, headers, data) {
-		local time = time();
-		local nonce = time;
+		local nonce = time();
 		local parm_string = http.urlencode({ oauth_consumer_key = _consumerKey });
 		parm_string += "&" + http.urlencode({ oauth_nonce = nonce });
 		parm_string += "&" + http.urlencode({ oauth_signature_method = "HMAC-SHA1" });
-		parm_string += "&" + http.urlencode({ oauth_timestamp = time });
+		parm_string += "&" + http.urlencode({ oauth_timestamp = nonce });
 		parm_string += "&" + http.urlencode({ oauth_token = _accessToken });
 		parm_string += "&" + http.urlencode({ oauth_version = "1.0" });
 		parm_string += "&" + http.urlencode(data);
@@ -196,7 +178,7 @@ class Twitter {
 		auth_header += "oauth_nonce=\""+nonce+"\", ";
 		auth_header += "oauth_signature=\""+sha1+"\", ";
 		auth_header += "oauth_signature_method=\""+"HMAC-SHA1"+"\", ";
-		auth_header += "oauth_timestamp=\""+time+"\", ";
+		auth_header += "oauth_timestamp=\""+nonce+"\", ";
 		auth_header += "oauth_token=\""+_accessToken+"\", ";
 		auth_header += "oauth_version=\"1.0\"";
         
@@ -220,7 +202,7 @@ class Twitter {
     
 	function _defaultErrorHandler(errors) {
 		foreach(error in errors) {
-			server.log("ERROR " + error.code + ": " + error.message);
+			server.error("Twitter (error " + error.code + "): " + error.message);
 		}
 	}
 }
