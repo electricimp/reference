@@ -8,6 +8,7 @@ Usage
 =====
 Instantiating and pushing data with the KeenIO class:
 
+```
     const KEEN_PROJECT_ID = "";
     const KEEN_WRITE_API_KEY = "";
 
@@ -30,3 +31,4 @@ Instantiating and pushing data with the KeenIO class:
 	keen.sendEvent("tempBugs", eventData, function(resp) {
 		server.log(resp.statuscode + ": " + resp.body);
 	});
+```

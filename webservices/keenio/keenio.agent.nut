@@ -1,3 +1,7 @@
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
 class KeenIO {
     _baseUrl = "https://api.keen.io/3.0/projects/";
     
@@ -21,19 +25,29 @@ class KeenIO {
     ***************************************************************************/
     function sendEvent(eventCollection, data, cb = null) {
         local url = _buildUrl(eventCollection);
-        local headers = {
-            "Content-Type": "application/json"
-        };
+        local headers = { "Content-Type": "application/json" };
         local encodedData = http.jsonencode(data);
-        server.log(encodedData);
-        
-        local request = http.post(url, headers, encodedData);
-        
+
         // if a callback was specificed
-        if (cb == null) {
-            return request.sendsync();
+        local request = http.post(url, headers, encodedData);
+        if (cb) {
+            return request.sendasync(function(res) {
+                if (res.statuscode == 429) {
+                    imp.wakeup(1, function() {
+                        sendEvent(eventCollection, data, cb);
+                    }.bindenv(this))
+                } else {
+                    cb(res);
+                }
+            }.bindenv(this));
         } else {
-            request.sendasync(cb);
+            local res = request.sendsync();
+            if (res.statuscode == 429) {
+                imp.sleep(1);
+                return sendEvent(eventCollection, data, cb);
+            } else {
+                return res;
+            }
         }
     }
     
@@ -57,7 +71,6 @@ class KeenIO {
     function _buildUrl(eventCollection, projectId = null, apiKey = null) {
         if (projectId == null) projectId = _projectId;
         if (apiKey == null) apiKey = _apiKey;
-        
         
         local url = _baseUrl + projectId + "/events/" + eventCollection + "?api_key=" + apiKey;
         return url;
