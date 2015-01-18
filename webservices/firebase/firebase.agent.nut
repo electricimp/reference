@@ -1,4 +1,17 @@
-// -----------------------------------------------------------------------------
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
+/*
+
+Sample instantiation:
+
+const FIREBASENAME = "your firebase";
+const FIREBASESECRET = "your secret or token";
+firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
+
+*/
+
 class Firebase {
     // General
     db = null;              // the name of your firebase
@@ -19,6 +32,8 @@ class Firebase {
     kaPath = null;              // stream parameters to allow a restart on keepalive
     kaOnError = null;
 
+    static KEEP_ALIVE = 60;
+
     /***************************************************************************
      * Constructor
      * Returns: FirebaseStream object
@@ -27,8 +42,6 @@ class Firebase {
      *      auth - the auth token for your Firebase
      **************************************************************************/
     constructor(_db, _auth = null, domain = "firebaseio.com") {
-        const KEEP_ALIVE = 60;
-        
         db = _db;
         baseUrl = "https://" + db + "." + domain;
         auth = _auth;
@@ -526,11 +539,4 @@ class Firebase {
     
 }
 
-
-
-// Sample instantiation
-//const FIREBASENAME = "your firebase";
-//const FIREBASESECRET = "your secret or token";
-
-//firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
 

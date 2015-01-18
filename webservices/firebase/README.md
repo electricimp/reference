@@ -11,3 +11,11 @@ The Firebase Streaming functionality is not yet finalized, **and is subject to c
 Usage
 =====
 See the [Example](./example) folder for a simple implementation using the Firebase class. 
+
+Sample instantiation:
+
+```
+const FIREBASENAME = "your firebase";
+const FIREBASESECRET = "your secret or token";
+firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
+```
