@@ -10,6 +10,10 @@ The PubNub library wraps [PubNub's API](http://www.pubnub.com/) for real time me
 The create a new object, you'll need your Publish-Key, Subscribe-Key, and Secret-Key
 
 ```
+const PUBKEY = "demo";
+const SUBKEY = "demo";
+SECRETKEY <- split(http.agenturl(), "/").top();
+
 pubNub <- PubNub(publishKey, subscribeKey, secretKey);
 ```
 

@@ -1,3 +1,7 @@
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
 // Library for Device-To-Device communication with PubNub
 // Requires PubNub class (https://github.com/electricimp/reference/tree/master/webservices/pubnub)
 class MessageBus {

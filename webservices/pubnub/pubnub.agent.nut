@@ -2,16 +2,11 @@
 // This file is licensed under the MIT License
 // http://opensource.org/licenses/MIT
 
-const PUBKEY = "demo";
-const SUBKEY = "demo";
-// Use the agent ID as the key - override as necessary
-SECRETKEY <- split(http.agenturl(), "/").top();
-
 // Wrapper Class for PubNub, a publish-subscribe service
 // REST documentation for PubNub is at http://www.pubnub.com/http-rest-push-api/
 class PubNub {
-    _pubNubBase = "https://pubsub.pubnub.com";
-    _presenceBase = "https://pubsub.pubnub.com/v2/presence";
+    static _pubNubBase = "https://pubsub.pubnub.com";
+    static _presenceBase = "https://pubsub.pubnub.com/v2/presence";
     
     _publishKey = null;
     _subscribeKey = null;
@@ -23,25 +18,25 @@ class PubNub {
     // Class ctor. Specify your publish key, subscribe key, secret key, and optional UUID
     // If you do not provide a UUID, the Agent ID will be used
     constructor(publishKey, subscribeKey, secretKey, uuid = null) {
-        this._publishKey = publishKey;
-        this._subscribeKey = subscribeKey;
-        this._secretKey = secretKey;
+        _publishKey = publishKey;
+        _subscribeKey = subscribeKey;
+        _secretKey = secretKey;
         
         if (uuid == null) uuid = split(http.agenturl(), "/").top();
-        this._uuid = uuid;
+        _uuid = uuid;
     }
     
         
     /******************** PRIVATE FUNCTIONS (DO NOT CALL) *********************/
     function _defaultPublishCallback(err, data) {
         if (err) {
-            server.log(err);
+            server.error(err);
             return;
         }
         if (data[0] != 1) {
-            server.log("Error while publishing: " + data[1]);
+            server.error("Error while publishing: " + data[1]);
         } else {
-            server.log("Published data at " + data[2]);
+            // server.log("Published data at " + data[2]);
         }
     }
     
@@ -66,7 +61,12 @@ class PubNub {
             local data = null;
             
             // process data
-            if (resp.statuscode != 200) {
+            if (resp.statuscode == 429) {
+                // We have been throttled, retry in a minute
+                return imp.wakeup(1, function() {
+                    publish(channel, data, callback);
+                }.bindenv(this));
+            } else if (resp.statuscode != 200) {
                 err = format("%i - %s", resp.statuscode, resp.body);
             } else {
                 try {        
@@ -118,7 +118,12 @@ class PubNub {
             local result = {};
             
             // process data
-            if (resp.statuscode != 200) {
+            if (resp.statuscode == 429) {
+                // We have been throttled, retry in a minute
+                return imp.wakeup(1, function() {
+                    subscribe(channel, callback, tt);
+                }.bindenv(this));
+            } else if (resp.statuscode != 200) {
                 err = format("%i - %s", resp.statuscode, resp.body);
             } else {
                 try {        
@@ -144,8 +149,10 @@ class PubNub {
                 }
             }
             
-            // callback
-            callback(err, result, tt);            
+            // callback, but drop it at the back of the queue
+            imp.wakeup(0, function() {
+                callback(err, result, tt);            
+            }.bindenv(this));
 
             // re-start polling loop
             // channels and callback are still in scope because we got here with bindenv
@@ -168,7 +175,12 @@ class PubNub {
             local data = null;
             
             // process data
-            if (resp.statuscode != 200) {
+            if (resp.statuscode == 429) {
+                // We have been throttled, retry in a minute
+                return imp.wakeup(1, function() {
+                    history(channel, limit, callback);
+                }.bindenv(this));
+            } else if (resp.statuscode != 200) {
                 err = format("%i - %s", resp.statuscode, resp.body);
             } else {
                 data = http.jsondecode(resp.body);
@@ -188,7 +200,12 @@ class PubNub {
             local err = null;
             local data = null;
             
-            if (resp.statuscode != 200) {
+            if (resp.statuscode == 429) {
+                // We have been throttled, retry in a minute
+                return imp.wakeup(1, function() {
+                    leave(channel);
+                }.bindenv(this));
+            } else if (resp.statuscode != 200) {
                 err = format("%i - %s", resp.statuscode, resp.body);
                 throw "Error Leaving Channel: "+err;
             }
@@ -208,7 +225,12 @@ class PubNub {
             local err = null;
             local data = null;
         
-            if (resp.statuscode != 200) {
+            if (resp.statuscode == 429) {
+                // We have been throttled, retry in a minute
+                return imp.wakeup(1, function() {
+                    whereNow(callback, uuid);
+                }.bindenv(this));
+            } else if (resp.statuscode != 200) {
                 err = format("%i - %s", resp.statuscode, resp.body);
                 throw err;
             } else {
@@ -244,7 +266,12 @@ class PubNub {
             local err = null;
             local result = {};
         
-            if (resp.statuscode != 200) {
+            if (resp.statuscode == 429) {
+                // We have been throttled, retry in a minute
+                return imp.wakeup(1, function() {
+                    hereNow(channel, callback);
+                }.bindenv(this));
+            } else if (resp.statuscode != 200) {
                 err = format("%i - %s", resp.statuscode, resp.body);
                 throw err;
             } else {
@@ -283,7 +310,12 @@ class PubNub {
             local data = null;
             local result = {};
         
-            if (resp.statuscode != 200) {
+            if (resp.statuscode == 429) {
+                // We have been throttled, retry in a minute
+                return imp.wakeup(1, function() {
+                    globalHereNow(callback);
+                }.bindenv(this));
+            } else if (resp.statuscode != 200) {
                 err = format("%i - %s", resp.statuscode, resp.body);
                 throw err;
             } else {
