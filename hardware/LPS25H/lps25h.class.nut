@@ -5,6 +5,8 @@ class LPS25H {
     _i2c        = null;
     _addr       = null;
 
+    _referencePressure = null;
+
     // -------------------------------------------------------------------------
     constructor(i2c, addr = 0xB8) {
         _i2c = i2c;
@@ -40,6 +42,10 @@ class LPS25H {
             RPDS_L          = 0x39,
             RPDS_H          = 0x3A
         }
+
+        enable(1);
+        _referencePressure = getReferencePressure();
+        enable(0);
     }
     
     // -------------------------------------------------------------------------
@@ -49,7 +55,7 @@ class LPS25H {
     }
 
     // -------------------------------------------------------------------------    
-    function _read(reg, numBytes) {
+    function _readI2C(reg, numBytes) {
         local result = _i2c.read(_addr, reg.tochar(), numBytes);
         if (result == null) {
             server.error("I2C read error: " + _i2c.readerror());
@@ -58,7 +64,7 @@ class LPS25H {
     }
 
     // -------------------------------------------------------------------------    
-    function _write(reg, ...) {
+    function _writeI2C(reg, ...) {
         local s = reg.tochar();
         foreach (b in vargv) {
             s += b.tochar();
@@ -72,18 +78,18 @@ class LPS25H {
 
     // -------------------------------------------------------------------------    
     function getDeviceID() {
-        return _read(LPS25H_REG.WHO_AM_I, 1);
+        return _readI2C(LPS25H_REG.WHO_AM_I, 1);
     }
 
     // -------------------------------------------------------------------------        
     function enable(state) {
-        local val = _read(LPS25H_REG.CTRL_REG1, 1)[0];
+        local val = _readI2C(LPS25H_REG.CTRL_REG1, 1)[0];
         if (state) {
             val = val | 0x80;
         } else {
             val = val & 0x7F;
         }
-        _write(LPS25H_REG.CTRL_REG1, val);
+        _writeI2C(LPS25H_REG.CTRL_REG1, val);
     }
   
     // -------------------------------------------------------------------------
@@ -103,8 +109,8 @@ class LPS25H {
             // Average 512 readings
             npts = 0x03;
         }
-        local val = _read(LPS25H_REG.RES_CONF, 1)[0];
-        local res = _write(LPS25H_REG.RES_CONF, (val & 0xFC) | npts);
+        local val = _readI2C(LPS25H_REG.RES_CONF, 1)[0];
+        local res = _writeI2C(LPS25H_REG.RES_CONF, (val & 0xFC) | npts);
     }    
     
     // -------------------------------------------------------------------------
@@ -124,62 +130,62 @@ class LPS25H {
             // Average 64 readings
             npts = 0x03;
         }
-        local val = _read(LPS25H_REG.RES_CONF, 1);
-        local res = _write(LPS25H_REG.RES_CONF, (val & 0xF3) | (npts << 2));
+        local val = _readI2C(LPS25H_REG.RES_CONF, 1);
+        local res = _writeI2C(LPS25H_REG.RES_CONF, (val & 0xF3) | (npts << 2));
     }    
 
     // -------------------------------------------------------------------------
     function setIntEnable(state) {
-        local val = _read(LPS25H_REG.CTRL_REG1, 1)[0];
+        local val = _readI2C(LPS25H_REG.CTRL_REG1, 1)[0];
         if (state) {
             val = val | 0x08;
         } else {
             val = val & 0xF7; 
         }
-        local res = _write(LPS25H_REG.CTRL_REG1, val & 0xFF);
+        local res = _writeI2C(LPS25H_REG.CTRL_REG1, val & 0xFF);
     }
     
     // -------------------------------------------------------------------------
     function setFifoEnable(state) {
-        local val = _read(LPS25H_REG.CTRL_REG2, 1)[0];
+        local val = _readI2C(LPS25H_REG.CTRL_REG2, 1)[0];
         if (state) {
             val = val | 0x40; 
         } else {
             val = val & 0xAF;
         }
-        local res = _write(LPS25H_REG.CTRL_REG2, val & 0xFF);
+        local res = _writeI2C(LPS25H_REG.CTRL_REG2, val & 0xFF);
     }
     
     // -------------------------------------------------------------------------
     function softReset(state) {
-        local res = _write(LPS25H_REG.CTRL_REG2, 0x04);
+        local res = _writeI2C(LPS25H_REG.CTRL_REG2, 0x04);
     }
     
     // -------------------------------------------------------------------------
     function setIntActivehigh(state) {
-        local val = _read(LPS25H_REG.CTRL_REG3, 1)[0];
+        local val = _readI2C(LPS25H_REG.CTRL_REG3, 1)[0];
         if (state) {
             val = val & 0x7F;
         } else {
             val = val | 0x80;
         }
-        local res = _write(LPS25H_REG.CTRL_REG3, val & 0xFF);
+        local res = _writeI2C(LPS25H_REG.CTRL_REG3, val & 0xFF);
     }
     
     // -------------------------------------------------------------------------
     function setIntPushpull(state) {
-        local val = _read(LPS25H_REG.CTRL_REG3, 1)[0];
+        local val = _readI2C(LPS25H_REG.CTRL_REG3, 1)[0];
         if (state) {
             val = val & 0xBF;
         } else {
             val = val | 0x40;
         }
-        local res = _write(LPS25H_REG.CTRL_REG3, val & 0xFF);
+        local res = _writeI2C(LPS25H_REG.CTRL_REG3, val & 0xFF);
     }
     
     // -------------------------------------------------------------------------
     function setIntConfig(latch, diff_press_low, diff_press_high) {
-        local val = _read(LPS25H_REG.CTRL_REG1, 1)[0];
+        local val = _readI2C(LPS25H_REG.CTRL_REG1, 1)[0];
         if (latch) {
             val = val | 0x04; 
         } 
@@ -189,63 +195,54 @@ class LPS25H {
         if (diff_press_high) {
             val = val | 0x01;
         }
-        local res = _write(LPS25H_REG.CTRL_REG1, val & 0xFF);
+        local res = _writeI2C(LPS25H_REG.CTRL_REG1, val & 0xFF);
     }    
     
     // -------------------------------------------------------------------------
     function setPressThresh(press_thresh) {
-        _write(LPS25H.THS_P_H, (press_thresh & 0xff00) >> 8);
-        _write(LPS25H.THS_P_L, press_thresh & 0xff);
+        _writeI2C(LPS25H.THS_P_H, (press_thresh & 0xff00) >> 8);
+        _writeI2C(LPS25H.THS_P_L, press_thresh & 0xff);
     }  
     
     // -------------------------------------------------------------------------        
     function getReferencePressure() {
-        local low   = _read(LPS25H_REG.REF_P_XL, 1);
-        local mid   = _read(LPS25H_REG.REF_P_L, 1);
-        local high  = _read(LPS25H_REG.REF_P_H, 1);
+        local low   = _readI2C(LPS25H_REG.REF_P_XL, 1);
+        local mid   = _readI2C(LPS25H_REG.REF_P_L, 1);
+        local high  = _readI2C(LPS25H_REG.REF_P_H, 1);
         return ((high[0] << 16) | (mid[0] << 8) | low[0]);
     }
 
     // -------------------------------------------------------------------------
     // Returns raw pressure register values
     function getRawPressure() {
-        local low   = _read(LPS25H_REG.PRESS_OUT_XL, 1);
-        local mid   = _read(LPS25H_REG.PRESS_OUT_L, 1);
-        local high  = _read(LPS25H_REG.PRESS_OUT_H, 1);
+        local low   = _readI2C(LPS25H_REG.PRESS_OUT_XL, 1);
+        local mid   = _readI2C(LPS25H_REG.PRESS_OUT_L, 1);
+        local high  = _readI2C(LPS25H_REG.PRESS_OUT_H, 1);
         return ((high[0] << 16) | (mid[0] << 8) | low[0]);
     }
     
-    // -------------------------------------------------------------------------    
-    function getPressureHPa(cb = null) {
-        // Wake up the sensor
-        enable(1);
-        // Start a one-shot measurement
-        _write(LPS25H_REG.CTRL_REG2, 0x01);
-        if (cb) {
-            imp.wakeup(MEAS_TIME, function() {
-                local pressure = (getRawPressure() - getReferencePressure()) / 4096.0;
-                enable(0);
-                cb(pressure);
-            }.bindenv(this));
-        } else {
-            imp.sleep(MEAS_TIME);
-            local pressure = (getRawPressure() - getReferencePressure()) / 4096.0;
-            enable(0);
-            return pressure;
-        }
-    }
-  
     // -------------------------------------------------------------------------
-    // Returns Pressure in inches of Hg
-    function getPressureInHg() {    
-        return getPressureHPa() * 0.0295333727;
-    }    
+    function read(cb = null) {
+        if (!cb) {
+            server.error("LPS25H read requires a callback function.")
+            return null;
+        }
+        // Start a one-shot measurement
+        _writeI2C(LPS25H_REG.CTRL_REG2, 0x01);
+        // Read the reference pressure
+        local referencePressure = getReferencePressure();
+        // Get pressure in HPa
+        imp.wakeup(MEAS_TIME, function() {
+            local pressure = (getRawPressure() - referencePressure) / 4096.0;
+            cb(pressure);
+        }.bindenv(this));
+    }
     
     // -------------------------------------------------------------------------
     function getTemp() {
         enable(1);
-        local temp_l = _read(LPS25H_REG.TEMP_OUT_L, 1)[0];
-        local temp_h = _read(LPS25H_REG.TEMP_OUT_H, 1)[0];
+        local temp_l = _readI2C(LPS25H_REG.TEMP_OUT_L, 1)[0];
+        local temp_h = _readI2C(LPS25H_REG.TEMP_OUT_H, 1)[0];
         enable(0);
         
         local temp_raw = (temp_h << 8) | temp_l;
