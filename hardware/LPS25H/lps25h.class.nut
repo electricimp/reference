@@ -28,7 +28,7 @@ class LPS25H {
             INT_CFG         = 0x24,
             INT_SOURCE      = 0x25,
             STATUS_REG      = 0x27,
-            PRESS_OUT_XL   = 0x28,
+            PRESS_OUT_XL    = 0x28,
             PRESS_OUT_L     = 0x29,
             PRESS_OUT_H     = 0x2A,
             TEMP_OUT_L      = 0x2B,
@@ -85,13 +85,7 @@ class LPS25H {
         }
         _write(LPS25H_REG.CTRL_REG1, val);
     }
-
-    // -------------------------------------------------------------------------        
-    function getReferencePressure() {
-        local data = _read(LPS25H_REG.REF_P_XL, 3);
-        return (data[2] << 16) | (data[1] << 8) | data[0];
-    }
-    
+  
     // -------------------------------------------------------------------------
     // Set the number of readings taken and internally averaged to give a pressure result
     // Selector field is 2 bits
@@ -204,12 +198,20 @@ class LPS25H {
         _write(LPS25H.THS_P_L, press_thresh & 0xff);
     }  
     
+    // -------------------------------------------------------------------------        
+    function getReferencePressure() {
+        local low   = _read(LPS25H_REG.REF_P_XL, 1);
+        local mid   = _read(LPS25H_REG.REF_P_L, 1);
+        local high  = _read(LPS25H_REG.REF_P_H, 1);
+        return ((high[0] << 16) | (mid[0] << 8) | low[0]);
+    }
+
     // -------------------------------------------------------------------------
     // Returns raw pressure register values
     function getRawPressure() {
-        local low = _read(LPS25H_REG.PRESS_OUT_XL, 1);
-        local mid = _read(LPS25H_REG.PRESS_OUT_L, 1);
-        local high = _read(LPS25H_REG.PRESS_OUT_H, 1);
+        local low   = _read(LPS25H_REG.PRESS_OUT_XL, 1);
+        local mid   = _read(LPS25H_REG.PRESS_OUT_L, 1);
+        local high  = _read(LPS25H_REG.PRESS_OUT_H, 1);
         return ((high[0] << 16) | (mid[0] << 8) | low[0]);
     }
     
@@ -232,14 +234,7 @@ class LPS25H {
             return pressure;
         }
     }
-    
-    // -------------------------------------------------------------------------
-    // Returns Pressure in kPa
-    function getPressureKPa() {    
-        return gePressureHPa() / 10.0;
-    }
-
-    
+  
     // -------------------------------------------------------------------------
     // Returns Pressure in inches of Hg
     function getPressureInHg() {    

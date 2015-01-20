@@ -11,7 +11,7 @@ The LPS25HTR can interface over I2C or SPI. This class addresses only I2C for th
 The constructor takes two arguments: I2C bus and an I2C address. Imp pins should be configured before passing them to the constructor.
 
 ```
-const LPS25H_ADDR     = 0xB8; // 8-bit I2C Student Address for LPS25H
+const LPS25H_ADDR     = 0xB8; // 8-bit I2C Address for LPS25H
 
 i2c         <- hardware.i2c89;
 i2c.configure(CLOCK_SPEED_400_KHZ);
