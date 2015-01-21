@@ -1,7 +1,7 @@
 class Twitter {
 	
 	// Twitter access class
-	// Requires: Twitter account from which the above keys can be accessed
+	// Requires: Twitter account from which the keys below can be accessed
 	// Availability: Agent
 	
 	// Usage: 
