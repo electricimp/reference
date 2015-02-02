@@ -1,16 +1,16 @@
-// Copyright (c) 2014 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
-// WS2812 "Neopixel" LED Driver
-
-// Uses SPI to emulate 1-wire
-// http://learn.adafruit.com/adafruit-neopixel-uberguide/advanced-coding
-// This class requires the use of SPI257, which must be run at 7.5MHz 
-// to support neopixel timing.
-
 class WS2812 {
-    
+
+    // Copyright (c) 2014 Electric Imp
+    // This file is licensed under the MIT License
+    // http://opensource.org/licenses/MIT
+
+    // WS2812 "Neopixel" LED Driver
+
+    // Uses SPI to emulate 1-wire
+    // http://learn.adafruit.com/adafruit-neopixel-uberguide/advanced-coding
+    // This class requires the use of SPI257, which must be run at 7.5MHz 
+    // to support neopixel timing.
+
     static ZERO            = 0xC0;
     static ONE             = 0xF8;
     static BYTESPERPIXEL   = 24;
@@ -101,4 +101,3 @@ class WS2812 {
         spi.write(frame);
     }
 }
-
