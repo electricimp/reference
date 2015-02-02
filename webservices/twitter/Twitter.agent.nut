@@ -1,22 +1,22 @@
-// Copyright (c) 2015 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
-// Twitter access class
-// Requires: Twitter account from which the above keys can be accessed
-// Availability: Agent
-
-// Usage: 
-//   Twitter Keys
-//   const API_KEY = "";
-//   const API_SECRET = "";
-//   const AUTH_TOKEN = "";
-//   const TOKEN_SECRET = "";
-
-//   twitter <- Twitter(API_KEY, API_SECRET, AUTH_TOKEN, TOKEN_SECRET)
-
 class Twitter {
 	
+	// Copyright (c) 2015 Electric Imp
+	// This file is licensed under the MIT License
+	// http://opensource.org/licenses/MIT
+
+	// Twitter access class
+	// Requires: Twitter account from which the above keys can be accessed
+	// Availability: Agent
+
+	// Usage: 
+	//   Twitter Keys
+	//   const API_KEY = "";
+	//   const API_SECRET = "";
+	//   const AUTH_TOKEN = "";
+	//   const TOKEN_SECRET = "";
+
+	//   twitter <- Twitter(API_KEY, API_SECRET, AUTH_TOKEN, TOKEN_SECRET)
+
 	// URLs
 	static STREAM_URL = "https://stream.twitter.com/1.1/";
 	static TWEET_URL = "https://api.twitter.com/1.1/statuses/update.json";
