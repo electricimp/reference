@@ -1,11 +1,12 @@
-// Copyright (c) 2015 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
-/*
- * This class wraps the data.sparkfun.com cloud storage API into a class.
- */
 class SparkFunStream {
+
+    // Copyright (c) 2015 Electric Imp
+    // This file is licensed under the MIT License
+    // http://opensource.org/licenses/MIT
+
+    /*
+    * This class wraps the data.sparkfun.com cloud storage API into a class.
+    */
 
     _publicKey = null;
     _privateKey = null;
@@ -70,4 +71,3 @@ class SparkFunStream {
         return _commit("httpdelete", url, cb);
     }
 }
-
