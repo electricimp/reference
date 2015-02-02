@@ -1,11 +1,12 @@
-// Copyright (c) 2014 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
-// LED blinker class. 
-// Blinks an LED on a given hardware.pin for a given number of repetitions in a given on/off pattern
-// Also demonstrates the use of "generators".
 class LED {
+
+    // Copyright (c) 2014 Electric Imp
+    // This file is licensed under the MIT License
+    // http://opensource.org/licenses/MIT
+
+    // LED blinker class. 
+    // Blinks an LED on a given hardware.pin for a given number of repetitions in a given on/off pattern
+    // Also demonstrates the use of "generators".
 
     _pin = null;
     _gen = null;
@@ -56,6 +57,5 @@ class LED {
             if (callback) callback();
             _timer = null;
         }(cnt, onTime, offTime, callback));
-        
     }
 }
