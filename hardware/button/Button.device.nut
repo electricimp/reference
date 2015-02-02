@@ -1,9 +1,10 @@
-// Copyright (c) 2015 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
-// Description: Debounced button press with callbacks
 class Button {
+
+    // Copyright (c) 2015 Electric Imp
+    // This file is licensed under the MIT License
+    // http://opensource.org/licenses/MIT
+
+    // Description: Debounced button press with callbacks
 
     static NORMALLY_HIGH = 1;
     static NORMALLY_LOW  = 0;
