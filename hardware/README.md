@@ -10,6 +10,7 @@
 | [Epaper](Epaper) | Pervasive Displays ePaper Panel |
 | [expGpio](expGpio) | GPIO Expander (Abstract class)
 | [FT800_EVE](FT800_EVE) | Embedded Video Engine |
+| [HC-SR04](HC-SR04) | Ultrasonic Range Sensor |
 | [hih6131](hih6131) | Humidity Sensor
 | [imp.o.scope](imp.o.scope) | "Oscilloscope" with web graphing
 | [imp003-EVB](imp003-EVB) | Example code for the imp003 Evaluation Board
@@ -19,12 +20,13 @@
 | [L6470](L6470) | "dSPIN" Stepper Motor |
 | [lineUART](lineUART) | UART wrapper class that buffers line-by-line
 | [lis3dh](lis3dh) | Accelerometer
-| [LPS25HTR](LPS25HTR) | Air Pressure / Temperature Sensor |
-| [LSM9DS0TR](LSM9DS0TR) | Inertial Measurement Unit (Accel + Magnetometer + Gyro) |
+| [LPS25H](LPS25H) | Air Pressure / Temperature Sensor |
+| [LSM9DS0](LSM9DS0) | Inertial Measurement Unit (Accel + Magnetometer + Gyro) |
 | [max31855](max31855) | Adafruit MAX31855 Thermocouple Board
 | [MAX72XX](MAX72XX) | 7-Segment Display Driver
 | [modbus](modbus) | Modbus RTU Master (for PLCs, etc)
 | [MPL115](MPL115) | Barometric Pressure / Temperature Sensor
+| [PA6H](PA6H) | GPS Module |
 | [pcd8544](pcd8544) | "Nokia 5110" Monochrome LCD
 | [pcf8563](pcf8563) | Realtime Clock
 | [pulseSensor](pulseSensor) | Analog Pulse Sensor
@@ -35,6 +37,7 @@
 | [Sharp_LSxxxBx](Sharp_LSxxxBx) | Sharp Memory LCD
 | [SHT10](SHT10) | Temperature / Humidity Sensor
 | [Si7021](Si7021) | Temperature / Humidity Sensor
+| [sn54ls164w](sn54ls164w) | SN54LS164W 8-bit Shift Register
 | [SpiFlash](SpiFlash) | Flash Memory (NOR)
 | [SX150x](SX150x) | GPIO Expander
 | [st7735](st7735) | Color TFT LCD Driver

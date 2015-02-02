@@ -3,7 +3,7 @@ Driver for the DHT11 Temperature/Humidity Sensor
 
 Author: [Tom Byrne](https://github.com/tombrew/)
 
-Driver class for a [DHT11 temperature/humidity sensor](https://learn.adafruit.com/dht). This class is also compatible with the (RHT03 temperature/humidity sensor)[http://dlnmh9ip6v2uc.cloudfront.net/datasheets/Sensors/Weather/RHT03.pdf]
+Driver class for a [DHT11 temperature/humidity sensor](https://learn.adafruit.com/dht). This class is also compatible with the [RHT03 temperature/humidity sensor](http://dlnmh9ip6v2uc.cloudfront.net/datasheets/Sensors/Weather/RHT03.pdf)
 
 Datasheets for this part are quite numerous and varied; [this one was useful](http://akizukidenshi.com/download/ds/aosong/DHT11.pdf) in writing this class.
 

@@ -18,7 +18,7 @@ class DHT22 {
     static STARTTIME_HIGH    = 0.000020;  // 20 us min high time for start
     static STARTTIME_SENSOR  = 0.000080;  // 80 us low / 80 us high "ACK" from sensor on START
     static MARKTIME          = 0.000050;  // 50 us low pulse between 0 or 1 marks
-    static ZERO              = 0.000026; // 26 us high for "0"
+    static ZERO              = 0.000027; // 27 us high for "0"
     static ONE               = 0.000075;  // 70 us high for "1"
     
     _spi                 = null;
