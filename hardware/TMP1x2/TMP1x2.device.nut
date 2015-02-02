@@ -1,8 +1,8 @@
-// Copyright (c) 2014 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
 class TMP1x2 {
+
+	// Copyright (c) 2014 Electric Imp
+	// This file is licensed under the MIT License
+	// http://opensource.org/licenses/MIT
 
 	// Register addresses
 	static TEMP_REG 		= 0x00;
@@ -110,7 +110,6 @@ class TMP1x2 {
 		_lowThreshold = 75;
 		_highThreshold = 80;
 		// server.log("TMP1x2 Class issuing General-Call Reset on I2C Bus.");
-
 	}
 
 	/* 
@@ -447,4 +446,3 @@ class TMP1x2 {
 		}
 	}
 }
-
