@@ -1,10 +1,11 @@
-// Copyright (c) 2014 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
-// Wrapper Class for PubNub, a publish-subscribe service
-// REST documentation for PubNub is at http://www.pubnub.com/http-rest-push-api/
 class PubNub {
+    // Copyright (c) 2014 Electric Imp
+    // This file is licensed under the MIT License
+    // http://opensource.org/licenses/MIT
+
+    // Wrapper Class for PubNub, a publish-subscribe service
+    // REST documentation for PubNub is at http://www.pubnub.com/http-rest-push-api/
+
     static _pubNubBase = "https://pubsub.pubnub.com";
     static _presenceBase = "https://pubsub.pubnub.com/v2/presence";
     
