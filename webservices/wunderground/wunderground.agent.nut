@@ -51,7 +51,6 @@ class Wunderground {
         }
     }
     
-
     /*
      * Returns the current weather conditions at your location.
      */
@@ -126,6 +125,4 @@ class Wunderground {
             }
         }
     }
-
-
 }
