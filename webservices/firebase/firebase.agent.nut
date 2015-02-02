@@ -1,18 +1,18 @@
-// Copyright (c) 2015 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
-/*
-
-Sample instantiation:
-
-const FIREBASENAME = "your firebase";
-const FIREBASESECRET = "your secret or token";
-firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
-
-*/
-
 class Firebase {
+    // Copyright (c) 2015 Electric Imp
+    // This file is licensed under the MIT License
+    // http://opensource.org/licenses/MIT
+
+    /*
+
+        Sample instantiation:
+
+        const FIREBASENAME = "your firebase";
+        const FIREBASESECRET = "your secret or token";
+        firebase <- Firebase(FIREBASENAME, FIREBASESECRET);
+
+    */
+
     // General
     db = null;              // the name of your firebase
     auth = null;            // Auth key (if auth is enabled)
@@ -536,7 +536,4 @@ class Firebase {
 
         return changed_data;
     }
-    
 }
-
-
