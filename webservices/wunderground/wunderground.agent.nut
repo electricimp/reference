@@ -1,11 +1,11 @@
-// Copyright (c) 2015 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
-// Weather Underground Forecast Agent
-// Create your key API here: http://www.wunderground.com/weather/api/
-
 class Wunderground {
+
+    // Copyright (c) 2015 Electric Imp
+    // This file is licensed under the MIT License
+    // http://opensource.org/licenses/MIT
+
+    // Weather Underground Forecast Agent
+    // Create your key API here: http://www.wunderground.com/weather/api/
 
     _apiKey = null;
     _location = null;
