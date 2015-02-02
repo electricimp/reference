@@ -1,8 +1,7 @@
-// Copyright (c) 2014 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
 class Thermistor {
+    // Copyright (c) 2014 Electric Imp
+    // This file is licensed under the MIT License
+    // http://opensource.org/licenses/MIT
 
     // thermistor constants are shown on your thermistor datasheet
     // beta value (for the temp range your device will operate in)
