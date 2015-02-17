@@ -4,7 +4,7 @@
 const SPICLK_LOW = 937.5;
 const SPICLK_HIGH = 3750;
 const UARTBAUD = 115200;
-const VOLUME = -60.0; //dB
+const VOLUME = -70.0; //dB
 
 /* FUNCTION AND CLASS DEFS ---------------------------------------------------*/
 
@@ -31,7 +31,7 @@ class VS10XX {
     static BYTES_PER_DREQ       = 32; // min space available when DREQ asserted
     static INITIAL_BYTES        = 2048; // number of bytes to load when starting playback (FIFO size 2048)
     
-    stored_buffers          = []; // array of chunks sent from agent to be loaded and played
+    queued_buffers          = []; // array of chunks sent from agent to be loaded and played
     playback_in_progress    = false;
     loading                 = false;
     dreq_cb_set             = false;
@@ -59,20 +59,6 @@ class VS10XX {
         rst_l.write(1);
         clearDreqCallback();
         dreq.configure(DIGITAL_IN, _callDreqCallback.bindenv(this));
-        
-        // configure a callback for the "push" event from the agent to load data
-        agent.on("push", function(chunk) {
-            stored_buffers.insert(0, chunk);
-            //server.log(format("Got buffer (%d buffers ready)",audioChunks.len()));
-            if (!playback_in_progress) {
-                playback_in_progress = true;
-                // just loaded the first chunk (we quit on buffer underrun)
-                // load a chunk from our in-memory buffer to start the VS10XX
-                loadData(stored_buffers.top().readblob(INITIAL_BYTES));
-                // start the loop that keeps the data going into the FIFO
-                fillAudioFifo();
-            }
-        }.bindenv(this));
     }
     
     function _getReg(addr) {
@@ -202,6 +188,19 @@ class VS10XX {
         _setReg(VS10XX_SCI_VOL, ((left & 0xFF) << 8) | (right & 0xFF));
     }
     
+    function queueData(data) {
+        queued_buffers.insert(0, data);
+        //server.log(format("Got buffer (%d buffers ready)",audioChunks.len()));
+        if (!playback_in_progress) {
+            playback_in_progress = true;
+            // just loaded the first chunk (we quit on buffer underrun)
+            // load a chunk from our in-memory buffer to start the VS10XX
+            loadData(queued_buffers.top().readblob(INITIAL_BYTES));
+            // start the loop that keeps the data going into the FIFO
+            fillAudioFifo();
+        }
+    }
+    
     function loadData(data) {
         xdcs_l.write(0);
         spi.write(data);
@@ -234,8 +233,8 @@ class VS10XX {
         local bytes_loaded = 0;
         local bytes_to_load = BYTES_PER_DREQ;
         
-        if (stored_buffers.len() > 0) {
-            buffer = stored_buffers.top();
+        if (queued_buffers.len() > 0) {
+            buffer = queued_buffers.top();
             bytes_available = (buffer.len() - buffer.tell());
         } else {
             // done (or buffer underrun)
@@ -265,9 +264,9 @@ class VS10XX {
         
         //server.log("top buffer: "+audioChunks.top().tell()+" / "+audioChunks.top().len());
         
-        if (stored_buffers.top().eos()) {
+        if (queued_buffers.top().eos()) {
             //server.log("finished buffer");
-            stored_buffers.pop();
+            queued_buffers.pop();
             // bartender!
             agent.send("pull", 0);
         } 
@@ -281,6 +280,13 @@ class VS10XX {
         }
     }
 }
+
+/* AGENT CALLBACKS -----------------------------------------------------------*/
+
+// queue data from the agent in memory to be fed to the VS10XX
+agent.on("push", function(chunk) {
+    audio.queueData(chunk);
+});
 
 /* RUNTIME START -------------------------------------------------------------*/
 
