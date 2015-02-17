@@ -48,4 +48,5 @@
 | [TMP1x2](TMP1x2) | Temperature Sensor
 | [tone](tone) | Piezo speaker driver
 | [tsl2561](tsl2561) | Ambient Light Sensor
+| [VS10XX](VS10XX) | Audio Code IC with analog front-end 
 | [ws2812](ws2812) | Neopixel driver class

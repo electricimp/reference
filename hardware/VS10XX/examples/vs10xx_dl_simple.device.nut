@@ -48,13 +48,15 @@ class VS10XX {
     dreq    = null;
     rst_l   = null;
     dreq_cb = null;
+    buffer_consumed_cb = null;
     
-    constructor(_spi, _xcs_l, _xdcs_l, _dreq, _rst_l) {
+    constructor(_spi, _xcs_l, _xdcs_l, _dreq, _rst_l, _buffer_consumed_cb) {
         spi     = _spi;
         xcs_l   = _xcs_l;
         xdcs_l  = _xdcs_l;
         dreq    = _dreq;
         rst_l   = _rst_l;
+        buffer_consumed_cb = _buffer_consumed_cb;
         
         init();
     }
@@ -62,7 +64,7 @@ class VS10XX {
     function init() {
         rst_l.write(0);
         rst_l.write(1);
-        clearDreqCallback();
+        _clearDreqCallback();
         dreq.configure(DIGITAL_IN, _callDreqCallback.bindenv(this));
     }
     
@@ -129,23 +131,103 @@ class VS10XX {
         if (dreq.read()) { dreq_cb(); }
     }
     
-    function setDreqCallback(cb) {
+    function _setDreqCallback(cb) {
         if (cb) {dreq_cb_set = true;}
         else {dreq_cb_set = false;}
         dreq_cb = cb.bindenv(this);
     }
     
-    function clearDreqCallback() {
+    function _clearDreqCallback() {
         dreq_cb = function() { return; }.bindenv(this);
         dreq_cb_set = false;
     }
         
-    function dreqCallbackIsSet() {
+    function _dreqCallbackIsSet() {
         return dreq_cb_set;
     }
     
-    function canAcceptData() {
+    function _canAcceptData() {
         return dreq.read();
+    }
+
+    function _loadData(data) {
+        xdcs_l.write(0);
+        spi.write(data);
+        xdcs_l.write(1);
+    }
+    
+    function _sendEndFillBytes() {
+        while(_canAcceptData() && (endfillbytes_sent < ENDFILLBYTE_PADDING)) {
+            _loadData("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
+            endfillbytes_sent += 32;
+        }
+        if (endfillbytes_sent < ENDFILLBYTE_PADDING) {
+            _setDreqCallback(sendEndFillBytes);
+        } else {
+        	endfillbytes_sent = 0;
+            _clearDreqCallback();
+            server.log("Playback Complete");
+        }
+    }
+    
+    function _finishPlaying() {
+        _clearDreqCallback();
+        endfillbytes_sent = 0;
+        _sendEndFillBytes();
+    }
+    
+    function _fillAudioFifo() {
+        _clearDreqCallback();
+        local buffer = null;
+        local bytes_available = 0;
+        local bytes_loaded = 0;
+        local bytes_to_load = BYTES_PER_DREQ;
+        
+        if (queued_buffers.len() > 0) {
+            buffer = queued_buffers.top();
+            bytes_available = (buffer.len() - buffer.tell());
+        } else {
+            // done (or buffer underrun)
+            playback_in_progress = false;
+            _finishPlaying();
+            return;
+        }
+        
+        try {
+            while(_canAcceptData() && (bytes_loaded < bytes_available)) {
+                bytes_to_load = bytes_available - bytes_loaded;
+                if (bytes_to_load >= BYTES_PER_DREQ) bytes_to_load = BYTES_PER_DREQ;
+                _loadData(buffer.readblob(bytes_to_load));
+                bytes_loaded += bytes_to_load;
+                // server.log("Loading..."+audioChunks.top().tell());
+                // server.log(format("VS10XX HDAT0: 0x%04X",audio.getHDAT0()));
+                // server.log(format("VS10XX HDAT1: 0x%04X",audio.getHDAT1()));
+            }
+        } catch (err) {
+            server.log("Error Loading Data: "+err);
+            server.log(format("bytes_available at start: %d", bytes_available));
+            server.log(format("bytes_to_load on last try: %d", bytes_to_load));
+            server.log(format("bytes_loaded at error: %d", bytes_loaded));
+            server.log(format("buffer ptr: %d",buffer.tell()));
+            server.log(format("buffer len: %d",buffer.len()));
+        }
+        
+        //server.log("top buffer: "+audioChunks.top().tell()+" / "+audioChunks.top().len());
+        
+        if (queued_buffers.top().eos()) {
+            //server.log("finished buffer");
+            queued_buffers.pop();
+            // bartender!
+            buffer_consumed_cb()
+        } 
+        
+        if (_canAcceptData()) {
+            // we just emptied a buffer; get back to work immediately
+            _fillAudioFifo();
+        } else {
+            // we caught up. Yield for a moment so we can get new buffers
+            _setDreqCallback(_fillAudioFifo.bindenv(this));
+        }
     }
     
     function getMode() {
@@ -194,96 +276,21 @@ class VS10XX {
     }
     
     function queueData(data) {
-        queued_buffers.insert(0, chunk);
+        queued_buffers.insert(0, data);
         //server.log(format("Got buffer (%d buffers ready)",audioChunks.len()));
         if (!playback_in_progress) {
             playback_in_progress = true;
             // just loaded the first chunk (we quit on buffer underrun)
             // load a chunk from our in-memory buffer to start the VS10XX
-            loadData(queued_buffers.top().readblob(INITIAL_BYTES));
+            _loadData(queued_buffers.top().readblob(INITIAL_BYTES));
             // start the loop that keeps the data going into the FIFO
-            fillAudioFifo();
+            _fillAudioFifo();
         }
     }
-    
-    function loadData(data) {
-        xdcs_l.write(0);
-        spi.write(data);
-        xdcs_l.write(1);
-    }
-    
-    function sendEndFillBytes() {
-        while(audio.canAcceptData() && (endfillbytes_sent < ENDFILLBYTE_PADDING)) {
-            loadData("\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00");
-            endfillbytes_sent += 32;
-        }
-        if (endfillbytes_sent < ENDFILLBYTE_PADDING) {
-            setDreqCallback(sendEndFillBytes);
-        } else {
-            clearDreqCallback();
-            server.log("Playback Complete");
-        }
-    }
-    
-    function finishPlaying() {
-        clearDreqCallback();
-        endfillbytes_sent = 0;
-        sendEndFillBytes();
-    }
-    
-    function fillAudioFifo() {
-        clearDreqCallback();
-        local buffer = null;
-        local bytes_available = 0;
-        local bytes_loaded = 0;
-        local bytes_to_load = BYTES_PER_DREQ;
-        
-        if (queued_buffers.len() > 0) {
-            buffer = queued_buffers.top();
-            bytes_available = (buffer.len() - buffer.tell());
-        } else {
-            // done (or buffer underrun)
-            playback_in_progress = false;
-            finishPlaying();
-            return;
-        }
-        
-        try {
-            while(canAcceptData() && (bytes_loaded < bytes_available)) {
-                bytes_to_load = bytes_available - bytes_loaded;
-                if (bytes_to_load >= BYTES_PER_DREQ) bytes_to_load = BYTES_PER_DREQ;
-                audio.loadData(buffer.readblob(bytes_to_load));
-                bytes_loaded += bytes_to_load;
-                // server.log("Loading..."+audioChunks.top().tell());
-                // server.log(format("VS10XX HDAT0: 0x%04X",audio.getHDAT0()));
-                // server.log(format("VS10XX HDAT1: 0x%04X",audio.getHDAT1()));
-            }
-        } catch (err) {
-            server.log("Error Loading Data: "+err);
-            server.log(format("bytes_available at start: %d", bytes_available));
-            server.log(format("bytes_to_load on last try: %d", bytes_to_load));
-            server.log(format("bytes_loaded at error: %d", bytes_loaded));
-            server.log(format("buffer ptr: %d",buffer.tell()));
-            server.log(format("buffer len: %d",buffer.len()));
-        }
-        
-        //server.log("top buffer: "+audioChunks.top().tell()+" / "+audioChunks.top().len());
-        
-        if (queued_buffers.top().eos()) {
-            //server.log("finished buffer");
-            queued_buffers.pop();
-            // bartender!
-            agent.send("pull", 0);
-        } 
-        
-        if (canAcceptData()) {
-            // we just emptied a buffer; get back to work immediately
-            fillAudioFifo();
-        } else {
-            // we caught up. Yield for a moment so we can get new buffers
-            setDreqCallback(fillAudioFifo.bindenv(this));
-        }
-    }
+}
+
+function requestBuffer() {
+    agent.send("pull", 0);
 }
 
 /* AGENT CALLBACKS -----------------------------------------------------------*/
@@ -311,7 +318,7 @@ rst_l.configure(DIGITAL_OUT, 1);
 dreq_l.configure(DIGITAL_IN);
 spi.configure(CLOCK_IDLE_LOW, SPICLK_LOW);
 
-audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l);
+audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, requestBuffer);
 server.log(format("VS10XX Clock Multiplier set to %d",audio.setClockMultiplier(3)));
 spi.configure(CLOCK_IDLE_LOW, SPICLK_HIGH);
 server.log(format("Imp SPI Clock set to %0.3f MHz", SPICLK_HIGH / 1000.0));
