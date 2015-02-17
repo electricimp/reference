@@ -1,14 +1,12 @@
 
+/* GLOBALS AND CONSTS --------------------------------------------------------*/
+
 const SPICLK_LOW = 937.5;
 const SPICLK_HIGH = 3750;
 const UARTBAUD = 115200;
-const BYTES_PER_DREQ = 32; // number of bytes to feed to the VS10XX when it asserts DREQ
-const INITIAL_BYTES = 2048; // number of bytes to load when starting playback (FIFO size 2048)
-const DATA_WAIT_TIME = 0.00001;
 const VOLUME = -60.0; //dB
 
-audioChunks <- []; // array of chunks sent from agent to be loaded and played
-playbackInProgress <- false;
+/* FUNCTION AND CLASS DEFS ---------------------------------------------------*/
 
 class VS10XX {
     static VS10XX_READ          = 0x03;
@@ -30,26 +28,28 @@ class VS10XX {
     static VS10XX_SCI_AICTRL2   = 0x0E;
     static VS10XX_SCI_AICTRL3   = 0x0F;
     static ENDFILLBYTE_PADDING  = 2048;
+    static BYTES_PER_DREQ       = 32; // min space available when DREQ asserted
+    static INITIAL_BYTES        = 2048; // number of bytes to load when starting playback (FIFO size 2048)
     
-    loading = false;
-    dreq_cb_set = false;
-    endfillbytes_sent = 0;
+    stored_buffers          = []; // array of chunks sent from agent to be loaded and played
+    playback_in_progress    = false;
+    loading                 = false;
+    dreq_cb_set             = false;
+    endfillbytes_sent       = 0; 
     
     spi     = null;
     xcs_l   = null;
     xdcs_l  = null;
     dreq    = null;
     rst_l   = null;
-    uart    = null;
     dreq_cb = null;
     
-    constructor(_spi, _xcs_l, _xdcs_l, _dreq, _rst_l, _uart = null) {
+    constructor(_spi, _xcs_l, _xdcs_l, _dreq, _rst_l) {
         spi     = _spi;
         xcs_l   = _xcs_l;
         xdcs_l  = _xdcs_l;
         dreq    = _dreq;
         rst_l   = _rst_l;
-        uart    = _uart;
         
         init();
     }
@@ -59,6 +59,20 @@ class VS10XX {
         rst_l.write(1);
         clearDreqCallback();
         dreq.configure(DIGITAL_IN, _callDreqCallback.bindenv(this));
+        
+        // configure a callback for the "push" event from the agent to load data
+        agent.on("push", function(chunk) {
+            stored_buffers.insert(0, chunk);
+            //server.log(format("Got buffer (%d buffers ready)",audioChunks.len()));
+            if (!playback_in_progress) {
+                playback_in_progress = true;
+                // just loaded the first chunk (we quit on buffer underrun)
+                // load a chunk from our in-memory buffer to start the VS10XX
+                loadData(stored_buffers.top().readblob(INITIAL_BYTES));
+                // start the loop that keeps the data going into the FIFO
+                fillAudioFifo();
+            }
+        }.bindenv(this));
     }
     
     function _getReg(addr) {
@@ -212,78 +226,61 @@ class VS10XX {
         endfillbytes_sent = 0;
         sendEndFillBytes();
     }
-}
-
-function fillAudioFifo() {
-    audio.clearDreqCallback();
-    local buffer = null;
-    local bytesAvailable = 0;
-    local bytesLoaded = 0;
-    local bytesToLoad = BYTES_PER_DREQ;
     
-    if (audioChunks.len() > 0) {
-        buffer = audioChunks.top();
-        bytesAvailable = (buffer.len() - buffer.tell());
-    } else {
-        // done (or buffer underrun)
-        playbackInProgress = false;
-        audio.finishPlaying();
-        return;
-    }
-    
-    try {
-        while(audio.canAcceptData() && (bytesLoaded < bytesAvailable)) {
-            bytesToLoad = bytesAvailable - bytesLoaded;
-            if (bytesToLoad >= BYTES_PER_DREQ) bytesToLoad = BYTES_PER_DREQ;
-            audio.loadData(buffer.readblob(bytesToLoad));
-            bytesLoaded += bytesToLoad;
-            // server.log("Loading..."+audioChunks.top().tell());
-            // server.log(format("VS10XX HDAT0: 0x%04X",audio.getHDAT0()));
-            // server.log(format("VS10XX HDAT1: 0x%04X",audio.getHDAT1()));
+    function fillAudioFifo() {
+        clearDreqCallback();
+        local buffer = null;
+        local bytes_available = 0;
+        local bytes_loaded = 0;
+        local bytes_to_load = BYTES_PER_DREQ;
+        
+        if (stored_buffers.len() > 0) {
+            buffer = stored_buffers.top();
+            bytes_available = (buffer.len() - buffer.tell());
+        } else {
+            // done (or buffer underrun)
+            playback_in_progress = false;
+            finishPlaying();
+            return;
         }
-    } catch (err) {
-        server.log("Error Loading Data: "+err);
-        server.log(format("BytesAvailable at start: %d", bytesAvailable));
-        server.log(format("BytesToLoad on last try: %d", bytesToLoad));
-        server.log(format("BytesLoaded at error: %d", bytesLoaded));
-        server.log(format("buffer ptr: %d",buffer.tell()));
-        server.log(format("buffer len: %d",buffer.len()));
-    }
-    
-    //server.log("top buffer: "+audioChunks.top().tell()+" / "+audioChunks.top().len());
-    
-    if (audioChunks.top().eos()) {
-        //server.log("finished buffer");
-        audioChunks.pop();
-        // bartender!
-        agent.send("pull", 0);
-    } 
-    
-    if (audio.canAcceptData()) {
-        // we just emptied a buffer; get back to work immediately
-        fillAudioFifo();
-    } else {
-        // we caught up. Yield for a moment so we can get new buffers
-        audio.setDreqCallback(fillAudioFifo);
+        
+        try {
+            while(canAcceptData() && (bytes_loaded < bytes_available)) {
+                bytes_to_load = bytes_available - bytes_loaded;
+                if (bytes_to_load >= BYTES_PER_DREQ) bytes_to_load = BYTES_PER_DREQ;
+                audio.loadData(buffer.readblob(bytes_to_load));
+                bytes_loaded += bytes_to_load;
+                // server.log("Loading..."+audioChunks.top().tell());
+                // server.log(format("VS10XX HDAT0: 0x%04X",audio.getHDAT0()));
+                // server.log(format("VS10XX HDAT1: 0x%04X",audio.getHDAT1()));
+            }
+        } catch (err) {
+            server.log("Error Loading Data: "+err);
+            server.log(format("bytes_available at start: %d", bytes_available));
+            server.log(format("bytes_to_load on last try: %d", bytes_to_load));
+            server.log(format("bytes_loaded at error: %d", bytes_loaded));
+            server.log(format("buffer ptr: %d",buffer.tell()));
+            server.log(format("buffer len: %d",buffer.len()));
+        }
+        
+        //server.log("top buffer: "+audioChunks.top().tell()+" / "+audioChunks.top().len());
+        
+        if (stored_buffers.top().eos()) {
+            //server.log("finished buffer");
+            stored_buffers.pop();
+            // bartender!
+            agent.send("pull", 0);
+        } 
+        
+        if (canAcceptData()) {
+            // we just emptied a buffer; get back to work immediately
+            fillAudioFifo();
+        } else {
+            // we caught up. Yield for a moment so we can get new buffers
+            setDreqCallback(fillAudioFifo.bindenv(this));
+        }
     }
 }
-
-agent.on("push", function(chunk) {
-    audioChunks.insert(0, chunk);
-    //server.log(format("Got buffer (%d buffers ready)",audioChunks.len()));
-    if (!playbackInProgress) {
-        playbackInProgress = true;
-        // just loaded the first chunk (we quit on buffer underrun)
-        // load a chunk from our in-memory buffer to start the VS10XX
-        audio.loadData(audioChunks.top().readblob(INITIAL_BYTES));
-        // start the loop that keeps the data going into the FIFO
-        fillAudioFifo();
-    }
-});
-
-agent.on("dl_done", function(dummy) {
-    server.log("Download Done");
-});
 
 /* RUNTIME START -------------------------------------------------------------*/
 
@@ -295,19 +292,15 @@ spi     <- hardware.spi257;
 cs_l    <- hardware.pin6;
 dcs_l   <- hardware.pinC;
 rst_l   <- hardware.pinE;
-dreq_l    <- hardware.pinD;
-uart    <- hardware.uart1289;
+dreq_l  <- hardware.pinD;
 
 cs_l.configure(DIGITAL_OUT, 1);
 dcs_l.configure(DIGITAL_OUT, 1);
 rst_l.configure(DIGITAL_OUT, 1);
 dreq_l.configure(DIGITAL_IN);
 spi.configure(CLOCK_IDLE_LOW, SPICLK_LOW);
-uart.configure(UARTBAUD, 8, PARITY_NONE, 1, NO_CTSRTS);
 
-audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, uart);
-server.log(format("VS10XX SCI_MODE: 0x%04X",audio.getMode()));
-server.log(format("VS10XX SCI_STATUS: 0x%04X",audio.getStatus()));
+audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l);
 server.log(format("VS10XX Clock Multiplier set to %d",audio.setClockMultiplier(3)));
 spi.configure(CLOCK_IDLE_LOW, SPICLK_HIGH);
 server.log(format("Imp SPI Clock set to %0.3f MHz", SPICLK_HIGH / 1000.0));
