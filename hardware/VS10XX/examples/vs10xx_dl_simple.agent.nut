@@ -1,3 +1,8 @@
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+//
+// Description: Example using VS10XX with AudioDownloader Class
 
 /* GLOBALS AND CONSTS --------------------------------------------------------*/
 

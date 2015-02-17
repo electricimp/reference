@@ -2,7 +2,16 @@
 // This file is licensed under the MIT License
 // http://opensource.org/licenses/MIT
 //
-// Description: Driver for VS10XX Audio Codec IC
+// Description: Example using VS10XX with AudioDownloader Class
+
+/* GLOBALS AND CONSTS --------------------------------------------------------*/
+
+const SPICLK_LOW = 937.5;
+const SPICLK_HIGH = 3750;
+const UARTBAUD = 115200;
+const VOLUME = -70.0; //dB
+
+/* FUNCTION AND CLASS DEFS ---------------------------------------------------*/
 
 class VS10XX {
     static VS10XX_READ          = 0x03;
@@ -185,7 +194,7 @@ class VS10XX {
     }
     
     function queueData(data) {
-        queued_buffers.insert(0, data);
+        queued_buffers.insert(0, chunk);
         //server.log(format("Got buffer (%d buffers ready)",audioChunks.len()));
         if (!playback_in_progress) {
             playback_in_progress = true;
@@ -276,3 +285,38 @@ class VS10XX {
         }
     }
 }
+
+/* AGENT CALLBACKS -----------------------------------------------------------*/
+
+// queue data from the agent in memory to be fed to the VS10XX
+agent.on("push", function(chunk) {
+    audio.queueData(chunk);
+});
+
+/* RUNTIME START -------------------------------------------------------------*/
+
+imp.enableblinkup(true);
+server.log("Running "+imp.getsoftwareversion());
+server.log("Memory Free: "+imp.getmemoryfree());
+
+spi     <- hardware.spi257;
+cs_l    <- hardware.pin6;
+dcs_l   <- hardware.pinC;
+rst_l   <- hardware.pinE;
+dreq_l  <- hardware.pinD;
+
+cs_l.configure(DIGITAL_OUT, 1);
+dcs_l.configure(DIGITAL_OUT, 1);
+rst_l.configure(DIGITAL_OUT, 1);
+dreq_l.configure(DIGITAL_IN);
+spi.configure(CLOCK_IDLE_LOW, SPICLK_LOW);
+
+audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l);
+server.log(format("VS10XX Clock Multiplier set to %d",audio.setClockMultiplier(3)));
+spi.configure(CLOCK_IDLE_LOW, SPICLK_HIGH);
+server.log(format("Imp SPI Clock set to %0.3f MHz", SPICLK_HIGH / 1000.0));
+server.log(format("VS10XX Chip ID: 0x%08X",audio.getChipID()));
+server.log(format("VS10XX Version: 0x%04X",audio.getVersion()));
+server.log(format("VS10XX Config1: 0x%04X",audio.getConfig1()));
+audio.setVolume(VOLUME);
+server.log(format("Volume set to %0.1f dB", VOLUME));
