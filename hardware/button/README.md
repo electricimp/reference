@@ -12,7 +12,7 @@ Example instantiation:
 
 ```
 //Example Instantiation
-b1 <- Button(hardware.pin1, DIGITAL_IN_PULLUP, button.NORMALLY_HIGH,
+b1 <- Button(hardware.pin1, DIGITAL_IN_PULLUP, Button.NORMALLY_HIGH,
             function(){server.log("Button 1 Pressed")},
             function(){server.log("Button 1 released")}
             );

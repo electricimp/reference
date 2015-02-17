@@ -57,6 +57,11 @@ Please use the following cade conventions in your Squirrel:
 - Class/Table methods and properties that should not be externally referenced should be prefaced with an underscore
   - e.g. ```function _privateMethod() {```
 
+### Digital Out Declarations
+
+- Digital out declarations should always use the seconds parameter (initial state)
+  - e.g ```hardware.pin9.configure(DIGITAL_OUT, 0);```
+
 File Headers
 ------------
 Your code files should include the following:
