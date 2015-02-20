@@ -4,7 +4,11 @@
 //
 // Description: Example using VS10XX with AudioDownloader Class
 
+
 /* GLOBALS AND CONSTS --------------------------------------------------------*/
+
+recording <- false;
+recorded_message <- blob(2);
 
 /* FUNCTION AND CLASS DEFS ---------------------------------------------------*/
 
@@ -37,7 +41,7 @@ class AudioDownloader {
     }
     
     function getHeaders(url) {
-        response <- http.get(url, { Range = "bytes=0-1" }).sendsync();
+        local response = http.get(url, { Range = "bytes=0-1" }).sendsync();
         return response.headers;
     }
     
@@ -113,6 +117,33 @@ class AudioDownloader {
     }
 }
 
+/* DEVICE CALLBACKS ----------------------------------------------------------*/
+
+device.on("push", function(chunk) {
+    if (!recording) {
+        recording = true;
+        recorded_message.resize(chunk.len());
+        recorded_message.seek(0,'b');
+    }
+    recorded_message.writeblob(chunk);
+    server.log(format("Received %d bytes (%d total)",chunk.len(),recorded_message.tell()));
+});
+
+device.on("header_data", function(data) {
+    local headerlen = data.len();
+    // unfortunate memory situation
+    // copy the audio data into the blob we just received (which holds the header data)
+    // then swap the now-correctly-formed audio file into recorded_message
+    data.writeblob(recorded_message);
+    recorded_message = data;
+    server.log(format("Header Data Written (%d bytes)", headerlen));
+});
+
+device.on("recording_done", function(dummy) {
+    server.log("Upload Finished");
+    recording = false;
+});
+
 /* RUNTIME START -------------------------------------------------------------*/
 
 downloader <- AudioDownloader();
@@ -126,6 +157,8 @@ http.onrequest(function(req, res) {
         downloader.setDownloadURL(req.body);
         res.send(200, "OK\n");
         downloader.start();
+    } else if (req.path == "/getmsg") {
+        res.send(200, recorded_message);   
     } else {
         res.send(200, "OK\n");
     }
