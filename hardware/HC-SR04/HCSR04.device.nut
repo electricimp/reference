@@ -1,6 +1,11 @@
 // Ultrasonic Range Sensor HC-SR04
 // https://docs.google.com/document/d/1Y-yZnNhMYy7rwhAgyL_pfa39RsB-x2qR4vP8saG73rE/edit
+// Ultrasonic Range Sensor HC-SR04
+// https://docs.google.com/document/d/1Y-yZnNhMYy7rwhAgyL_pfa39RsB-x2qR4vP8saG73rE/edit
 class HCSR04 {
+    // consts
+    static TO = 500; // timeout in ms
+    
     // pins
     _trig   = null;
     _echo   = null;
@@ -8,6 +13,7 @@ class HCSR04 {
     // aliased methods
     _tw     = null;
     _er     = null;
+    _hu     = null;
     _hm     = null;
 
     // vars
@@ -18,28 +24,27 @@ class HCSR04 {
         _trig = trig;
         _echo = echo;
 
-        _hm   = hardware.micros.bindenv(hardware);
+        _hu   = hardware.micros.bindenv(hardware);
+        _hm   = hardware.millis.bindenv(hardware);
         _tw   = _trig.write.bindenv(_trig);
         _er   = _trig.read.bindenv(_echo);
     }
 
     function read_cm() {
+        local st = _hm(); // start time for timeout
         // Quickly pulse the trig pin
         _tw(0); _tw(1); _tw(0);
 
         // Wait for the rising edge on echo
-        while (_er() == 0);
-        _es = _hm();
+        while (_er() == 0 && (_hm() - st) < TO);
+        _es = _hu();
 
         // Time to the falling edge on echo
-        while (_er() == 1);
-        _ee = _hm();
+        while (_er() == 1 && (_hm() - st) < TO);
+        _ee = _hu();
 
+        //if ((_hm() - st) >= TO) return -1;
         return (_ee - _es)/58.0;
-    }
-    
-    function read_in() {
-        return read_cm() * (58.0 / 148.0);
     }
 }
 
@@ -51,4 +56,4 @@ class HCSR04 {
 // echo.configure(DIGITAL_IN);
 
 // range <- HCSR04(trig, echo);
-// server.log(range.read_in()+"\"");
+// server.log(range.read_cm()+" cm"");
