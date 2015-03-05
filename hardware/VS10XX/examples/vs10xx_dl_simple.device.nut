@@ -8,7 +8,7 @@
 
 const SPICLK_LOW = 937.5;
 const SPICLK_HIGH = 3750;
-const UARTBAUD = 115200;
+const UARTBAUD = 138888;
 const VOLUME = -70.0; //dB
 const RECORD_TIME = 5; //seconds
 
@@ -34,15 +34,21 @@ class VS10XX {
     static VS10XX_SCI_AICTRL2   = 0x0E;
     static VS10XX_SCI_AICTRL3   = 0x0F;
     
-    static VS10XX_CHIP_ID_ADDR  = 0x1E00;
-    static VS10XX_VERSION_ADDR  = 0x1E02;
-    static VS10XX_CONFIG1_ADDR  = 0x1E03;
-    static VS10XX_TX_UART_DIV_ADDR = 0x1E06;
-    static VS10XX_TX_UART_BYTE_SPEED_ADDR = 0x1E2B;
-    static VS10XX_TX_PAUSE_GPIO_ADDR = 0x1E2C;
+    //static VS10XX_CHIP_ID_ADDR  = 0x1E00;
+    static VS10XX_CHIP_ID_ADDR = 0xC0C0;
+    //static VS10XX_VERSION_ADDR  = 0x1E02;
+    static VS10XX_VERSION_ADDR  = 0xC0C2;
+    //static VS10XX_CONFIG1_ADDR  = 0x1E03;
+    static VS10XX_CONFIG1_ADDR  = 0xC0C3;
+    //static VS10XX_TX_UART_DIV_ADDR = 0x1E06;
+    static VS10XX_TX_UART_DIV_ADDR = 0xC0C6;
+    //static VS10XX_TX_UART_BYTE_SPEED_ADDR = 0x1E2B;
+    static VS10XX_TX_UART_BYTE_SPEED_ADDR = 0xC0EB;
+    //static VS10XX_TX_PAUSE_GPIO_ADDR = 0x1E2C;
+    static VS10XX_TX_PAUSE_GPIO_ADDR = 0xC0EC;
     
     static REC_STOP_TIMEOUT     = 0.5; // seconds
-    static UART_BAUD            = 115200;
+    static UART_BAUD            = 38400;
     static ENDFILLBYTE_PADDING  = 2048;
     static BYTES_PER_DREQ       = 32; // min space available when DREQ asserted
     static INITIAL_BYTES        = 2048; // number of bytes to load when starting playback (FIFO size 2048)
@@ -132,19 +138,38 @@ class VS10XX {
         return _getReg(VS10XX_SCI_WRAMADDR);
     }
     
-    function _writeRam(addr, data) {
+    function _writeRam(addr, data, words = 1) {
         _setRamAddr(addr);
+        if (!dreq.read()) {
+            server.log("busy after setting WRAMADDR for first word");
+        }
+        if (words > 1) {
+            _setReg(VS10XX_SCI_WRAM, (data & 0xFFFF0000) >> 16);
+            if (!dreq.read()) {
+                server.log("busy after writing high byte");
+            }
+            _setRamAddr(addr + 1);
+            if (!dreq.read()) {
+                server.log("busy after setting WRAMADDR for second word");
+            }
+        }
         _setReg(VS10XX_SCI_WRAM, data & 0xFFFF);
     }
     
-    function _readRam(addr, bytes) {
-        local data = blob(bytes);
+    function _readRam(addr, words = 1) {
+        local data = blob(words * 2);
         _setRamAddr(addr);
         while(!data.eos()) {
             data.writen(_getReg(VS10XX_SCI_WRAM), 'w');
         }
         //data.swap2();
-        return data;
+        data.seek(0,'b');
+        if (words > 1) {
+            // 32 bits is the largest word suppored in VS10XX memory
+            return data.readn('i');
+        } else {
+            return data.readn('w');
+        }
     }
     
     function _callDreqCallback() {
@@ -184,7 +209,7 @@ class VS10XX {
         if (endfillbytes_sent < ENDFILLBYTE_PADDING) {
             _setDreqCallback(sendEndFillBytes);
         } else {
-        	endfillbytes_sent = 0;
+            endfillbytes_sent = 0;
             _clearDreqCallback();
             server.log("Playback Complete");
         }
@@ -268,18 +293,15 @@ class VS10XX {
     }
     
     function getChipID() {
-        local idblob = _readRam(VS10XX_CHIP_ID_ADDR, 32);
-        return (((idblob[3] << 24) | idblob[2] << 16) | idblob[1]) | idblob[0];
+        return _readRam(VS10XX_CHIP_ID_ADDR, 2);
     }
     
     function getVersion() {
-        local vblob = _readRam(VS10XX_VERSION_ADDR, 16)
-        return (vblob[1] << 8) | vblob[0];
+        return _readRam(VS10XX_VERSION_ADDR);
     }
     
     function getConfig1() {
-        local configblob = _readRam(VS10XX_CONFIG1_ADDR, 16)
-        return (configblob[1] << 8) | configblob[0];
+        return _readRam(VS10XX_CONFIG1_ADDR);
     }
     
     function getHDAT0() {
@@ -334,6 +356,7 @@ class VS10XX {
     
     function setRecordGain(gain) {
         if (gain < 1) gain = 1;
+        if (gain > 64) gain = 64;
         _setReg(VS10XX_SCI_AICTRL1, (gain * 1024) & 0xFFFF);
     }
     
@@ -419,16 +442,18 @@ class VS10XX {
     }
     
     function setRecordBitrate(rate_kbps) {
-        _setReg(VS10XX_SCI_WRAMADDR, (0xE000 | (rate_kbps & 0x01FF)));
+        _setReg(VS10XX_SCI_WRAMADDR, (0x6000 | (rate_kbps & 0x01FF)));
     }
     
     function setUartBaud(baud) {
         // set UART clock divider to 0 to use "byte speed" to set UART baud
-        _writeRam(VS10XX_TX_UART_DIV_ADDR, 0x0000);
+        _writeRam(VS10XX_TX_UART_DIV_ADDR, 0);
         // "Byte Speed" in the datasheet apparently means "baud / bits (incl start, stop, and parity bits)"
         _writeRam(VS10XX_TX_UART_BYTE_SPEED_ADDR, baud / 10);
         // disable flow control (*shrug*)
-        _writeRam(VS10XX_TX_PAUSE_GPIO_ADDR, 0x0000);
+        _writeRam(VS10XX_TX_PAUSE_GPIO_ADDR, 2);
+        // configure the imp side of this mess
+        uart.configure(baud, 8, PARITY_NONE, 2, NO_CTSRTS, _uartCb.bindenv(this));
     }
     
     function setUartTxEn(state) {
@@ -439,57 +464,24 @@ class VS10XX {
         }
     }
     
-    function _readEncodedData() {
-        // pre-write the bitstream we use to read the data register for speed
-        local msg = blob(2);
-        msg.writen(VS10XX_READ, 'b');
-        msg.writen(VS10XX_SCI_HDAT0,'b');
-        
-        // read the VS10XX's internal buffer until we've caught up
-        while (getHDAT1() > 0) {
-            xcs_l.write(0);
-            spi.write(msg);
-            local data = spi.readblob(2);
-            rx_buffer.writen(data.readn('w'), 'w');
-            xcs_l.write(1);
-        }
-        
-        // if we have a full buffer or more in memory, hand it back to the callback
-        if (rx_buffer.tell() > RX_WATERMARK) {
-            buffer_ready_cb(rx_buffer);
-            rx_buffer = blob(RX_WATERMARK);
-            rx_buffer.seek(0,'b');
-        }
-        
-        // if we're still recording, run this again as soon as we have time
-        if (recording || (getHDAT1() > 0)) {
-            imp.onidle(_readEncodedData.bindenv(this));
-        } else {
-            // we've finished recording; send any data we still have to the callback
-            local readto = rx_buffer.tell();
-            rx_buffer.seek(0,'b');
-            buffer_ready_cb(rx_buffer.readblob(readto));
-            // reset our structures
-            rx_buffer = blob(RX_WATERMARK);
-            rx_buffer.seek(0,'b');
-            recording_done_cb();
-            recording_done_cb = null;
-        }
-    }
-    
     function startRecording() {
         recording = true;
         local val = _getReg(VS10XX_SCI_MODE); 
         // set the Encoding and SW_Reset bits in the same transaction to activate codec mode
         _setReg(VS10XX_SCI_MODE, val | 0x1004);
-        _readEncodedData();
     }
     
     function stopRecording(cb) {
         // set SM_CANCEL bit
         _setRegBit(VS10XX_SCI_MODE, 3, 1);
         recording = false;
-        recording_done_cb = cb;
+        imp.wakeup(REC_STOP_TIMEOUT, function() {
+            rx_buffer.writeblob(uart.readblob());
+            buffer_ready_cb(rx_buffer);
+            rx_buffer = blob(2);
+            rx_buffer.seek(0,'b');
+            cb();
+        }.bindenv(this));
     }
     
     function recordingIsDone() {
@@ -505,23 +497,19 @@ function requestBuffer() {
 
 function sendBuffer(buffer) {
     //server.log("Recorded buffer, len "+buffer.len());
-    //server.log(format("HDAT0: 0x%04X, HDAT1: 0x%04X", audio.getHDAT0(), audio.getHDAT1()));
     agent.send("push", buffer);
 }
 
 function record() {
-    server.log(format("SCI_AICTRL3: 0x%04X",audio.getAICTRL3()));
     audio.setSampleRate(8000);
     audio.setRecordInputMic();
     audio.setChLeft();
-    //audio.setUartTxEn(1);
-    audio.setRecordFormatOgg();
-    audio.setRecordAGC(1, 35);
+    audio.setRecordFormatMP3();
+    audio.setRecordAGC(1, 64);
+    audio.setUartBaud(UARTBAUD);
+    audio.setUartTxEn(1);
     // set bitrate / quality
     audio.setRecordBitrate(64);
-    server.log(format("SCI_AICTRL3: 0x%04X",audio.getAICTRL3()));
-    server.log("Starting Recording...");
-    audio.startRecording();
     imp.wakeup(RECORD_TIME, function() {
         server.log("Stopping Recording...");
         audio.stopRecording(function() {
@@ -529,6 +517,8 @@ function record() {
             agent.send("recording_done", 0);
         });
     }.bindenv(this));
+    server.log("Starting Recording...");
+    audio.startRecording();
 }
 
 /* AGENT CALLBACKS -----------------------------------------------------------*/
