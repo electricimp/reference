@@ -8,7 +8,7 @@
 
 const SPICLK_LOW = 937.5;
 const SPICLK_HIGH = 3750;
-const UARTBAUD = 138888;
+const UARTBAUD = 115200;
 const VOLUME = -70.0; //dB
 const RECORD_TIME = 5; //seconds
 
