@@ -73,17 +73,22 @@ class SHT10 {
         }
     }
     
+    // Send and arbitrary Byte
+    function _sendByte(byte) {
+        byte = byte & 0xFF;
+        clk.write(0);
+        for (local i = 7; i >= 0; i--) {
+            dta.write((byte & (0x01 << i)) ? 1 : 0);
+            _pulseClk();
+        }
+    }
+    
     // Send a Command Byte (5 command bits and 3 address bits)
-    // max 32 per transaction (bit mask is an integer)
+    // Includes transaction start sequence
     function _sendCmd(cmd) {
         _sendStart();
         cmd = ((SHT10_ADDR & 0x3) << 5) | (cmd & 0x1F);
-        clk.write(0);
-        for (local i = 7; i >= 0; i--) {
-            dta.write((cmd & (0x01 << i)) ? 1 : 0);
-            clk.write(1);
-            clk.write(0);
-        }
+        _sendByte(cmd);
     }
     
     // Send Transmission Start Cmd
@@ -105,6 +110,8 @@ class SHT10 {
         dta.configure(DIGITAL_IN_PULLUP);
         local start = hardware.millis();
         while (dta.read() && (hardware.millis() - start > TIMEOUT_ACK));
+        dta.configure(DIGITAL_OUT);
+        dta.write(0);
         // clock past the ACK (or the timeout, whatever)
         _pulseClk();
         if (hardware.millis() - start > TIMEOUT_ACK) return false;
@@ -171,6 +178,26 @@ class SHT10 {
         return result;
     }
     
+    // set a specific bit in the status register
+    // Input: bit to set (0-based), state (1 or 0)
+    // Return: None
+    function _setStatusBit(bit, state) {
+        _sendCmd(SHT10_CMD_RDSTATUS);
+        if (!_gotAck()) throw "timed out waiting for ACK on CMD_RDSTATUS";
+        local byte = _read8();
+        //server.log(format("STATUS Reg: 0x%02X",byte));
+        if (state) {
+            byte = byte | (0x01 << bit);
+        } else {
+            byte = (byte & ~(0x01 << bit) & 0x07);
+        }
+        //server.log(format("Writing back 0x%02X",byte));
+        _sendCmd(SHT10_CMD_WRSTATUS);
+        if (!_gotAck()) throw "timed out waiting for ACK on CMD_WRSTATUS";
+        _sendByte(byte);
+        if (!_gotAck()) throw "timed out waiting for ACK new Status Register Byte";
+    }
+    
     // issue a soft reset
     // clears the status register
     // wait 11ms before sending other commands
@@ -202,6 +229,31 @@ class SHT10 {
             result.tempRes = 12;
         }
         return result;
+    }
+
+    function setLowRes() {
+        _setStatusBit(0, 1);
+        local status = getStatus();
+        if ("err" in status) throw err;
+        rhRes = status.rhRes;
+        tempRes = status.tempRes;
+    }
+    
+    function setHighRes() {
+        _setStatusBit(0, 0);
+        local status = getStatus();
+        if ("err" in status) throw err;
+        rhRes = status.rhRes;
+        tempRes = status.tempRes;
+    }
+    
+    function setHeater(state) {
+        _setStatusBit(2, state);
+    }
+    
+    function setOtpReload(state) {
+        if (state) _setStatusBit(1, 0);
+        else _setStatusBit(1, 1);
     }
     
     // read the temperature
