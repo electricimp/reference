@@ -54,8 +54,6 @@ class SHT10 {
     }
     
     function init() {
-        clk.configure(DIGITAL_OUT);
-        dta.configure(DIGITAL_OUT);
         softReset();
         local status = getStatus();
         if ("err" in status) throw err;
@@ -337,6 +335,8 @@ class SHT10 {
 }
 // clk <- hardware.pin5;
 // dta <- hardware.pin7;
+// clk.configure(DIGITAL_OUT);
+// dta.configure(DIGITAL_OUT);
 // sht10 <- SHT10(clk, dta);
 
 
