@@ -157,10 +157,9 @@ http.onrequest(function(req, res) {
         downloader.setDownloadURL(req.body);
         res.send(200, "OK\n");
         downloader.start();
-    } else if (req.path == "/getmsg") {
-        res.send(200, recorded_message);   
     } else {
-        res.send(200, "OK\n");
+        res.header("Content-Type", "audio/mpeg")
+        res.send(200, recorded_message);   
     }
 });
 
