@@ -15,11 +15,12 @@ class SHT10 {
     static SHT10_ADDR       = 0x0; //0b000, 3 bits
     static SHT10_CMD_TEMP   = 0x03; //0b00011, 5 bits
     static SHT10_CMD_RH     = 0x05; //0b00101, 5 bits
-    static SHT10_CMD_RESTATUS = 0x07; //0b00111
+    static SHT10_CMD_RDSTATUS = 0x07; //0b00111
     static SHT10_CMD_WRSTATUS = 0x06; //0b00110
     static SHT10_CMD_SOFTRESET = 0x1E; //0b1110
     
-    static TIMEOUT  = 0.5; // seconds
+    static TIMEOUT       = 0.5; // seconds
+    static TIMEOUT_ACK   = 5; //ms
     static D1            = -39.7;
     static D2            =  0.01;
     static C1            = -2.0468;
@@ -85,11 +86,55 @@ class SHT10 {
         clk.write(0);
     }
     
+    // get an ACK from the sensor after sending a command
+    // Input: None
+    // Return: True on ACK recieved, false on ACK timeout
+    function _gotAck() {
+        dta.configure(DIGITAL_IN_PULLUP);
+        local start = hardware.millis();
+        while (dta.read() && (hardware.millis() - start > TIMEOUT_ACK));
+        // clock past the ACK (or the timeout, whatever)
+        _pulseClk();
+        if (hardware.millis() - start > TIMEOUT_ACK) return false;
+        return true;
+    }
+    
+    // Read an 8-bit word from the sensor
+    // Input: None
+    // Return: integer
+    // Used to read the status register
+    function _read8() {
+        local result = 0;
+        local checksum = 0;
+        dta.configure(DIGITAL_IN_PULLUP);
+        // msb first
+        for (local i = 1; i <= 8; i++) {
+            result += (dta.read() << (8 - i));
+            _pulseClk();
+        }
+        // ACK and read the checksum
+        // TODO: handle the checksum!
+        dta.configure(DIGITAL_OUT);
+        dta.write(0);
+        _pulseClk();
+        dta.configure(DIGITAL_IN_PULLUP);
+        for (local i = 1; i <= 8; i++) {
+            result += (dta.read() << (8 - i));
+            _pulseClk();
+        }
+        // ACK the checksum
+        dta.configure(DIGITAL_OUT);
+        dta.write(0);
+        _pulseClk();
+        return result;
+    }
+    
     // Read a 16-bit word from the sensor
     // Input: None
     // Return: integer
     // used to retrieve sensor readings (temp, rh)
     function _read16() {
+        dta.configure(DIGITAL_IN_PULLUP);
         local result = 0;
         // read high byte, msb first
         for (local i = 1; i <= 8; i++) {
@@ -106,7 +151,8 @@ class SHT10 {
             result += (dta.read() << (8 - i));
             _pulseClk();
         }
-        // clock out one high bit to ack
+        // Hold DATA pin high to ignore the checksum and put device back to sleep
+        // TODO: handle the checksum!
         dta.configure(DIGITAL_OUT);
         dta.write(1);
         _pulseClk();
@@ -120,14 +166,39 @@ class SHT10 {
         _sendCmd(SHT10_CMD_SOFTRESET);
     }
     
+    // read the Status Register
+    // returns a table with the following keys:
+    // "lowVoltDet": (bool) low voltage (< 2.47V) detected (default false)
+    // "heater": (bool) heater on (default false)
+    // "noReloadFromOTP": (bool) true if not reloading from OTP (default false)
+    // "rhRes": (integer) bit resolution of RH measurement (12 bit default, can be set to 8)
+    // "tempRes": (integer) bit resolution of temp measurement(14 bit default, can be set to 12)
+    // 
+    // If an error occurs during reading, the table returned will contain only the "err" key with the error
+    function getStatus() {
+        _sendCmd(SHT10_CMD_RDSTATUS);
+        if (!_gotAck()) return {"err": "timed out waiting for ACK on CMD_RDSTATUS"};
+        local byte = _read8();
+        server.log(format("0x%02X", byte));
+        local result = {"lowVoltDet": false, "heater": false, "noReloadFromOTP": false, "rhRes": 12, "tempRes": 14};
+        if (byte & 0x40) result.lowVoltDet = true; 
+        if (byte & 0x04) result.heater = true;
+        if (byte & 0x02) result.noReloadFromOTP = true;
+        if (byte & 0x01) {
+            result.rhRes = 8;
+            result.tempRes = 12;
+        }
+        return result;
+    }
+    
     // read the temperature
     // Input: callback function, takes 1 argument (table)
     // Return: None
     // Callback will be called with table containing at least the "temp" key
     // If an error occurs, the "err" key will be present in the table
-    function readTemp(cb) {
+    function getTemp(cb) {
         _sendCmd(SHT10_CMD_TEMP);
-        
+        if (!_gotAck()) return {"err": "timed out waiting for ACK on CMD_TEMP"};
         // schedule a callback to catch a timeout
         local response_timer = imp.wakeup(TIMEOUT, function() {
             // cancel state change callback
@@ -141,7 +212,6 @@ class SHT10 {
             imp.cancelwakeup(response_timer);
             cb({"temp": D1 + (D2 * _read16())});
         }.bindenv(this));
-        _pulseClk();
     }
     
     // read the temperature and relative humidity
@@ -150,28 +220,28 @@ class SHT10 {
     // Callback will be called with one argument (table)
     // Table will contain at least the "rh" key, with relative humidity as a percentage (float)
     // If an error occurs, table will contain "err" key
-    function readTempRh(cb, temp = null) {
+    function getTempRh(cb, temp = null) {
         // user skipped putting in the temp, so we'll go get it
         if (temp == null) {
             // go read the temp
-            readTemp(function(tempResult) {
+            getTemp(function(tempResult) {
                 if ("err" in tempResult) {
-                    // if the temp result failed, call the readTempRh callback with an error
+                    // if the temp result failed, call the getTempRh callback with an error
                     cb({"err": tempResult.err, "temp": tempResult.temp, "rh": 0.0}); 
                     return;
                 }
-                // if readTemp manages to get the temp, it calls us back with it 
-                readTempRh(cb, tempResult.temp);
-                // we've gotten through readTemp and back to readTempRh with the temp now, so end this path
+                // if getTemp manages to get the temp, it calls us back with it 
+                getTempRh(cb, tempResult.temp);
+                // we've gotten through getTemp and back to getTempRh with the temp now, so end this path
                 return;
             });
-            // we've scheduled readTemp, which will call us back when done, so end this path
+            // we've scheduled getTemp, which will call us back when done, so end this path
             return;
         }
         
-        // we'll wind up here if readTemp calls us back or if the user calls with temp explicitly
+        // we'll wind up here if getTemp calls us back or if the user calls with temp explicitly
         _sendCmd(SHT10_CMD_RH);        
-        
+        if (!_gotAck()) return {"err": "timed out waiting for ACK on CMD_RH"};
         local response_timer = imp.wakeup(TIMEOUT, function() {
             // cancel state change callback
             dta.configure(DIGITAL_OUT);
@@ -185,13 +255,24 @@ class SHT10 {
             local rhComp = (temp - AMBIENT) * (T1 + (T2 * result)) + unComp;
             cb({"temp": temp, "rh": rhComp});
         }.bindenv(this));
-        _pulseClk();
     }
 }
 
 // clk <- hardware.pin5;
 // dta <- hardware.pin7;
 // sht10 <- SHT10(clk, dta);
+
+
+// local status = sht10.getStatus();
+// if ("err" in status) server.error(status.err);
+// else {
+//     server.log("SHT10 Status:");
+//     server.log("Low Voltage Det: "+status.lowVoltDet);
+//     server.log("Heater: "+status.heater);
+//     server.log("No Reload From OTP: "+status.noReloadFromOTP);
+//     server.log("RH resolution: "+status.rhRes+" bits");
+//     server.log("Temp resolution: "+status.tempRes+" bits");
+// }
 
 // sht10.readTemp( function(result) {
 //     if ("err" in result) {
