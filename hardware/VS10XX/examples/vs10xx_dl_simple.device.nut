@@ -40,8 +40,8 @@ class VS10XX {
     static VS10XX_VERSION_ADDR  = 0xC0C2;
     //static VS10XX_CONFIG1_ADDR  = 0x1E03;
     static VS10XX_CONFIG1_ADDR  = 0xC0C3;
-    //static VS10XX_TX_UART_DIV_ADDR = 0x1E06;
-    static VS10XX_TX_UART_DIV_ADDR = 0xC0C6;
+    //static VS10XX_TX_UART_DIV_ADDR = 0x1E2A;
+    static VS10XX_TX_UART_DIV_ADDR = 0xC0EA;
     //static VS10XX_TX_UART_BYTE_SPEED_ADDR = 0x1E2B;
     static VS10XX_TX_UART_BYTE_SPEED_ADDR = 0xC0EB;
     //static VS10XX_TX_PAUSE_GPIO_ADDR = 0x1E2C;
@@ -451,7 +451,7 @@ class VS10XX {
         // "Byte Speed" in the datasheet apparently means "baud / bits (incl start, stop, and parity bits)"
         _writeRam(VS10XX_TX_UART_BYTE_SPEED_ADDR, baud / 10);
         // disable flow control (*shrug*)
-        _writeRam(VS10XX_TX_PAUSE_GPIO_ADDR, 2);
+        _writeRam(VS10XX_TX_PAUSE_GPIO_ADDR, 0);
         // configure the imp side of this mess
         uart.configure(baud, 8, PARITY_NONE, 2, NO_CTSRTS, _uartCb.bindenv(this));
     }
