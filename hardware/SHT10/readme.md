@@ -1,7 +1,7 @@
 Driver for the SHT10 Temperature/Humidity Sensor
 ===================================
 
-Author: [Juan Albanell](https://github.com/juanderful11/)
+Author: [Tom Byrne](https://github.com/ersatzavian/)
 
 Driver class for a [DHT10 temperature/humidity sensor](http://www.adafruit.com/datasheets/Sensirion_Humidity_SHT1x_Datasheet_V5.pdf), available from [Adafruit](http://www.adafruit.com/product/1298).
 
