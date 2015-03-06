@@ -15,6 +15,9 @@ class SHT10 {
     static SHT10_ADDR       = 0x0; //0b000, 3 bits
     static SHT10_CMD_TEMP   = 0x03; //0b00011, 5 bits
     static SHT10_CMD_RH     = 0x05; //0b00101, 5 bits
+    static SHT10_CMD_RESTATUS = 0x07; //0b00111
+    static SHT10_CMD_WRSTATUS = 0x06; //0b00110
+    static SHT10_CMD_SOFTRESET = 0x1E; //0b1110
     
     static TIMEOUT  = 0.5; // seconds
     static D1            = -39.7;
@@ -38,8 +41,13 @@ class SHT10 {
         clk = _clk;
         dta = _dta;
         
+        init();
+    }
+    
+    function init() {
         clk.configure(DIGITAL_OUT);
         dta.configure(DIGITAL_OUT);
+        softReset();
     }
     
     // Clock Pulse
@@ -55,6 +63,7 @@ class SHT10 {
     // Send a Command Byte (5 command bits and 3 address bits)
     // max 32 per transaction (bit mask is an integer)
     function _sendCmd(cmd) {
+        _sendStart();
         cmd = ((SHT10_ADDR & 0x3) << 5) | (cmd & 0x1F);
         clk.write(0);
         for (local i = 7; i >= 0; i--) {
@@ -104,13 +113,19 @@ class SHT10 {
         return result;
     }
     
+    // issue a soft reset
+    // clears the status register
+    // wait 11ms before sending other commands
+    function softReset() {
+        _sendCmd(SHT10_CMD_SOFTRESET);
+    }
+    
     // read the temperature
     // Input: callback function, takes 1 argument (table)
     // Return: None
     // Callback will be called with table containing at least the "temp" key
     // If an error occurs, the "err" key will be present in the table
     function readTemp(cb) {
-        _sendStart();
         _sendCmd(SHT10_CMD_TEMP);
         
         // schedule a callback to catch a timeout
@@ -155,7 +170,6 @@ class SHT10 {
         }
         
         // we'll wind up here if readTemp calls us back or if the user calls with temp explicitly
-        _sendStart();
         _sendCmd(SHT10_CMD_RH);        
         
         local response_timer = imp.wakeup(TIMEOUT, function() {
