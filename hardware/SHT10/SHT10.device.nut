@@ -12,26 +12,34 @@
 // will be reconfigured inside the class.
 class SHT10 {
     // cmds
-    static SHT10_ADDR       = 0x0; //0b000, 3 bits
-    static SHT10_CMD_TEMP   = 0x03; //0b00011, 5 bits
-    static SHT10_CMD_RH     = 0x05; //0b00101, 5 bits
-    static SHT10_CMD_RDSTATUS = 0x07; //0b00111
-    static SHT10_CMD_WRSTATUS = 0x06; //0b00110
-    static SHT10_CMD_SOFTRESET = 0x1E; //0b1110
+    static SHT10_ADDR           = 0x0;  //0b000, 3 bits
+    static SHT10_CMD_TEMP       = 0x03; //0b00011, 5 bits
+    static SHT10_CMD_RH         = 0x05; //0b00101, 5 bits
+    static SHT10_CMD_RDSTATUS   = 0x07; //0b00111
+    static SHT10_CMD_WRSTATUS   = 0x06; //0b00110
+    static SHT10_CMD_SOFTRESET  = 0x1E; //0b1110
     
-    static TIMEOUT       = 0.5; // seconds
-    static TIMEOUT_ACK   = 5; //ms
+    static TIMEOUT          = 0.5; // seconds
+    static TIMEOUT_ACK      = 5; //ms
+    static SOFTRESET_TIME   = 0.011; // seconds
+    
     static D1            = -39.7;
-    static D2            =  0.01;
+    static D2_14         =  0.01; // coeff for 14-bit res (temp)
+    static D2_12         =  0.04; // coeff for 12-bit res (temp)
     static C1            = -2.0468;
-    static C2            =  0.0367;
-    static C3            = -0.0000015955;
+    static C2_12         =  0.0367; // coeff for 12-bit res (rh)
+    static C2_8          =  0.5872; // coeff for 8-bit res (rh)
+    static C3_12         = -0.0000015955; // 12-bit res (rh)
+    static C3_8          = -0.00040845; // 8-bit res (rh)
     static T1            =  0.01;
-    static T2            =  0.00008;
+    static T2_12         =  0.00008; // coeff for 12-bit res (rh)
+    static T2_8          =  0.00128; // coeff for 8-bit res (rh)
     static AMBIENT       =  25.0;
     
     dta = null;
     clk = null;
+    rhRes = null;
+    tempRes = null;
     
     // class constructor
     // Input: 
@@ -49,6 +57,10 @@ class SHT10 {
         clk.configure(DIGITAL_OUT);
         dta.configure(DIGITAL_OUT);
         softReset();
+        local status = getStatus();
+        if ("err" in status) throw err;
+        rhRes = status.rhRes;
+        tempRes = status.tempRes;
     }
     
     // Clock Pulse
@@ -119,7 +131,7 @@ class SHT10 {
         _pulseClk();
         dta.configure(DIGITAL_IN_PULLUP);
         for (local i = 1; i <= 8; i++) {
-            result += (dta.read() << (8 - i));
+            checksum += (dta.read() << (8 - i));
             _pulseClk();
         }
         // ACK the checksum
@@ -164,6 +176,7 @@ class SHT10 {
     // wait 11ms before sending other commands
     function softReset() {
         _sendCmd(SHT10_CMD_SOFTRESET);
+        imp.sleep(SOFTRESET_TIME);
     }
     
     // read the Status Register
@@ -179,7 +192,7 @@ class SHT10 {
         _sendCmd(SHT10_CMD_RDSTATUS);
         if (!_gotAck()) return {"err": "timed out waiting for ACK on CMD_RDSTATUS"};
         local byte = _read8();
-        server.log(format("0x%02X", byte));
+        //server.log(format("0x%02X", byte));
         local result = {"lowVoltDet": false, "heater": false, "noReloadFromOTP": false, "rhRes": 12, "tempRes": 14};
         if (byte & 0x40) result.lowVoltDet = true; 
         if (byte & 0x04) result.heater = true;
@@ -210,6 +223,10 @@ class SHT10 {
         dta.configure(DIGITAL_IN_PULLUP, function() {
             if (dta.read()) return;
             imp.cancelwakeup(response_timer);
+            // choose the correct D2 constant for our current resolution
+            local D2 = D2_14;
+            if (tempRes == 12) D2 = D2_12 
+            // calculate and return
             cb({"temp": D1 + (D2 * _read16())});
         }.bindenv(this));
     }
@@ -251,13 +268,21 @@ class SHT10 {
             if (dta.read()) return;
             imp.cancelwakeup(response_timer);
             local result = _read16();
+            // choose correct coefficients for our current resolution
+            local C2 = C2_12;
+            local C3 = C3_12;
+            local T2 = T2_12;
+            if (rhRes == 8) {
+                C2 = C2_8;
+                C3 = C3_8;
+                T2 = T2_8;
+            }
             local unComp = C1 + (C2 * result) + (C3 * result * result);
             local rhComp = (temp - AMBIENT) * (T1 + (T2 * result)) + unComp;
             cb({"temp": temp, "rh": rhComp});
         }.bindenv(this));
     }
 }
-
 // clk <- hardware.pin5;
 // dta <- hardware.pin7;
 // sht10 <- SHT10(clk, dta);
