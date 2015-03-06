@@ -76,23 +76,28 @@ class SHT10 {
         clk.write(0);
     }
     
-    // Read the result of the measurement
-    // Input: (none)
-    // Return: result of reading the sensor's output (int)
-    function readResult() {
+    // Read a 16-bit word from the sensor
+    // Input: None
+    // Return: integer
+    // used to retrieve sensor readings (temp, rh)
+    function _read16() {
         local result = 0;
+        // read high byte, msb first
         for (local i = 1; i <= 8; i++) {
             result += (dta.read() << (16 - i));
             _pulseClk();
         }
+        // clock out one low bit to ack
         dta.configure(DIGITAL_OUT);
         dta.write(0);
         _pulseClk();
         dta.configure(DIGITAL_IN_PULLUP);
+        // read low byte, msb first
         for (local i = 1; i <= 8; i++) {
             result += (dta.read() << (8 - i));
             _pulseClk();
         }
+        // clock out one high bit to ack
         dta.configure(DIGITAL_OUT);
         dta.write(1);
         _pulseClk();
@@ -119,7 +124,7 @@ class SHT10 {
         dta.configure(DIGITAL_IN_PULLUP, function() {
             if (dta.read()) return;
             imp.cancelwakeup(response_timer);
-            cb({"temp": D1 + (D2 * readResult())});
+            cb({"temp": D1 + (D2 * _read16())});
         }.bindenv(this));
         _pulseClk();
     }
@@ -161,7 +166,7 @@ class SHT10 {
         dta.configure(DIGITAL_IN_PULLUP, function() {
             if (dta.read()) return;
             imp.cancelwakeup(response_timer);
-            local result = readResult();
+            local result = _read16();
             local unComp = C1 + (C2 * result) + (C3 * result * result);
             local rhComp = (temp - AMBIENT) * (T1 + (T2 * result)) + unComp;
             cb({"temp": temp, "rh": rhComp});
