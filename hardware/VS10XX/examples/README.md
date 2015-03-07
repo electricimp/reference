@@ -25,7 +25,7 @@ function requestBuffer() {
     agent.send("pull", 0);
 }
 
-//... later, after pin assignments and configuration
+//... later, after pin assignments and configuration ...
 
 audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, uart, requestBuffer, sendBuffer);
 ```
@@ -66,6 +66,71 @@ The queueData method will automatically load the first buffer into the VS10XX, s
 When the device has loaded all of the queued data and the data consumed callback is called, an underrun occurs and the playback is stopped. 
 
 ### Recording Audio
-The VS10XX includes a microphone pre-amp, ADCs, automatic gain control, and encoder; it can produce a fully-formed audio file, including the appropriate header. This file can be received from the VS10XX in two different ways: by reading the HDAT registers to fetch the file 16 bytes at a time (not recommended), or by requesting the VS10XX to transmit the file over UART as it is recorded and encoded. If the HDAT registers are used, only very low bit rates are possible; reading the data this way incurs 100% transactional overhead, and it is not possible for the imp to keep up with the encoder for all but very low bit rates. 
 
-Using the UART to receive the data, recording with the VS10XX works very similarly to the operation of the imp's own built-in sampler. Recording parameters are configured, a callback set for full buffers of data, and then recording is stopped. The receive concludes with the last (partial) buffer of data that was being written when recording was stopped. A very wide range of baud rates is supported. 
+To test recording and playback, just build and run this firmware. The device starts a recording 1 second after starting and will record for five seconds. The recording will be MP3 encoded and is automatically sent to the agent. 
+
+```Squirrel
+audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, uart, requestBuffer, sendBuffer);
+
+// ... later...
+
+imp.wakeup(1.0, record);
+```
+
+To play the recorded audio, just open the agent URL in a web browser. The agent sets the Content-Type header so that the audio will play in the browser.
+
+To download the audio, send a request with CURL (or right-click the agent URL in the IDE and "Save Link As...")
+
+```bash
+14:12:37-tom$ curl https://agent.electricimp.com/myagent > test.mp3
+```
+
+The VS10XX includes a microphone pre-amp, ADCs, automatic gain control, and encoder; it can produce a fully-formed audio file, including the appropriate header. This file is received by requesting the VS10XX to transmit the file over UART as it is recorded and encoded.
+
+Just like with playback, data is passed out of the VS10XX in a bucket-brigade fashion, by passing full buffers to the samplesReady callback passed into the constructor:
+
+```Squirrel
+function sendBuffer(buffer) {
+    //server.log("Recorded buffer, len "+buffer.len());
+    agent.send("push", buffer);
+}
+
+// ... later ... 
+
+audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, uart, requestBuffer, sendBuffer);
+```
+
+Before starting the recording, the desired recording and encoding parameters must be set. When the recording is started, the VS10XX goes through a soft reset to enter encoding mode. The recording and encoding parameters are loaded at this time.
+
+```Squirrel
+function record() {
+    audio.setSampleRate(8000);
+    audio.setRecordInputMic();
+    audio.setChLeft();
+    audio.setRecordFormatMP3();
+    audio.setRecordAGC(1, 64);
+    audio.setUartBaud(UARTBAUD);
+    audio.setUartTxEn(1);
+    // set bitrate / quality
+    audio.setRecordBitrate(64);
+    imp.wakeup(RECORD_TIME, function() {
+        server.log("Stopping Recording...");
+        audio.stopRecording(function() {
+            server.log("Recording Stopped");
+            agent.send("recording_done", 0);
+        });
+    }.bindenv(this));
+    server.log("Starting Recording...");
+    audio.startRecording();
+}
+```
+
+The stopRecording function is called with the required callback; after the imp requests that the VS10XX stop recording audio, the imp waits for all remaining data to be transmitted over the UART before calling the callback.
+
+The chunks of audio data are concatenated in agent memory and served when a request arrives at the agent:
+
+```
+res.header("Content-Type", "audio/mpeg")
+res.send(200, recorded_message);  
+```
+
