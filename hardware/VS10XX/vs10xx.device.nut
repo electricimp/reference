@@ -287,9 +287,9 @@ class VS10XX {
     
         // load the encoding patches in compressed format from 
         // http://www.vlsi.fi/en/support/software/vs10xxpatches.html
-        server.log("Loading Encoding Patch");
+        //server.log("Loading Encoding Patch");
         _loadPlugin(ENC_PATCH_COMP);
-        server.log("Done loading patch");
+        //server.log("Done loading patch");
     }
     
     function _loadPlugin(plugin) {
