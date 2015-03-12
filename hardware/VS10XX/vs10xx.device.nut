@@ -246,8 +246,6 @@ class VS10XX {
     queued_buffers          = []; // array of chunks sent from agent to be loaded and played
     rx_buffer               = null;
     playback_in_progress    = false;
-    recording               = true;
-    loading                 = false;
     dreq_cb_set             = false;
     endfillbytes_sent       = 0; 
     
@@ -283,7 +281,7 @@ class VS10XX {
         rx_buffer = blob(2);
         rx_buffer.seek('b');
         dreq.configure(DIGITAL_IN, _callDreqCallback.bindenv(this));
-        uart.configure(UART_BAUD, 8, PARITY_NONE, 1, NO_CTSRTS, _uartCb.bindenv(this));
+        uart.configure(UART_BAUD, 8, PARITY_NONE, 1, NO_CTSRTS | CALLBACK_WITH_FLAGS, _uartCb.bindenv(this));
     
         // load the encoding patches in compressed format from 
         // http://www.vlsi.fi/en/support/software/vs10xxpatches.html
@@ -493,13 +491,17 @@ class VS10XX {
         }
     }
     
-    function _uartCb() {
+    function _uartCb(flags) {
         rx_buffer.writeblob(uart.readblob());
         if (rx_buffer.tell() > RX_WATERMARK) {
+            // schedule the data ready callback to happen after we exit the UART callback 
+            // so we don't block on it
             buffer_ready_cb(rx_buffer);
             rx_buffer = blob(2);
             rx_buffer.seek(0,'b');
         }
+        // check flags
+        if (flags & 0x40) { server.error("UART Overrun"); }
     }
     
     function getMode() {
@@ -655,12 +657,17 @@ class VS10XX {
 
     function setRecordFormatMP3() {
         local val = _getReg(VS10XX_SCI_AICTRL3);
+        //server.log(format("setting VS10XX_SCI_AICTRL3 from 0x%04X to 0x%04X", val, (val & 0xFF0F) | 0x0060));
         // 0b0110 = MP3
         _setReg(VS10XX_SCI_AICTRL3, (val & 0xFF0F) | 0x0060);
     }
     
     function setRecordBitrate(rate_kbps) {
-        _setReg(VS10XX_SCI_WRAMADDR, (0xE000 | (rate_kbps & 0x01FF)));
+        // Bits 15:14 set VBR / CBR / ABR. Only VBR used here. Only applies to MP3 and Ogg Vorbis.
+        // Bits 13:12 set bitrate multiplier, which is fixed at 1000 here.
+        _setReg(VS10XX_SCI_WRAMADDR, (0x6000 | (rate_kbps & 0x01FF)));
+        //server.log(format("Writing 0x%04X to WRAMADDR",(0x6000 | (rate_kbps & 0x01FF))));
+        //server.log(format("Read back from WRAMADDR: 0x%04X",_getReg(VS10XX_SCI_WRAMADDR)));
     }
     
     function setUartBaud(baud) {
@@ -671,7 +678,7 @@ class VS10XX {
         // disable flow control (*shrug*)
         _writeRam(VS10XX_TX_PAUSE_GPIO_ADDR, 0);
         // configure the imp side of this mess
-        uart.configure(baud, 8, PARITY_NONE, 2, NO_CTSRTS, _uartCb.bindenv(this));
+        uart.configure(baud, 8, PARITY_NONE, 2, NO_CTSRTS | CALLBACK_WITH_FLAGS, _uartCb.bindenv(this));
     }
     
     function setUartTxEn(state) {
@@ -683,7 +690,6 @@ class VS10XX {
     }
     
     function startRecording() {
-        recording = true;
         local val = _getReg(VS10XX_SCI_MODE); 
         // set the Encoding and SW_Reset bits in the same transaction to activate codec mode
         _setReg(VS10XX_SCI_MODE, val | 0x1004);
@@ -692,7 +698,6 @@ class VS10XX {
     function stopRecording(cb) {
         // set SM_CANCEL bit
         _setRegBit(VS10XX_SCI_MODE, 3, 1);
-        recording = false;
         imp.wakeup(REC_STOP_TIMEOUT, function() {
             rx_buffer.writeblob(uart.readblob());
             buffer_ready_cb(rx_buffer);
