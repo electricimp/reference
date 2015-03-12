@@ -67,7 +67,11 @@ When the device has loaded all of the queued data and the data consumed callback
 
 ### Recording Audio
 
-To test recording and playback, just build and run this firmware. The device starts a recording 1 second after starting and will record for five seconds. The recording will be MP3 encoded and is automatically sent to the agent. 
+To test recording and playback, just build and run this firmware. The device starts a recording 1 second after starting and will record for five seconds. The recording will be A-law encoded (presented as a WAV file) and is automatically sent to the agent. 
+
+Note that currently, the imp cannot acheive high enough combined UART and WiFi throughput to receive higher sample rates, or other encoding types, while sending the data directly to the agent. It is expected that with larger a UART FIFO (coming soon), Ogg Vorbis will be an available option for tests like this that do not involve locally storing the file before sending it to the agent. 
+
+If the file is stored locally (on a Flash, for example), higher data rates and other encoding types may be possible with the existing code. The stored file can then be uploaded while recording is not taking place.
 
 ```Squirrel
 audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, uart, requestBuffer, sendBuffer);
@@ -82,7 +86,7 @@ To play the recorded audio, just open the agent URL in a web browser. The agent 
 To download the audio, send a request with CURL (or right-click the agent URL in the IDE and "Save Link As...")
 
 ```bash
-14:12:37-tom$ curl https://agent.electricimp.com/myagent > test.mp3
+14:12:37-tom$ curl https://agent.electricimp.com/myagent > test.wav
 ```
 
 The VS10XX includes a microphone pre-amp, ADCs, automatic gain control, and encoder; it can produce a fully-formed audio file, including the appropriate header. This file is received by requesting the VS10XX to transmit the file over UART as it is recorded and encoded.
@@ -91,7 +95,6 @@ Just like with playback, data is passed out of the VS10XX in a bucket-brigade fa
 
 ```Squirrel
 function sendBuffer(buffer) {
-    //server.log("Recorded buffer, len "+buffer.len());
     agent.send("push", buffer);
 }
 
@@ -100,23 +103,31 @@ function sendBuffer(buffer) {
 audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, uart, requestBuffer, sendBuffer);
 ```
 
+Because this example sends the data directly to the agent, throughput is critical; if the device blocks for a long time while trying to place the data in the send buffer, the UART will overrun while the VS10XX sends new audio data to the device. Therefore, the send buffer size on the device must be increased. Note that if your application does something locally with the data, like saving it to flash, this isn't as critical (though still recommended for upload later to acheive best throughput):
+
+```Squirrel
+// our callback passes data straight to the agent
+// if the TCP buffer is smaller than the buffer to be sent, agent.send will block
+// this will cause UART overruns. So we need to increase the send buffer size.
+imp.setsendbuffersize(SEND_BUFFER_SIZE);
+
+imp.wakeup(1.0, record);
+```
+
 Before starting the recording, the desired recording and encoding parameters must be set. When the recording is started, the VS10XX goes through a soft reset to enter encoding mode. The recording and encoding parameters are loaded at this time.
 
 ```Squirrel
 function record() {
-    audio.setSampleRate(8000);
+    // set up VS10XX recording settings
+    audio.setSampleRate(SAMPLERATE_HZ);
     audio.setRecordInputMic();
     audio.setChLeft();
-    audio.setRecordFormatMP3();
-    audio.setRecordAGC(1, 64);
+    audio.setRecordFormatALaw();
+    audio.setRecordAGC(1, MAX_GAIN);
     audio.setUartBaud(UARTBAUD);
     audio.setUartTxEn(1);
-    // set bitrate / quality
-    audio.setRecordBitrate(64);
     imp.wakeup(RECORD_TIME, function() {
-        server.log("Stopping Recording...");
         audio.stopRecording(function() {
-            server.log("Recording Stopped");
             agent.send("recording_done", 0);
         });
     }.bindenv(this));

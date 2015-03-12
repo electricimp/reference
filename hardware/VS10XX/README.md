@@ -64,6 +64,10 @@ The VS10XX includes a microphone pre-amp, ADCs, automatic gain control, and enco
 
 Using the UART to receive the data, recording with the VS10XX works very similarly to the operation of the imp's own built-in sampler. Recording parameters are configured, a callback set for full buffers of data, and then recording is stopped. The receive concludes with the last (partial) buffer of data that was being written when recording was stopped. A very wide range of baud rates is supported. 
 
+Note that currently, the imp cannot acheive high enough combined UART and WiFi throughput to receive higher sample rates, or other encoding types, while sending the data directly to the agent. It is expected that with larger a UART FIFO (coming soon), Ogg Vorbis will be an available option for tests like this that do not involve locally storing the file before sending it to the agent. 
+
+If the file is stored locally (on a Flash, for example), higher data rates and other encoding types may be possible with the existing code. The stored file can then be uploaded while recording is not taking place.
+
 Please see the examples section for more information on recording. 
 
 ### Methods
