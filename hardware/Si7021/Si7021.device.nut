@@ -18,6 +18,7 @@ class SI7021 {
     static RH_ADD       = -6;
     static TEMP_MULT    = 175.72/65536.0;
     static TEMP_ADD     = -46.85;
+    static TIMEOUT      = 200; // ms
     
     _i2c  = null;
     _addr  = null;
@@ -33,18 +34,23 @@ class SI7021 {
         _addr = addr;
     }
     
-    // read the humidity
     // Input: (none)
     // Return: relative humidity (float)
     function readRH() { 
         _i2c.write(_addr, READ_RH);
         local reading = _i2c.read(_addr, "", 2);
-        while (reading == null) {
+        local start = hardware.millis();
+        while (reading == null && (hardware.millis() - start < TIMEOUT)) {
             reading = _i2c.read(_addr, "", 2);
+        }
+        if (hardware.millis() - start >= TIMEOUT) {
+            throw "Timed out waiting for relative humidity response from SI7021";
         }
         local humidity = RH_MULT*((reading[0] << 8) + reading[1]) + RH_ADD;
         return humidity;
     }
+    
+    
     
     // read the temperature
     // Input: (none)
@@ -52,8 +58,12 @@ class SI7021 {
     function readTemp() { 
         _i2c.write(_addr, READ_TEMP);
         local reading = _i2c.read(_addr, "", 2);
-        while (reading == null) {
+        local start = hardware.millis();
+        while (reading == null && (hardware.millis() - start < TIMEOUT)) {
             reading = _i2c.read(_addr, "", 2);
+        }
+        if (hardware.millis() - start >= TIMEOUT) {
+            throw "Timed out waiting for temperature response from SI7021";
         }
         local temperature = TEMP_MULT*((reading[0] << 8) + reading[1]) + TEMP_ADD;
         return temperature;
@@ -66,6 +76,7 @@ class SI7021 {
     function readPrevTemp() {
         _i2c.write(_addr, PREV_TEMP);
         local reading = _i2c.read(_addr, "", 2);
+        if (!reading) { throw "I2C Error reading previous temperature from SI7021"; }
         local temperature = TEMP_MULT*((reading[0] << 8) + reading[1]) + TEMP_ADD;
         return temperature;
     }
