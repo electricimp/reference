@@ -3,7 +3,6 @@
 // Logarithmic Analog Current Output; drive into load resistor and buffer
 // Read with Analog Input
 class APDS9007 {
-    static WAIT_BEFORE_READ = 0; // set to non-zero value if using output filter cap
     RLOAD = null; // value of load resistor on ALS (device has current output)
     
     _als_pin            = null;
@@ -23,7 +22,6 @@ class APDS9007 {
     function read() {
         if (_als_en) {
             _als_en.write(1);
-            imp.sleep(WAIT_BEFORE_READ);
         }
         local Vpin = 0;
         local Vcc = 0;
