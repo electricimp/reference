@@ -12,11 +12,10 @@ This device uses two imp pins; one digital output (Trigger) and one digital inpu
 | HC-SR04 Pin | Connect To | Notes |
 |-------------|------------|-------|
 | VIN | 5V Supply | The imp is technically not 5V tolerant, but pins configured as Digital I/O can be used with 5V logic on some models. Not sure if you're safe? Use a [level translator!](https://www.sparkfun.com/products/12009) |
-| Trig | Any Imp Pin (DIGITAL_OUT) | Place 1kΩ Resistor in Series |
-| Echo | Any Imp Pin (DIGITAL_IN) | Place 10kΩ Resistor in Series |
+| Trig | Any Imp Pin (DIGITAL_OUT) | |
+| Echo | Any Imp Pin (DIGITAL_IN) | |
 
-See [this helpful diagram](http://propellerpowered.com/shop/?page_id=1789) on the Propellerpowered Blog.
-
+![Connecting an HC-SR04 to an Electric Imp Card](hc-sr04_bb.png "Connection Diagram")
 ## Usage
 The constructor takes two required arguments: trigger pin and echo pin. Both pins must be configured appropriately before passing to the constructor.
 

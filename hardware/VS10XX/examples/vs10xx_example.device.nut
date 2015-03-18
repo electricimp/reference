@@ -2,7 +2,26 @@
 // This file is licensed under the MIT License
 // http://opensource.org/licenses/MIT
 //
-// Description: Driver class for the VS10XX encoder/decoder IC
+// Description: Example using VS10XX with AudioDownloader Class
+
+/* GLOBALS AND CONSTS --------------------------------------------------------*/
+
+const SPICLK_LOW = 937.5;
+const SPICLK_HIGH = 3750;
+const UARTBAUD = 115200;
+const VOLUME = -70.0; //dB
+const RECORD_TIME = 30; //seconds
+const BITRATE_KBPS = 15; // recording sample rate in kilobits per second
+const SAMPLERATE_HZ = 8000;
+const MAX_GAIN = 64; // max gain for AGC in V/V
+const VS10XX_CLOCK_MULT = 5; // clock multiplier for VS10XX; can be set after init
+// VS10XX uses 4096-byte buffers internally and can run over
+// leave some headroom in the send buffer so agent.send never blocks
+const SEND_BUFFER_SIZE = 30000; 
+
+_hm <- hardware.micros.bindenv(hardware);
+
+/* FUNCTION AND CLASS DEFS ---------------------------------------------------*/
 
 class VS10XX {
     static VS10XX_READ          = 0x03;
@@ -713,3 +732,77 @@ class VS10XX {
         return true;
     }
 }
+
+function requestBuffer() {
+    agent.send("pull", 0);
+}
+
+function sendBuffer(buffer) {
+    agent.send("push", buffer);
+}
+
+function record() {
+    // set up VS10XX recording settings
+    audio.setSampleRate(SAMPLERATE_HZ);
+    audio.setRecordInputMic();
+    audio.setChLeft();
+    audio.setRecordFormatALaw();
+    //audio.setRecordFormatOgg();
+    audio.setRecordAGC(1, MAX_GAIN);
+    audio.setUartBaud(UARTBAUD);
+    audio.setUartTxEn(1);
+    // have to load bitrate *after* setting up UART
+    // bitrate lives in the reg we use to set RAM addr during r/w
+    // need to r/w RAM to configure UART; do that first
+    //audio.setRecordBitrate(BITRATE_KBPS);
+    imp.wakeup(RECORD_TIME, function() {
+        audio.stopRecording(function() {
+            agent.send("recording_done", 0);
+        });
+    }.bindenv(this));
+    server.log("Starting Recording...");
+    audio.startRecording();
+}
+
+/* AGENT CALLBACKS -----------------------------------------------------------*/
+
+// queue data from the agent in memory to be fed to the VS10XX
+agent.on("push", function(chunk) {
+    audio.queueData(chunk);
+});
+
+/* RUNTIME START -------------------------------------------------------------*/
+
+imp.enableblinkup(true);
+server.log("Running "+imp.getsoftwareversion());
+server.log("Memory Free: "+imp.getmemoryfree());
+
+spi     <- hardware.spi257;
+cs_l    <- hardware.pin6;
+dcs_l   <- hardware.pinC;
+rst_l   <- hardware.pinE;
+dreq_l  <- hardware.pinD;
+uart    <- hardware.uart1289;
+
+cs_l.configure(DIGITAL_OUT, 1);
+dcs_l.configure(DIGITAL_OUT, 1);
+rst_l.configure(DIGITAL_OUT, 1);
+dreq_l.configure(DIGITAL_IN);
+spi.configure(CLOCK_IDLE_LOW, SPICLK_LOW);
+
+audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, uart, requestBuffer, sendBuffer);
+server.log(format("VS10XX Clock Multiplier set to %d",audio.setClockMultiplier(VS10XX_CLOCK_MULT)));
+spi.configure(CLOCK_IDLE_LOW, SPICLK_HIGH);
+server.log(format("Imp SPI Clock set to %0.3f MHz", SPICLK_HIGH / 1000.0));
+server.log(format("VS10XX Chip ID: 0x%08X",audio.getChipID()));
+server.log(format("VS10XX Version: 0x%04X",audio.getVersion()));
+server.log(format("VS10XX Config1: 0x%04X",audio.getConfig1()));
+audio.setVolume(VOLUME);
+server.log(format("Volume set to %0.1f dB", VOLUME));
+
+// our callback passes data straight to the agent
+// if the TCP buffer is smaller than the buffer to be sent, agent.send will block
+// this will cause UART overruns. So we need to increase the send buffer size.
+imp.setsendbuffersize(SEND_BUFFER_SIZE);
+
+imp.wakeup(1.0, record);
