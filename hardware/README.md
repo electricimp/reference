@@ -44,7 +44,6 @@
 | [stm32](stm32) | STM32 UART Bootloader
 | [TCS3472](TCS3472) | Color / Ambient Light Sensor
 | [thermistor](thermistor) | Generic NTC Thermistor class
-| [TMP112](TMP112) | see TMP1x2
 | [TMP1x2](TMP1x2) | Temperature Sensor
 | [tone](tone) | Piezo speaker driver
 | [tsl2561](tsl2561) | Ambient Light Sensor
