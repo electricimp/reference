@@ -39,72 +39,72 @@ class TMP1x2 {
 	function init() {
 	}
 
-    // -------------------------------------------------------------------------
-    function _twosComp(value, mask) {
-        value = ~(value & mask) + 1;
-        return value & mask;
-    }
+	// -------------------------------------------------------------------------
+	function _twosComp(value, mask) {
+		value = ~(value & mask) + 1;
+		return value & mask;
+	}
 
 	// -------------------------------------------------------------------------
 	function i2cReset() {
 		_i2c.write(0x00,format("%c",RESET_VAL));
 	}
 
-    // -------------------------------------------------------------------------
-    function _getReg(reg) {
-        local val = _i2c.read(_addr, format("%c", reg), 2);
-        if (val != null) {
-            return (val[0] << 8) | (val[1]);
-        } else {
-            return null;
-        }
-    }
-    
-    // -------------------------------------------------------------------------
-    function _setReg(reg, val) {
-        _i2c.write(_addr, format("%c%c%c", reg, (val & 0xff00) >> 8, val & 0xff));   
-    }
-    
-    // -------------------------------------------------------------------------
-    function _setRegBit(reg, bit, state) {
-        local val = _getReg(reg);
-        if (state == 0) {
-            val = val & ~(0x01 << bit);
-        } else {
-            val = val | (0x01 << bit);
-        }
-        _setReg(reg, val);
-    }
+	// -------------------------------------------------------------------------
+	function _getReg(reg) {
+		local val = _i2c.read(_addr, format("%c", reg), 2);
+		if (val != null) {
+			return (val[0] << 8) | (val[1]);
+		} else {
+			return null;
+		}
+	}
+		
+	// -------------------------------------------------------------------------
+	function _setReg(reg, val) {
+		_i2c.write(_addr, format("%c%c%c", reg, (val & 0xff00) >> 8, val & 0xff));   
+	}
+		
+	// -------------------------------------------------------------------------
+	function _setRegBit(reg, bit, state) {
+		local val = _getReg(reg);
+		if (state == 0) {
+			val = val & ~(0x01 << bit);
+		} else {
+			val = val | (0x01 << bit);
+		}
+		_setReg(reg, val);
+	}
 
-    // -------------------------------------------------------------------------
-    function _getRegBit(reg, bit) {
-    	return (0x0001 << bit) & _getReg(reg);
-    }
+	// -------------------------------------------------------------------------
+	function _getRegBit(reg, bit) {
+		return (0x0001 << bit) & _getReg(reg);
+	}
 
-    // -------------------------------------------------------------------------
-    function _tempToRaw(temp) {
-    	local raw = ((temp * 1.0) / DEG_PER_COUNT).tointeger();
+	// -------------------------------------------------------------------------
+	function _tempToRaw(temp) {
+		local raw = ((temp * 1.0) / DEG_PER_COUNT).tointeger();
+	if (getExtMode()) {
+		if (raw < 0) { _twosComp(raw, 0x1FFF); }
+		raw = (raw & 0x1FFF) << 3;
+	} else {
+		if (raw < 0) { _twosComp(raw, 0x0FFF); }
+		raw = (raw & 0x0FFF) << 4;
+	}
+	return raw;
+	}
+
+	// -------------------------------------------------------------------------
+	function _rawToTemp(raw) {
 		if (getExtMode()) {
-			if (raw < 0) { _twosComp(raw, 0x1FFF); }
-			raw = (raw & 0x1FFF) << 3;
-		} else {
-			if (raw < 0) { _twosComp(raw, 0x0FFF); }
-			raw = (raw & 0x0FFF) << 4;
-		}
-		return raw;
-    }
-
-    // -------------------------------------------------------------------------
-    function _rawToTemp(raw) {
-    	if (getExtMode()) {
-			raw = (raw >> 3) & 0x1FFF;
-			if (raw & 0x1000) { raw = -1.0 * _twosComp(raw, 0x1FFF); }
-		} else {
-			raw = (raw >> 4) & 0x0FFF;
-			if (raw & 0x0800) { raw = -1.0 * _twosComp(raw, 0x0FFF); }
-		}
-		return raw.tofloat() * DEG_PER_COUNT;
-    }
+		raw = (raw >> 3) & 0x1FFF;
+		if (raw & 0x1000) { raw = -1.0 * _twosComp(raw, 0x1FFF); }
+	} else {
+		raw = (raw >> 4) & 0x0FFF;
+		if (raw & 0x0800) { raw = -1.0 * _twosComp(raw, 0x0FFF); }
+	}
+	return raw.tofloat() * DEG_PER_COUNT;
+	}
 
 	// -------------------------------------------------------------------------
 	// Device comes out of reset enabled by default
@@ -157,7 +157,7 @@ class TMP1x2 {
 	// -------------------------------------------------------------------------
 	// Set low threshold for Alert mode in degrees Celsius
 	function setLowThreshold(ths) {
-	    server.log(format("setting low threshold to 0x%04X", _tempToRaw(ths)));
+		server.log(format("setting low threshold to 0x%04X", _tempToRaw(ths)));
 		_setReg(T_LOW_REG, _tempToRaw(ths));
 	}
 
@@ -169,7 +169,7 @@ class TMP1x2 {
 	// -------------------------------------------------------------------------
 	// Set low threshold for Alert mode in degrees Celsius
 	function setHighThreshold(ths) {
-	    server.log(format("setting high threshold to 0x%04X", _tempToRaw(ths)));
+		server.log(format("setting high threshold to 0x%04X", _tempToRaw(ths)));
 		_setReg(T_HIGH_REG, _tempToRaw(ths));
 	}
 
@@ -185,7 +185,7 @@ class TMP1x2 {
 
 	// -------------------------------------------------------------------------
 	function _pollForConversion(cb = null) {
-	    if (cb) { _conversion_ready_cb = cb; }
+		if (cb) { _conversion_ready_cb = cb; }
 		if (getConvReady()) {
 			// success; cancel the timeout timer
 			if (_conversion_timeout_timer) { imp.cancelwakeup(_conversion_timeout_timer); }
@@ -210,12 +210,12 @@ class TMP1x2 {
 			startConversion();
 			if (cb) { // asynchronous path
 				// set a timeout callback
-			    _conversion_timeout_timer = imp.wakeup(CONVERSION_TIMEOUT, function() {
-				    // failure; cancel polling for a result and call the callback with error
-				    imp.cancelwakeup(_conversion_poll_timer);
-				    _conversion_ready_cb =  null;
-    				cb({"err": "TMP1x2 conversion timed out", "temp": null});
-			    });
+					_conversion_timeout_timer = imp.wakeup(CONVERSION_TIMEOUT, function() {
+						// failure; cancel polling for a result and call the callback with error
+						imp.cancelwakeup(_conversion_poll_timer);
+						_conversion_ready_cb =  null;
+						cb({"err": "TMP1x2 conversion timed out", "temp": null});
+					});
 				_pollForConversion(function() {
 					cb({"temp": _rawToTemp(_getReg(TEMP_REG))});
 				});
