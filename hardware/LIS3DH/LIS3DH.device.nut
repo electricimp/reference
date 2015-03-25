@@ -91,29 +91,40 @@ class LIS3DH {
     // Set Accelerometer Data Rate in Hz
     function setDatarate(rate) {
         local val = _getReg(CTRL_REG1) & 0x0F;
+        local rate = 0;
         if (rate == 0) {
             // 0b0000 -> power-down mode
             // we've already ANDed-out the top 4 bits; just write back
         } else if (rate <= 1) {
             val = val | 0x10; 
+            rate = 1;
         } else if (rate <= 10) {
             val = val | 0x20;
+            rate = 10;
         } else if (rate <= 25) {
             val = val | 0x30;
+            rate = 25;
         } else if (rate <= 50) {
             val = val | 0x40;
+            rate = 50;
         } else if (rate <= 100) {
             val = val | 0x50;
+            rate = 100;
         } else if (rate <= 200) {
             val = val | 0x60;
+            rate = 200;
         } else if (rate <= 400) {
             val = val | 0x70;
+            rate = 400;
         } else if (rate <= 1600) {
             val = val | 0x80;
+            rate = 1600;
         } else if (rate <= 5000) {
             val = val | 0x90;
+            rate = 5000;
         } 
         _setReg(CTRL_REG1, val);
+        return rate;
     }    
     // -------------------------------------------------------------------------
     // Enable/disable the accelerometer
@@ -130,7 +141,7 @@ class LIS3DH {
     }
 
     // -------------------------------------------------------------------------
-    function setLowPower(state = 1) {
+    function setLowPower(state) {
         _setRegBit(CTRL_REG1, 3, state);
     }
     
@@ -247,6 +258,17 @@ class LIS3DH {
         _setRegBit(CTRL_REG3, 6, state);
         // enable inertial interrupts on all axes
         _setReg(INT1_CFG, _getReg(INT1_CFG) | 0x3F);
+    }
+    
+    // -------------------------------------------------------------------------
+    // Enable Free Fall Detection on Int1
+    // use setInertInt1En(0) to disable
+    function setFreeFallDetInt1() {
+        _setRegBit(CTRL_REG3, 6, state);
+        // enable interrupt on X low, Y low, Z low
+        _setReg(INT1_CFG, 0x95);
+        // set threshold; this can be overridden
+        setInt1Ths(0.35);
     }
     
     // -------------------------------------------------------------------------
