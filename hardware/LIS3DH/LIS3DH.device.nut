@@ -342,5 +342,5 @@ class LIS3DH {
     // -------------------------------------------------------------------------
     function snglclickDet() {
         return (0x10 & _getReg(CLICK_SRC)); 
-    }    
+    }         
 }
