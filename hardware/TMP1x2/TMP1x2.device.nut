@@ -11,8 +11,6 @@ class TMP1x2 {
 	static T_LOW_REG		= 0x02;
 	static T_HIGH_REG		= 0x03;
 
-	// Send this value on general-call address (0x00) to reset device
-	static RESET_VAL 		= 0x06;
 	// ADC resolution in degrees C
 	static DEG_PER_COUNT 	= 0.0625;
 
@@ -31,23 +29,12 @@ class TMP1x2 {
 	constructor(i2c, addr = 0x90) {
 		_addr	= addr;
 		_i2c 	= i2c;
-
-		init();
-	}
-	
-	// -------------------------------------------------------------------------
-	function init() {
 	}
 
 	// -------------------------------------------------------------------------
 	function _twosComp(value, mask) {
 		value = ~(value & mask) + 1;
 		return value & mask;
-	}
-
-	// -------------------------------------------------------------------------
-	function i2cReset() {
-		_i2c.write(0x00,format("%c",RESET_VAL));
 	}
 
 	// -------------------------------------------------------------------------
@@ -84,7 +71,7 @@ class TMP1x2 {
 	// -------------------------------------------------------------------------
 	function _tempToRaw(temp) {
 		local raw = ((temp * 1.0) / DEG_PER_COUNT).tointeger();
-	if (getExtMode()) {
+	if (_getExtMode()) {
 		if (raw < 0) { _twosComp(raw, 0x1FFF); }
 		raw = (raw & 0x1FFF) << 3;
 	} else {
@@ -96,7 +83,7 @@ class TMP1x2 {
 
 	// -------------------------------------------------------------------------
 	function _rawToTemp(raw) {
-		if (getExtMode()) {
+		if (_getExtMode()) {
 		raw = (raw >> 3) & 0x1FFF;
 		if (raw & 0x1000) { raw = -1.0 * _twosComp(raw, 0x1FFF); }
 	} else {
@@ -113,7 +100,7 @@ class TMP1x2 {
 	}
 
 	// -------------------------------------------------------------------------
-	function getShutdown() {
+	function _getShutdown() {
 		return _getRegBit(CONF_REG, 8);
 	}
 	
@@ -145,12 +132,12 @@ class TMP1x2 {
 	}
 
 	// -------------------------------------------------------------------------
-	function getExtMode() {
+	function _getExtMode() {
 		return _getRegBit(CONF_REG, 4);
 	}
 
 	// -------------------------------------------------------------------------
-	function getConvReady() {
+	function _getConvReady() {
 		if (_getRegBit(CONF_REG, 0)) return false;
 		return true;
 	}
@@ -179,14 +166,14 @@ class TMP1x2 {
 	}
 
 	// -------------------------------------------------------------------------
-	function startConversion() {
+	function _startConversion() {
 		_setRegBit(CONF_REG, 15, 1);
 	}
 
 	// -------------------------------------------------------------------------
 	function _pollForConversion(cb = null) {
 		if (cb) { _conversion_ready_cb = cb; }
-		if (getConvReady()) {
+		if (_getConvReady()) {
 			// success; cancel the timeout timer
 			if (_conversion_timeout_timer) { imp.cancelwakeup(_conversion_timeout_timer); }
 			local conversion_ready_cb = _conversion_ready_cb;
@@ -206,8 +193,8 @@ class TMP1x2 {
 	// 
 	// executes synchronously if callback is not provided
 	function getTemp(cb = null) {
-		if (getShutdown()) {
-			startConversion();
+		if (_getShutdown()) {
+			_startConversion();
 			if (cb) { // asynchronous path
 				// set a timeout callback
 					_conversion_timeout_timer = imp.wakeup(CONVERSION_TIMEOUT, function() {
@@ -221,7 +208,7 @@ class TMP1x2 {
 				});
 			} else { // synchronous path
 				local start = hardware.millis();
-				while (!getConvReady() && (hardware.millis() - start) < (CONVERSION_TIMEOUT * 1000));
+				while (!_getConvReady() && (hardware.millis() - start) < (CONVERSION_TIMEOUT * 1000));
 				if ((hardware.millis() - start) >= (CONVERSION_TIMEOUT * 1000)) {
 					return {"err": "TMP1x2 conversion timed out", "temp": null}
 				} 

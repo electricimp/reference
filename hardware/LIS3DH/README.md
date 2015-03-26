@@ -19,7 +19,8 @@ The class’ constructor takes one required parameter (a configured imp I&sup2;C
 
 
 ```Squirrel
-i2c <- hardware.i2c89.configure(CLOCK_SPEED_400_KHZ);
+i2c <- hardware.i2c89;
+i2c.configure(CLOCK_SPEED_400_KHZ);
 accel <- LIS3DH(i2c, 0x32); // using a non-default I2C address (SA0 pulled high)
 ```
 
