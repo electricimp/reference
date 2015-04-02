@@ -2,7 +2,7 @@
 
 Author: [Tom Byrne](https://github.com/ersatzavian/)
 
-The [TMP1x2 family](http://www.ti.com.cn/cn/lit/ds/symlink/tmp102.pdf) are simple, low-cost digital temperature sensors with an interrupt pin. The TMP1x2 interfaces with the imp over I&sup;2C.
+The [TMP1x2 family](http://www.ti.com.cn/cn/lit/ds/symlink/tmp102.pdf) are simple, low-cost digital temperature sensors with an interrupt pin. The TMP1x2 interfaces with the imp over I&sup2;C.
 
 ## Class Usage
 
