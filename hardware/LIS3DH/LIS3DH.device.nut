@@ -3,6 +3,7 @@
 // http://opensource.org/licenses/MIT
 // LIS3DH Ultra-low Power 3-axis Accelerometer
 // http://www.st.com/web/catalog/sense_power/FM89/SC444/PF250725
+
 class LIS3DH {
     
     static TEMP_CFG_REG  = 0x1F;
@@ -82,6 +83,19 @@ class LIS3DH {
         _setReg(reg, val);
     }
     
+    function dumpRegs() {
+        server.log(format("CTRL_REG1 0x%02X", _getReg(CTRL_REG1)));
+        server.log(format("CTRL_REG2 0x%02X", _getReg(CTRL_REG2)));
+        server.log(format("CTRL_REG3 0x%02X", _getReg(CTRL_REG3)));
+        server.log(format("CTRL_REG4 0x%02X", _getReg(CTRL_REG4)));
+        server.log(format("CTRL_REG5 0x%02X", _getReg(CTRL_REG5)));
+        server.log(format("CTRL_REG6 0x%02X", _getReg(CTRL_REG6)));
+        server.log(format("INT1_DURATION 0x%02X", _getReg(INT1_DURATION)));
+        server.log(format("INT1_CFG 0x%02X", _getReg(INT1_CFG)));
+        server.log(format("INT1_SRC 0x%02X", _getReg(INT1_SRC)));
+        server.log(format("INT1_THS 0x%02X", _getReg(INT1_THS)));
+    }
+    
     // -------------------------------------------------------------------------
     function getDeviceId() {
         return _getReg(WHO_AM_I);
@@ -91,7 +105,6 @@ class LIS3DH {
     // Set Accelerometer Data Rate in Hz
     function setDatarate(rate) {
         local val = _getReg(CTRL_REG1) & 0x0F;
-        local rate = 0;
         if (rate == 0) {
             // 0b0000 -> power-down mode
             // we've already ANDed-out the top 4 bits; just write back
@@ -256,8 +269,8 @@ class LIS3DH {
     // Enable/Disable Inertial Interrupt Generator 1 on Interrupt Pin
     function setInertInt1En(state) {
         _setRegBit(CTRL_REG3, 6, state);
-        // enable inertial interrupts on all axes
-        _setReg(INT1_CFG, _getReg(INT1_CFG) | 0x3F);
+        // enable inertial interrupts on X High, Y High, Z high
+        _setReg(INT1_CFG, _getReg(INT1_CFG) | 0x2A);
     }
     
     // -------------------------------------------------------------------------
@@ -300,6 +313,7 @@ class LIS3DH {
         if (ths < 0) { ths = ths * -1.0; }
         ths = (((ths * 1.0) / (RANGE_ACCEL * 1.0)) * 127).tointeger();
         if (ths > 0xffff) { ths = 0xffff; }
+                server.log(format("0x%02X", ths));
         _setReg(INT1_THS, (ths & 0x7f));
     }
     

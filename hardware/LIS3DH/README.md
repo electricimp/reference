@@ -98,7 +98,7 @@ accel.setFreeFallDetInt1();
 ## All Class Methods
 
 #### getDeviceId()
-Returns the 1-byte device ID of the sensor (from the WHO_AM_Iregister).
+Returns the 1-byte device ID of the sensor (from the WHO_AM_I register).
 
 ```Squirrel
 server.log(format("Device ID: 0x%02X", accel.getDeviceId()));
