@@ -4,6 +4,7 @@
 // LIS3DH Ultra-low Power 3-axis Accelerometer
 // http://www.st.com/web/catalog/sense_power/FM89/SC444/PF250725
 
+
 class LIS3DH {
     
     static TEMP_CFG_REG  = 0x1F;
@@ -313,7 +314,6 @@ class LIS3DH {
         if (ths < 0) { ths = ths * -1.0; }
         ths = (((ths * 1.0) / (RANGE_ACCEL * 1.0)) * 127).tointeger();
         if (ths > 0xffff) { ths = 0xffff; }
-                server.log(format("0x%02X", ths));
         _setReg(INT1_THS, (ths & 0x7f));
     }
     
