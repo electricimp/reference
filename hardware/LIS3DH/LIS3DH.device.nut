@@ -307,7 +307,7 @@ class LIS3DH {
     // set the event duration over threshold before throwing interrupt
     // duration steps and max values depend on selected ODR
     function setInt1Duration(numsamples) {
-        _setReg(INT1_DURATION, duration & 0x7f);
+        _setReg(INT1_DURATION, numsamples & 0x7f);
     }
     
     // -------------------------------------------------------------------------

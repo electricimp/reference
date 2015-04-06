@@ -130,7 +130,7 @@ Set the measurement range of the sensor in *G*s. The default measurement range i
 // set sensor range to +/- 6 G
 local range = accel.setRange(6);
 server.log(format("Range set to +/- %d G", range));
-``
+```
 
 #### getRange()
 Returns the currently-set measurement range of the sensor in G. 
