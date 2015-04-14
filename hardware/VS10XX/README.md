@@ -64,9 +64,9 @@ The VS10XX includes a microphone pre-amp, ADCs, automatic gain control, and enco
 
 Using the UART to receive the data, recording with the VS10XX works very similarly to the operation of the imp's own built-in sampler. Recording parameters are configured, a callback set for full buffers of data, and then recording is stopped. The receive concludes with the last (partial) buffer of data that was being written when recording was stopped. A very wide range of baud rates is supported. 
 
-Note that currently, the imp cannot acheive high enough combined UART and WiFi throughput to receive higher sample rates, or other encoding types, while sending the data directly to the agent. It is expected that with larger a UART FIFO (coming soon), Ogg Vorbis will be an available option for tests like this that do not involve locally storing the file before sending it to the agent. 
+Resizeable UART Receive FIFOs are required in order to record Ogg Vorbis, as well as other formats at higher data rates. When recording with Ogg Vorbis, the approximately constant-size file header will be generated immediately after beginning recording. This will overrun the imp's UART FIFO at the standard size of 80 bytes regardless of selected Ogg Vorbis bitrate. Resizing the UART FIFO also improves throughput for other data formats. Using the highest possible sample rate and bitrate will exceed the imp's possible WiFi throughput and require that the data be stored on the device side (e.g. in an external flash memory) and uploaded when the recording is complete.
 
-If the file is stored locally (on a Flash, for example), higher data rates and other encoding types may be possible with the existing code. The stored file can then be uploaded while recording is not taking place.
+Resizeable UART Receive FIFOs are available in impOS release 32 and later.
 
 Please see the examples section for more information on recording. 
 
