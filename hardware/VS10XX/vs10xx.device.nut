@@ -241,7 +241,7 @@ class VS10XX {
     static ENDFILLBYTE_PADDING  = 2048;
     static BYTES_PER_DREQ       = 32; // min space available when DREQ asserted
     static INITIAL_BYTES        = 2048; // number of bytes to load when starting playback (FIFO size 2048)
-    static RX_WATERMARK    = 4096;
+    static RX_WATERMARK         = 4096;
     
     queued_buffers          = []; // array of chunks sent from agent to be loaded and played
     rx_buffer               = null;
@@ -494,14 +494,13 @@ class VS10XX {
     function _uartCb(flags) {
         rx_buffer.writeblob(uart.readblob());
         if (rx_buffer.tell() > RX_WATERMARK) {
-            // schedule the data ready callback to happen after we exit the UART callback 
-            // so we don't block on it
+            // pull the data out of the fifo and send it
             buffer_ready_cb(rx_buffer);
             rx_buffer = blob(2);
             rx_buffer.seek(0,'b');
         }
         // check flags
-        if (flags & 0x40) { server.error("UART Overrun"); }
+        //if (flags & OVERRUN_ERROR) { server.error("UART Overrun"); }
     }
     
     function getMode() {
