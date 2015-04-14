@@ -67,13 +67,18 @@ When the device has loaded all of the queued data and the data consumed callback
 
 ### Recording Audio
 
-To test recording and playback, just build and run this firmware. The device starts a recording 1 second after starting and will record for five seconds. The recording will be A-law encoded (presented as a WAV file) and is automatically sent to the agent. 
+To test recording and playback, just build and run this firmware. The device starts a recording 1 second after starting and will record for thirty seconds. The recording will be Ogg Vorbis encoded and is automatically sent to the agent. 
 
-Note that currently, the imp cannot acheive high enough combined UART and WiFi throughput to receive higher sample rates, or other encoding types, while sending the data directly to the agent. It is expected that with larger a UART FIFO (coming soon), Ogg Vorbis will be an available option for tests like this that do not involve locally storing the file before sending it to the agent. 
-
-If the file is stored locally (on a Flash, for example), higher data rates and other encoding types may be possible with the existing code. The stored file can then be uploaded while recording is not taking place.
+This example resizes the UART RX FIFO and therefore requires impOS version 32 or later. The impOS version is printed in the logs when the device begins running this code. 
 
 ```Squirrel
+cs_l.configure(DIGITAL_OUT, 1);
+dcs_l.configure(DIGITAL_OUT, 1);
+rst_l.configure(DIGITAL_OUT, 1);
+dreq_l.configure(DIGITAL_IN);
+spi.configure(CLOCK_IDLE_LOW, SPICLK_LOW);
+uart.setrxfifosize(UART_RX_FIFO_SIZE);
+
 audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, uart, requestBuffer, sendBuffer);
 
 // ... later...
@@ -86,7 +91,7 @@ To play the recorded audio, just open the agent URL in a web browser. The agent 
 To download the audio, send a request with CURL (or right-click the agent URL in the IDE and "Save Link As...")
 
 ```bash
-14:12:37-tom$ curl https://agent.electricimp.com/myagent > test.wav
+14:12:37-tom$ curl https://agent.electricimp.com/myagent > test.ogg
 ```
 
 The VS10XX includes a microphone pre-amp, ADCs, automatic gain control, and encoder; it can produce a fully-formed audio file, including the appropriate header. This file is received by requesting the VS10XX to transmit the file over UART as it is recorded and encoded.
@@ -122,10 +127,13 @@ function record() {
     audio.setSampleRate(SAMPLERATE_HZ);
     audio.setRecordInputMic();
     audio.setChLeft();
-    audio.setRecordFormatALaw();
+    audio.setRecordFormatOgg();
     audio.setRecordAGC(1, MAX_GAIN);
     audio.setUartBaud(UARTBAUD);
     audio.setUartTxEn(1);
+    // have to load bitrate *after* setting up UART
+    // bitrate lives in the reg we use to set RAM addr during r/w
+    // need to r/w RAM to configure UART; do that first
     imp.wakeup(RECORD_TIME, function() {
         audio.stopRecording(function() {
             agent.send("recording_done", 0);
@@ -141,7 +149,7 @@ The stopRecording function is called with the required callback; after the imp r
 The chunks of audio data are concatenated in agent memory and served when a request arrives at the agent:
 
 ```
-res.header("Content-Type", "audio/mpeg")
+res.header("Content-Type", "audio/ogg")
 res.send(200, recorded_message);  
 ```
 
