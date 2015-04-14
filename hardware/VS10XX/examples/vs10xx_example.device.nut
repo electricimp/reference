@@ -18,6 +18,10 @@ const VS10XX_CLOCK_MULT = 5; // clock multiplier for VS10XX; can be set after in
 // VS10XX uses 4096-byte buffers internally and can run over
 // leave some headroom in the send buffer so agent.send never blocks
 const SEND_BUFFER_SIZE = 30000; 
+// The OGG Vorbis Header will be generated immediately after starting recording
+// and will be sent immediately over the UART. This will overrun the UART FIFO 
+// at its default size of 80 bytes. 
+const UART_RX_FIFO_SIZE = 1000; // bytes
 
 _hm <- hardware.micros.bindenv(hardware);
 
@@ -745,8 +749,7 @@ function record() {
     audio.setSampleRate(SAMPLERATE_HZ);
     audio.setRecordInputMic();
     audio.setChLeft();
-    audio.setRecordFormatALaw();
-    //audio.setRecordFormatOgg();
+    audio.setRecordFormatOgg();
     audio.setRecordAGC(1, MAX_GAIN);
     audio.setUartBaud(UARTBAUD);
     audio.setUartTxEn(1);
@@ -788,6 +791,7 @@ dcs_l.configure(DIGITAL_OUT, 1);
 rst_l.configure(DIGITAL_OUT, 1);
 dreq_l.configure(DIGITAL_IN);
 spi.configure(CLOCK_IDLE_LOW, SPICLK_LOW);
+uart.setrxfifosize(UART_RX_FIFO_SIZE);
 
 audio <- VS10XX(spi, cs_l, dcs_l, dreq_l, rst_l, uart, requestBuffer, sendBuffer);
 server.log(format("VS10XX Clock Multiplier set to %d",audio.setClockMultiplier(VS10XX_CLOCK_MULT)));
