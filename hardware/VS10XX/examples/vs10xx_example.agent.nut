@@ -158,8 +158,7 @@ http.onrequest(function(req, res) {
         res.send(200, "OK\n");
         downloader.start();
     } else {
-        res.header("Content-Type", "audio/x-wav");
-        //res.header("Content-Type", "audio/ogg");
+        res.header("Content-Type", "audio/ogg");
         res.send(200, recorded_message);   
     }
 });
