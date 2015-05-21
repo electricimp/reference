@@ -32,7 +32,7 @@
 | [pulseSensor](pulseSensor) | Analog Pulse Sensor
 | [rs485](rs485) | UART wrapper class for RS-485
 | [sa56004x](sa56004x) | Temperature Sensor
-| [serializer](serializer) | Serializes Squirrel objects / generates CRCs  
+| [serializer](../utility/serializer) | Serializes Squirrel objects / generates CRCs  
 | [SerLCD](SerLCD) | PIC16LF88 Serial Display Driver
 | [Sharp_LSxxxBx](Sharp_LSxxxBx) | Sharp Memory LCD
 | [SHT10](SHT10) | Temperature / Humidity Sensor
