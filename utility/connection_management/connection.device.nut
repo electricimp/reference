@@ -14,6 +14,7 @@
 class Connection {
 
     static CONNECTION_TIMEOUT = 30;
+    static SEND_TIMEOUT = 10;
     static CHECK_TIMEOUT = 5;
     static MAX_LOGS = 100;
     
@@ -29,7 +30,7 @@ class Connection {
     constructor(_do_connect = true) {
         callbacks = {};
         logs = [];
-        server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, CONNECTION_TIMEOUT);
+        server.setsendtimeoutpolicy(RETURN_ON_ERROR, WAIT_TIL_SENT, SEND_TIMEOUT);
         connected = server.isconnected();
         imp.wakeup(CHECK_TIMEOUT, _check.bindenv(this));
         
