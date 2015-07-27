@@ -2,26 +2,25 @@
 // This file is licensed under the MIT License
 // http://opensource.org/licenses/MIT
 
-// Prowl Constants
-const API_KEY = "";
-const PROWL_APP = "Application title";
-
 class Prowl {
+
+    static version = [1,0,0];
+
     _apiKey = null;
     _appName = null;
     _baseUrl = "https://api.prowlapp.com/publicapi";
-    
+
     constructor(apiKey, appName) {
         this._apiKey = apiKey;
         this._appName = appName;
     }
-    
+
     function push(event, description, cb = null) {
-        local data = { 
-            "apikey" : _apiKey, 
-            "url" : http.agenturl(), 
-            "application" : _appName, 
-            "event" : event, 
+        local data = {
+            "apikey" : _apiKey,
+            "url" : http.agenturl(),
+            "application" : _appName,
+            "event" : event,
             "description": description
         };
         local request = http.post(_baseUrl + "/add?" + http.urlencode(data), {}, "");
@@ -37,10 +36,3 @@ class Prowl {
         }
     }
 }
-
-prowl <- Prowl(API_KEY, PROWL_APP)
-// Example
-prowl.push("Oh Snaps!", "This is a message from your Electric Imp", function(resp) {
-    server.log(format("%i - %s", resp.statuscode, resp.body));
-});
-
