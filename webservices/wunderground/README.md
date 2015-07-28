@@ -1,18 +1,26 @@
 # Wunderground
 [Weather Underground](http://wunderground.com) is a commercial weather service that provides real-time weather information via the Internet.
 
-# Usage
+**To add this library to your project, add #require "Wunderground.class.nut:1.0.0"` to the top of your device code.**
 
-## API Key
-Create your API Key [here](http://www.wunderground.com/weather/api/).
+You can view the library’s source code on [GitHub](https://github.com/electricimp/Wunderground/tree/v1.0.0).
 
-## Instantiate a Wunderground object
 
-Wunderground objects are bound to a specific location. To create a Wunderground object, use the following code:
+##Class Usage
 
-	const WUNDERGROUND_KEY = "YOUR_API_KEY";
-	wunderground <- Wunderground(WUNDERGROUND_KEY, "locationString");
-	
+###### Constructor
+The class’ constructor takes two required parameters (your Wunderground API Key and a default location):
+
+
+| Parameter     | Type         | Default | Description |
+| ------------- | ------------ | ------- | ----------- |
+| apiKey        | string       | N/A     | A Wunderground API Key |
+| location      | string       | N/A     | A default location|
+
+###### apiKey
+Create your Wunderground API Key [here](http://www.wunderground.com/weather/api/).
+
+###### Location Formatting
 The location string can take the form of any of the following:
 
 - **Country/City:** "Australia/Sydney"
@@ -21,20 +29,74 @@ The location string can take the form of any of the following:
 - **Zipcode:** "94022"
 - **Airport code**: "SFO"
 
-## Current Conditions
 
-To get the current conditions, make a call to the getConditions function:
+######Example Code:
 
-	wunderground.getConditions(function(data) {
-		local weatherData = data.current_observations;
-		server.log("Temp: " + temp_c);
-	}
-	
-## Sunrise/Sunset Times
+	const WUNDERGROUND_KEY = "YOUR_API_KEY";
+	const LOCATION = "CA/Los_Altos";
 
-We've also exposed functionality to get Sunrise / Sunset times for a particular location. This can come in handy for projects with timer based lights, etc. To get sunrise/sunset times, make a call to getSunriseSunset. The sunrise/sunset times are encoded as objects that looks like the following:  ```{ "hour" : "14", "minute": "23" }``` 
+	wunderground <- Wunderground(WUNDERGROUND_KEY, LOCATION);
 
-	wunderground.getSunriseSunset(function(data) {
-	    server.log(format("Sunrise at %s:%s", data.sunrise.hour, data.sunrise.minute));
-    	server.log(format("Sunset at %s:%s", data.sunset.hour, data.sunset.minute));
+
+## Class Methods
+
+### getLocation()
+The *getLocation* method returns the location used for all Wunderground requests.
+
+### setLocation(*newLocation*)
+The *setLocation* method updates the location used for all Wunderground requests with the new location that is passed in.  The newLocation parameter must use the location formatting found in the **Class Usage** section above.
+
+### getConditions(*cb*)
+
+The *getConditions* method sends an asyncronus request to Wunderground's current conditions endpoint.  The callback is passed three parameters (error, Wunderground's response, data).  For a full list of conditions included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/conditions&MR=1).  For quick reference data includes :
+
+- **current temp** (temp_c, temp_f)
+- **"feels like" temp** (feelslike_c, feelslike_f)
+- **weather condition** (weather)
+- **humidity** (relative_humidity)
+- **wind** (wind_string)
+- **pressure** (pressure_mb, pressure_in)
+- **time/date** (observation_epoch, local_epoch)
+- **location** (display_location.full)
+
+
+######Example Code:
+	wunderground.getConditions(function(err, resp, data) {
+		if(err) {
+			server.log(err);
+		} else {
+			server.log("Temp: " + data.temp_c + "°C");
+		}
 	});
+
+
+### getForecast(*cb, [extended]*)
+
+The *getForecast* method sends an asyncronus request to Wunderground. If the optional *extended* parameter is set to true, a request for a 10 day forecast will be sent, otherwise the default behavior is (extended set to false) to request a 3 day forcast.  The callback is passed three parameters (error, Wunderground's response, data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/forecast&MR=1).  For quick reference data includes :
+
+- **Text Forecast Array** (txt_forecast.forecastday)
+	- **Time of Day Discription** (txt_forecast.forecastday[arrIndex].title)
+	- **Text Forecast** (txt_forecast.forecastday[arrIndex].fcttext, txt_forecast.forecastday[arrIndex].fcttext_metric)
+- **Forecast Array** (simpleforecast.forecastday)
+	- **Time/Date** (simpleforecast.forecastday[arrIndex].date.epoch)
+	- **Temp High** (simpleforecast.forecastday[arrIndex].high.fahrenheit, simpleforecast.forecastday[arrIndex].high.celsius)
+	- **Temp Low** (simpleforecast.forecastday[arrIndex].low.fahrenheit, simpleforecast.forecastday[arrIndex].low.celsius)
+	- **Weather Conditions** (simpleforecast.forecastday[arrIndex].conditions)
+
+
+######Example Code:
+	wunderground.getForecast(function(err, resp, data) {
+		if(err) {
+			server.log(err);
+		} else {
+			local forecastArray = data.txt_forecast.forecastday;
+			foreach(forecast in forecastArray) {
+				server.log(format("%s. %s", forecast.title, forecast.fcttext));
+			}
+		}
+	}, true);
+
+
+## License
+
+Rocky is licensed under [MIT License](./LICENSE).
