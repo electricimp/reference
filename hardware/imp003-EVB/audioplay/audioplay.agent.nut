@@ -74,26 +74,49 @@ function processWAV(wav) {
     server.log("Total filesize: " + filesize);
 
     // Check required headers for a PCM WAV
-    if (chunkID != "RIFF" || format != "WAVE" || buf.readstring(4) != "fmt "
-            || buf.readn('i') != 16 || buf.readn('w') != 1) {
+    // "RIFF" (0x 52 49 46 46)
+    // file size w/o RIFF header (4 bytes)
+    // "WAVE" (0x 57 41 56 45)
+    // "fmt " (0x 66 6d 74 d0)
+    if (chunkID != "RIFF" || format != "WAVE" || buf.readstring(4) != "fmt ") {
+        server.error("Incompatible headers");
         return false;
     }
+    // get size of wave type format header
+    // size of wave type format (2 byte type format + 4 byte sample rate + 
+    //     4 byte bytes per sec + 2 byte block alignment + 2 byte bits per sample);
+    //     wave type format size typically 16
+    local fmtSize = buf.readn('i');
+    server.log("format chunk size: "+fmtSize);
+    local compressionType = buf.readn('w');
+    
     // Check for mono/stereo
     params.numChannels = buf.readn('w');
     if (params.numChannels != 1 && params.numChannels != 2) {
-        server.error("Invalid number of channels");
+        server.error("Invalid number of channels ("+params.numChannels+")");
         return false;
     }
+    server.log("Channels: "+params.numChannels);
     // Check sample rate, skip ByteRate and BlockAlign
     params.sampleRate = buf.readn('i');
+    server.log("Sample Rate: "+params.sampleRate);
     buf.seek(buf.tell() + 6);
     // Check # bits per sample
-    if (buf.readn('w') != 16) {
-        server.error("Invalid number of bits per sample.");
+    local bitsPerSample = buf.readn('w');
+    server.log("Bits Per Sample: "+bitsPerSample);
+    if (bitsPerSample != 16) {
+        server.error("Invalid number of bits per sample: "+bitsPerSample+" (must be 16)");
         return false;
     }
     // Examine data section
-    if (buf.readstring(4) != "data") { return false; }
+    // we assume RIFF header is 20 bytes, read format header size from RIFF header
+    // we also assume data header comes next (RIFF spec doesn't guarantee chunk order)
+    buf.seek(20 + fmtSize);
+    server.log(buf.tell());
+    if (buf.readstring(4) != "data") { 
+        server.error("Failed to find data header");
+        return false; 
+    }
     params.wavSize = buf.readn('i');
     server.log("Audio portion size: " + params.wavSize);
     if (buf.len() - buf.tell() < params.wavSize) {
@@ -152,6 +175,7 @@ function fetchAudio(url, res, headRes) {
 // We allow uploading WAV data directly (/play)
 // as well as submitting a URL via curl (/url) or a web form (/formUrl) from which to fetch the WAV
 http.onrequest(function(req, res) {
+    server.log("Got request");
     // Make sure we know the flash size of the device
     if (!maxFileSize || !chunkSize) {
         device.send("getConfig", 1);
@@ -164,9 +188,10 @@ http.onrequest(function(req, res) {
             res.send(500, "Invalid WAV file!\n");
         }
     // Fetch the WAV from a given URL
-    } else if (req.path == "/url") {
+    } else if (req.path == "/formUrl") {
         // Arbitrary limit on the URL length to keep things friendly
         if (req.body.len() > 2048) {
+            server.log("Fetch URL too long\n");
             res.send(500, "Fetch URL too long\n");
             return;
         }
@@ -182,6 +207,7 @@ http.onrequest(function(req, res) {
             res.send(500, "Error retrieving WAV file");
         }
     } else {
+        server.log("No path, responding with webpage");
         // Serve the page with the URL-submission form
         res.send(200, format(html, http.agenturl()));
     }

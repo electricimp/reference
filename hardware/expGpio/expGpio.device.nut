@@ -61,7 +61,7 @@ class expGPIO {
         if (typeof callback_initialstate == "function") {
             _expander.setIrqMask(_gpio,1);
             _expander.setIrqEdges(_gpio,1,1);
-            _expander.setCallback(_gpio, callback_initialstate.bindenv(this));
+            _expander.setCallback(_gpio, callback_initialstate);
         } else {
             _expander.setIrqMask(_gpio,0);
             _expander.setIrqEdges(_gpio,0,0);
