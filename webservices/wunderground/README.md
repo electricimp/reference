@@ -47,8 +47,7 @@ The *getLocation* method returns the location used for all Wunderground requests
 The *setLocation* method updates the location used for all Wunderground requests with the new location that is passed in.  The newLocation parameter must use the location formatting found in the **Class Usage** section above.
 
 ### getConditions(*cb*)
-
-The *getConditions* method sends an asyncronus request to Wunderground's current conditions endpoint.  The callback is passed three parameters (error, Wunderground's response, data).  For a full list of conditions included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/conditions&MR=1).  For quick reference data includes :
+The *getConditions* method sends an asyncronus request to Wunderground's current conditions endpoint.  The callback is passed three parameters (error, Wunderground's response, Wunderground's current conditions data).  For a full list of conditions included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/conditions&MR=1).  For quick reference data includes :
 
 - **current temp** (temp_c, temp_f)
 - **"feels like" temp** (feelslike_c, feelslike_f)
@@ -71,8 +70,7 @@ The *getConditions* method sends an asyncronus request to Wunderground's current
 
 
 ### getForecast(*cb, [extended]*)
-
-The *getForecast* method sends an asyncronus request to Wunderground. If the optional *extended* parameter is set to true, a request for a 10 day forecast will be sent, otherwise the default behavior is (extended set to false) to request a 3 day forcast.  The callback is passed three parameters (error, Wunderground's response, data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/forecast&MR=1).  For quick reference data includes :
+The *getForecast* method sends an asyncronus request to Wunderground. If the optional *extended* parameter is set to true, a request for a 10 day forecast will be sent, otherwise the default behavior is (extended set to false) to request a 3 day forcast.  The callback is passed three parameters (error, Wunderground's response, Wunderground's forecast data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/forecast&MR=1).  For quick reference data includes :
 
 - **Text Forecast Array** (txt_forecast.forecastday)
 	- **Time of Day Discription** (txt_forecast.forecastday[arrIndex].title)
@@ -95,6 +93,71 @@ The *getForecast* method sends an asyncronus request to Wunderground. If the opt
 			}
 		}
 	}, true);
+
+
+### getHourly(*cb, [extended]*)
+The *getHourly* method sends an asyncronus request to Wunderground. If the optional *extended* parameter is set to true, a request for a 10 day hourly forecast will be sent, otherwise the default behavior is (extended set to false) to request a 1 day hourly forcast.  The callback is passed three parameters (error, Wunderground's response, Wunderground's hourly data).  For a full list of fields included in the response table see [Wunderground's documentation](http://http://www.wunderground.com/weather/api/d/docs?d=data/hourly).  For quick reference data includes :
+
+- **TBD** (tbd)
+
+######Example Code:
+	tbd
+
+### getYesterday(*cb*)
+The *getYesterday* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/yesterday).  For quick reference data includes :
+
+- **TBD** (tbd)
+
+######Example Code:
+	tbd
+
+### getHistory(*cb, date*)
+The *getHistory* method sends an asyncronus request to Wunderground for the date that is passed in. The date needs to be formated YYYYMMDD.  The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/history).  For quick reference data includes :
+
+- **TBD** (tbd)
+
+######Example Code:
+	tbd
+
+### getAstronomy(*cb*)
+The *getAstronomy* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/astronomy).  For quick reference data includes :
+
+- **TBD** (tbd)
+
+######Example Code:
+	tbd
+
+### getAlmanac(*cb*)
+The *getAlmanac* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/almanac).  For quick reference data includes :
+
+- **TBD** (tbd)
+
+######Example Code:
+	tbd
+
+### getGeoLookup(*cb*)
+The *getGeoLookup* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/geolookup).  For quick reference data includes :
+
+- **TBD** (tbd)
+
+######Example Code:
+	tbd
+
+### getCurrentHurricane(*cb*)
+The *getCurrentHurricane* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/currenthurricane).  For quick reference data includes :
+
+- **TBD** (tbd)
+
+######Example Code:
+	tbd
+
+### getTide(*cb*)
+The *getTide* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/tide).  For quick reference data includes :
+
+- **TBD** (tbd)
+
+######Example Code:
+	tbd
 
 
 ## License
