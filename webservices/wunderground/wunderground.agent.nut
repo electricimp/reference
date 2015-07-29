@@ -32,149 +32,84 @@ class Wunderground {
         _location = newLocation;
     }
 
-    // response object contains - current temp, weather condition, humidity, wind, 'feels like' temp, barametric pressure
+    // gets current weather conditions
     function getConditions(cb) {
         local request = http.get(_buildUrl("conditions"), {});
-
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data.current_observation);
-            }
-        }.bindenv(this));
+        _sendRequest(request, cb, "current_observation");
     }
 
+    // gets a 3 day (extended = false) or 10 day (extended = true) weather forecast
     function getForecast(cb, extended = false) {
         local endPoint = "forecast";
-        if(extended) {
-            endPoint = "forecast10day";
-        }
+        if(extended) { endPoint = "forecast10day"; }
         local request = http.get(_buildUrl(endPoint), {});
-
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data.forecast);
-            }
-        }.bindenv(this));
+        _sendRequest(request, cb, "forecast");
     }
 
+    // gets and hourly forecast (1 day if extended = false, 10 day if exteded = true)
     function getHourly(cb, extended = false) {
         local endPoint = "hourly";
-        if(extended) {
-            endPoint = "hourly10day";
-        }
+        if(extended) { endPoint = "hourly10day"; }
         local request = http.get(_buildUrl(endPoint), {});
-
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data.hourly_forecast);
-            }
-        }.bindenv(this));
+        _sendRequest(request, cb, "hourly_forecast");
     }
 
+    // gets weather data for yesterday
     function getYesterday(cb) {
         local request = http.get(_buildUrl("yesterday"), {});
-
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data.history);
-            }
-        }.bindenv(this));
+        _sendRequest(request, cb, "history");
     }
 
-    // Date format YYYYMMDD
+    // gets weatehr data for specified date (Date format YYYYMMDD)
     function getHistory(cb, date) {
         local request = http.get(_buildUrl("history_" + date), {});
-
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data.history);
-            }
-        }.bindenv(this));
+        _sendRequest(request, cb, "history");
     }
 
+    // gets moon, sunset, and sunrise data
     function getAstronomy(cb) {
         local request = http.get(_buildUrl("astronomy"), {});
-
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data.moon_phase);
-            }
-        }.bindenv(this));
+        _sendRequest(request, cb, "moon_phase");
     }
 
+    // gets normal and record high and low temperature data
     function getAlmanac(cb) {
         local request = http.get(_buildUrl("almanac"), {});
-
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data.almanac);
-            }
-        }.bindenv(this));
+        _sendRequest(request, cb, "almanac");
     }
 
+    // gets nearby weather station locations
     function getGeoLookup(cb) {
         local request = http.get(_buildUrl("geolookup"), {});
-
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data.location);
-            }
-        }.bindenv(this));
+        _sendRequest(request, cb, "location");
     }
 
+    // gets information about current hurricanes and tropical storms
     function getCurrentHurricane(cb) {
         local request = http.get(format("%s/%s/currenthurricane/view.json", _baseUrl, _apiKey), {});
-
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data.currenthurricane);
-            }
-        }.bindenv(this));
+        _sendRequest(request, cb, "currenthurricane");
     }
 
+    // gets tidal information
     function getTide(cb) {
         local request = http.get(_buildUrl("tide"), {});
+        _sendRequest(request, cb, "tide");
+    }
 
+    ////////////////// Private Functions - Do Not Call ///////////////////
+    function _buildUrl(method) {
+        return format("%s/%s/%s/q/%s.json", _baseUrl, _apiKey, method, _location);
+    }
+
+    function _sendRequest(request, cb, dataKey) {
         request.sendasync(function(resp) {
             local data = http.jsondecode(resp.body);
             if (resp.statuscode != 200) {
                 cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
             } else {
-                cb(null, resp, data.tide);
+                cb(null, resp, data[dataKey]);
             }
         }.bindenv(this));
-    }
-
-    ////////////////// Private Function - Do Not Call ///////////////////
-    function _buildUrl(method) {
-        return format("%s/%s/%s/q/%s.json", _baseUrl, _apiKey, method, _location);
     }
 
 }
