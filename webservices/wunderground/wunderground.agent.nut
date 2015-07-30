@@ -56,7 +56,7 @@ class Wunderground {
     // gets and hourly forecast (1 day)
     function getHourly(cb) {
         local endPoint = "hourly";
-        if(extended) { endPoint = "hourly10day"; }
+
         local request = http.get(_buildUrl(endPoint), {});
         _sendRequest(request, cb, "hourly_forecast");
     }
