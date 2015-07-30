@@ -1,3 +1,4 @@
+// see http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
 class IRreceiver {
     
     static NEC_START_TIME_HIGH_US 	= 9000.0;
@@ -8,7 +9,7 @@ class IRreceiver {
 	
 	static NEC_DECODE_MARGIN_US     = 200.0;
 	
-	static RX_TIMEOUT_US        = 15000.0;
+	static RX_TIMEOUT_US        = 50000.0;
 	
 	_rxPin = null;
 	_rxCallback = null;
@@ -89,16 +90,14 @@ class IRreceiver {
 	}
 	
 	function decodeNec(packet_blob) {
-	    // swap so we can read the packet out as a single integer
-	    packet_blob.swap4();
-	    packet_blob.swap2();
-	    local raw = packet_blob.readn('i');
+	    packet_blob.seek(0);
 	    local decoded = {};
 	    
-	    decoded.targetAddr      <- ((raw & 0xFF000000) >> 24) & 0xFF;
-	    decoded.invTargetAddr   <- ((raw & 0x00FF0000) >> 16) & 0xFF;
-	    decoded.cmd             <- ((raw & 0x0000FF00) >> 8) & 0xFF;
-	    decoded.invCmd          <- (raw & 0x000000FF);
+	    decoded.targetAddr      <- packet_blob.readn('b');
+	    decoded.invTargetAddr   <- packet_blob.readn('b');
+	    decoded.cmd             <- packet_blob.readn('b');
+	    decoded.invCmd          <- packet_blob.readn('b');
+	    decoded.raw <- (decoded.targetAddr << 24) + (decoded.invTargetAddr << 16) + (decoded.cmd << 8) + decoded.invCmd;
 	    
 	    if (decoded.targetAddr != (~decoded.invTargetAddr & 0xFF)) {
 	        decoded.error <- "Addr / Inv Addr Mismatch";
@@ -113,14 +112,14 @@ class IRreceiver {
 	}
 	
 	function decodeExtendedNec(packet_blob) {
-	    // swap so we can read the packet out as a single integer
-	    packet_blob.swap4();
-	    packet_blob.swap2();
-	    local raw = packet_blob.readn('i');
+	    packet_blob.seek(0);
 	    local decoded = {};
-	    decoded.targetAddr      <- ((raw & 0xFFFF0000) >> 16) & 0xFFFF;
-	    decoded.cmd             <- ((raw & 0x0000FF00) >> 8) & 0xFF;
-	    decoded.invCmd          <- (raw & 0x000000FF);
+	    
+	    decoded.targetAddr      <- (packet_blob.readn('b') << 8) | packet_blob.readn('b');
+	    decoded.cmd             <- packet_blob.readn('b');
+	    decoded.invCmd          <- packet_blob.readn('b');
+	    decoded.raw <- (decoded.targetAddr << 16) + (decoded.cmd << 8) + decoded.invCmd;
+
 	    if (decoded.cmd != (~decoded.invCmd & 0xFF)) {
             decoded.error <- "Cmd / Inv Cmd Mismatch";
 	    }
