@@ -92,13 +92,13 @@ class Wunderground {
     }
 
     // gets information about current hurricanes and tropical storms
-    function getCurrentHurricane(cb) {
+    function getCurrentHurricanes(cb) {
         local request = http.get(format("%s/%s/currenthurricane/view.json", _baseUrl, _apiKey), {});
         _sendRequest(request, cb, "currenthurricane");
     }
 
     // gets tidal information
-    function getTide(cb) {
+    function getTides(cb) {
         local request = http.get(_buildUrl("tide"), {});
         _sendRequest(request, cb, "tide");
     }
