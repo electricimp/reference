@@ -108,7 +108,15 @@ The *getHourly* method sends an asyncronus request to Wunderground. If the optio
 
 
 ######Example Code:
-	tbd
+	wunderground.getHourly(function(err, resp, data) {
+		if(err) {
+       		server.log(err);
+       	} else {
+       		foreach(item in data) {
+           		server.log(format("%s %s°C", item.condition, item.temp.metric));
+       		}
+       	}
+	});
 
 ### getYesterday(*cb*)
 The *getYesterday* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/yesterday).  For quick reference historical data includes :
@@ -123,7 +131,15 @@ The *getYesterday* method sends an asyncronus request to Wunderground. The callb
 	- **Time/Date** (observations.[observationsArrayIndex].date.pretty)
 
 ######Example Code:
-	tbd
+	wunderground.getYesterday(function(err, resp, data) {
+    	if(err) {
+        	server.log(err);
+    	} else {
+        	foreach(item in data.observations) {
+            	server.log(format("%s %s°C on %s", item.conds, item.tempm, item.date.pretty));
+        	}
+    	}
+	});
 
 ### getHistory(*cb, date*)
 The *getHistory* method sends an asyncronus request to Wunderground for the date that is passed in. The date needs to be formated YYYYMMDD.  The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/history).  For quick reference historical data includes :
@@ -146,7 +162,15 @@ The *getHistory* method sends an asyncronus request to Wunderground for the date
 	- **Time/Date** (dailysummary[0].date.pretty)
 
 ######Example Code:
-	tbd
+    wunderground.getHistory(function(err, resp, data) {
+        if(err) {
+           server.log(err);
+        } else {
+           foreach(item in data.observations) {
+              server.log(format("%s %s°C on %s", item.conds, item.tempm, item.date.pretty));
+           }
+        }
+    }, 20150704);
 
 ### getAstronomy(*cb*)
 The *getAstronomy* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's moon phase data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/astronomy).  For quick reference moon phase data includes :
@@ -159,7 +183,14 @@ The *getAstronomy* method sends an asyncronus request to Wunderground. The callb
 
 
 ######Example Code:
-	tbd
+    wunderground.getAstronomy(function(err, resp, data) {
+        if(err) {
+            server.log(err);
+        } else {
+            server.log(format("Sunrise is at %s:%s", data.sunrise.hour, data.sunrise.minute));
+            server.log(format("Sunset is at %s:%s", data.sunset.hour, data.sunset.minute));
+        }
+    });
 
 ### getAlmanac(*cb*)
 The *getAlmanac* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's almanac data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/almanac).  For quick reference almanac data includes :
@@ -175,30 +206,46 @@ The *getAlmanac* method sends an asyncronus request to Wunderground. The callbac
 	- **Year** (temp_low.recordyear)
 
 ######Example Code:
-	tbd
+    wunderground.getAlmanac(function(err, resp, data) {
+        if(err) {
+            server.log(err);
+        } else {
+            server.log(format("High Temperature Record is %s°C set in %s", data.temp_high.record.C, data.temp_high.recordyear));
+            server.log(format("Low Temperature Record is %s°C set in %s", data.temp_low.record.C, data.temp_low.recordyear));
+        }
+    });
 
 ### getGeoLookup(*cb*)
 The *getGeoLookup* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's location data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/geolookup).  For quick reference location data includes :
 
 - **Location Info** (city, state, country_name, zip, lat, lon)
-- **Nearby Airport Weather Stations Array** (airport.station)
-	- **City** (airport.station[arrIndex].city)
-	- **State** (airport.station[arrIndex].state)
-	- **Country** (airport.station[arrIndex].country)
-	- **Airport Code** (airport.station[arrIndex].icao)
-	- **Latitude** (airport.station[arrIndex].lat)
-	- **Longitude** (airport.station[arrIndex].lon)
-- **Nearby Personal Weather Stations Array** (pws.station)
-	- **Neighborhood** (airport.station[arrIndex].neighborhood)
-	- **City** (pws.station[arrIndex].city)
-	- **State** (pws.station[arrIndex].state)
-	- **Country** (pws.station[arrIndex].country)
-	- **ID** (pws.station[arrIndex].id)
-	- **Distance** (pws.station[arrIndex].distance_mi, pws.station[arrIndex].distance_km)
+- **Nearby Airport Weather Stations Array** (nearby_weather_stations.airport.station)
+	- **City** (nearby_weather_stations.airport.station[arrIndex].city)
+	- **State** (nearby_weather_stations.airport.station[arrIndex].state)
+	- **Country** (nearby_weather_stations.airport.station[arrIndex].country)
+	- **Airport Code** (nearby_weather_stations.airport.station[arrIndex].icao)
+	- **Latitude** (nearby_weather_stations.airport.station[arrIndex].lat)
+	- **Longitude** (nearby_weather_stations.airport.station[arrIndex].lon)
+- **Nearby Personal Weather Stations Array** (nearby_weather_stations.pws.station)
+	- **Neighborhood** (nearby_weather_stations.pws.station[arrIndex].neighborhood)
+	- **City** (nearby_weather_stations.pws.station[arrIndex].city)
+	- **State** (nearby_weather_stations.pws.station[arrIndex].state)
+	- **Country** (nearby_weather_stations.pws.station[arrIndex].country)
+	- **ID** (nearby_weather_stations.pws.station[arrIndex].id)
+	- **Distance** (nearby_weather_stations.pws.station[arrIndex].distance_mi, pws.station[arrIndex].distance_km)
 
 
 ######Example Code:
-	tbd
+    wunderground.getGeoLookup(function(err, resp, data) {
+        if(err) {
+            server.log(err);
+        } else {
+            server.log(format("Nearby Airport Weather Stations for %s, %s are:", data.city, data.state));
+            foreach(airport in data.nearby_weather_stations.airport.station) {
+                server.log(format("%s in %s, %s", airport.icao, airport.city, airport.state));
+            }
+        }
+    });
 
 ### getCurrentHurricane(*cb*)
 The *getCurrentHurricane* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's current hurricane data array).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/currenthurricane).  For quick reference current hurricane data array includes :
@@ -257,21 +304,27 @@ The *getTide* method sends an asyncronus request to Wunderground. The callback i
 	- **Longitude** (tideInfo[infoIndex].lon)
 - **Tide Summary Array** (tideSummary)
 	- **Time/Date** (tideSummary[summaryIndex].date.epoch)
-	- **Hight** (tideSummary[summaryIndex].data.height)
+	- **Height** (tideSummary[summaryIndex].data.height)
 	- **Type** (tideSummary[summaryIndex].data.type)
 - **Tide Summary Stats Array** (tideSummaryStats)
 	- **Max Height** (tideSummaryStats[statsIndex].maxheight)
 	- **Min Height** (tideSummaryStats[statsIndex].minheight)
 
 ######Example Code:
-	tbd
+    wunderground.getTide(function(err, resp, d) {
+        if(err) {
+            server.log(err);
+        } else {
+            foreach(item in d.tideInfo) {
+                server.log(format("Tide Summary for %s:", item.tideSite));
+            }
+            foreach(summary in d.tideSummary) {
+                server.log(format("Tide type: %s, Tide height: %s", summary.data.type , summary.data.height));
+            }
+        }
+    });
 
 
 ## License
 
-Rocky is licensed under [MIT License](./LICENSE).
-
-
-
-
-
+Wunderground is licensed under [MIT License](./LICENSE).

@@ -60,7 +60,7 @@ class Wunderground {
         _sendRequest(request, cb, "history");
     }
 
-    // gets weatehr data for specified date (Date format YYYYMMDD)
+    // gets weather data for specified date (Date format YYYYMMDD)
     function getHistory(cb, date) {
         local request = http.get(_buildUrl("history_" + date), {});
         _sendRequest(request, cb, "history");
@@ -72,7 +72,7 @@ class Wunderground {
         _sendRequest(request, cb, "moon_phase");
     }
 
-    // gets normal and record high and low temperature data
+    // gets normal and record temperature data
     function getAlmanac(cb) {
         local request = http.get(_buildUrl("almanac"), {});
         _sendRequest(request, cb, "almanac");
