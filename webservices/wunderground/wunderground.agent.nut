@@ -1,11 +1,13 @@
-// Weather Underground Forecast Agent
-// Copyright (C) 2014 Electric Imp, inc.
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
 
 class Wunderground {
 
     static version = [1,0,0];
 
-    static RESP_ERR = "Error fetching data";
+    static RESP_ERR = "Error fetching data.";
+    static MULTIPLE_LOCATION_ERR = "Specified location returned multiple results.";
 
     _apiKey = null;
     _baseUrl = "http://api.wunderground.com/api";
@@ -21,7 +23,7 @@ class Wunderground {
      //  Airport code ("SFO")
     constructor(apiKey, location) {
         this._apiKey = apiKey;
-        this._location = location;
+        setLocation(location);
     }
 
     function getLocation() {
@@ -29,7 +31,8 @@ class Wunderground {
     }
 
     function setLocation(newLocation) {
-        _location = newLocation;
+        // .tostring to handle zip codes, etc passed as numbers
+        _location = newLocation.tostring();
     }
 
     // gets current weather conditions
@@ -46,8 +49,12 @@ class Wunderground {
         _sendRequest(request, cb, "forecast");
     }
 
-    // gets and hourly forecast (1 day if extended = false, 10 day if exteded = true)
-    function getHourly(cb, extended = false) {
+    function getExtendedForecast(cb) {
+        getForecast(cb, true);
+    }
+
+    // gets and hourly forecast (1 day)
+    function getHourly(cb) {
         local endPoint = "hourly";
         if(extended) { endPoint = "hourly10day"; }
         local request = http.get(_buildUrl(endPoint), {});
@@ -61,7 +68,7 @@ class Wunderground {
     }
 
     // gets weather data for specified date (Date format YYYYMMDD)
-    function getHistory(cb, date) {
+    function getHistory(date, cb) {
         local request = http.get(_buildUrl("history_" + date), {});
         _sendRequest(request, cb, "history");
     }
@@ -102,14 +109,41 @@ class Wunderground {
     }
 
     function _sendRequest(request, cb, dataKey) {
-        request.sendasync(function(resp) {
-            local data = http.jsondecode(resp.body);
-            if (resp.statuscode != 200) {
-                cb(format("%s: %i", RESP_ERR, resp.statuscode), resp, data);
-            } else {
-                cb(null, resp, data[dataKey]);
-            }
-        }.bindenv(this));
+        request.sendasync(_responseHandlerFactory(cb, dataKey));
     }
 
+    function _responseHandlerFactory(cb, dataKey) {
+        return function(resp) {
+            local data = {};
+
+            try {
+                data = http.jsondecode(resp.body);
+            } catch (ex) {
+                // If there was an error decoding the data
+                cb(ex, resp, null);
+                return;
+            }
+
+            // If we got a non-200 response (request failed)
+            if (resp.statuscode != 200) {
+                cb(format("%s: %i", Wunderground.RESP_ERR, resp.statuscode), resp, null);
+                return;
+            }
+
+            // If an error was returned
+            if ("response" in data && "error" in data.response) {
+                cb(data.response.error.type, resp, null);
+                return;
+            }
+
+            // If we got back a list of locations instead of the desired results
+            if ("response" in data && "results" in data.response && data.response.results.len() > 1) {
+                cb(Wunderground.MULTIPLE_LOCATION_ERR, resp, null);
+                return;
+            }
+
+            // If everything worked as expected
+            cb(null, resp, data[dataKey]);
+        };
+    }
 }
