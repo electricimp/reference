@@ -30,11 +30,11 @@ The location string can take the form of any of the following:
 - **Airport code**: "SFO"
 
 
-######Example Code:
+######Example Code: 	
 
 	const WUNDERGROUND_KEY = "YOUR_API_KEY_HERE";
 	const LOCATION = "CA/Los_Altos";
-
+	
 	wunderground <- Wunderground(WUNDERGROUND_KEY, LOCATION);
 
 
@@ -44,20 +44,28 @@ The location string can take the form of any of the following:
 The *getLocation* method returns the location used for all Wunderground requests.
 
 ### setLocation(*newLocation*)
-The *setLocation* method updates the location used for all Wunderground requests with the new location that is passed in.  The newLocation parameter must use the location formatting found in the **Class Usage** section above.
+The *setLocation* method updates the location used for all Wunderground requests with the new location that is passed in.  The newLocation parameter must use the location formatting found in the **Class Usage** section above. 
 
 ### getConditions(*cb*)
-The *getConditions* method sends an asyncronus request to Wunderground's current conditions endpoint.  The callback is passed three parameters (error, Wunderground's response, Wunderground's current conditions data).  For a full list of conditions included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/conditions&MR=1).  For quick reference current conditions data includes :
+The *getConditions* method sends an asyncronus request to Wunderground's current conditions endpoint.  The callback is passed three parameters (error, Wunderground's response, Wunderground's current conditions data).  For a full list of conditions included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/conditions&MR=1).  
 
-- **Current Temperature** (temp_c, temp_f)
-- **"Feels Like" Temperature** (feelslike_c, feelslike_f)
-- **Weather Condition** (weather)
-- **Humidity** (relative_humidity)
-- **Wind** (wind_string)
-- **Pressure** (pressure_mb, pressure_in)
-- **Time/Date** (observation_epoch, local_epoch)
-- **Location** (display_location.full)
+######For quick reference current conditions data includes (partial list) : 
 
+```
+	{ "temp_c" : 19.1,
+	  "temp_f" : 66.3,
+	  "feelslike_c" : "19.1", 
+	  "feelslike_f" : "66.3",
+	  "weather" : "Partly Cloudy",
+	  "relative_humidity" : "65%", 
+	  "wind_string" : "From the NNW at 22.0 MPH Gusting to 28.0 MPH",
+	  "pressure_mb" : "1013",
+	  "pressure_in" : "29.93",
+	  "observation_epoch" : "1340843233",
+	  "local_epoch" : "1340843234",
+	  "display_location" :  { "full": "San Francisco, CA" }
+	}
+```
 
 ######Example Code:
 	wunderground.getConditions(function(err, resp, data) {
@@ -67,20 +75,31 @@ The *getConditions* method sends an asyncronus request to Wunderground's current
 			server.log("Temp: " + data.temp_c + "°C");
 		}
 	});
+	
 
+### getForecast(*cb*), getExtendedForecast(*cb*) 
+The *getForecast* and *getExtendedForecast* methods send an asyncronus request to Wunderground. Forecast requests a 3 day forecast, and Extended Forecast requests a 10 day forecast.  The callback is passed three parameters (error, Wunderground's response, Wunderground's forecast data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/forecast&MR=1).  
 
-### getForecast(*cb, [extended]*)
-The *getForecast* method sends an asyncronus request to Wunderground. If the optional *extended* parameter is set to true, a request for a 10 day forecast will be sent, otherwise the default behavior is (extended set to false) to request a 3 day forcast.  The callback is passed three parameters (error, Wunderground's response, Wunderground's forecast data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/forecast&MR=1).  For quick reference forecast data includes :
+######For quick reference forecast data includes (partial list) : 
 
-- **Text Forecast Array** (txt_forecast.forecastday)
-	- **Time of Day Discription** (txt_forecast.forecastday[arrIndex].title)
-	- **Text Forecast** (txt_forecast.forecastday[arrIndex].fcttext, txt_forecast.forecastday[arrIndex].fcttext_metric)
-- **Forecast Array** (simpleforecast.forecastday)
-	- **Time/Date** (simpleforecast.forecastday[arrIndex].date.epoch)
-	- **Temp High** (simpleforecast.forecastday[arrIndex].high.fahrenheit, simpleforecast.forecastday[arrIndex].high.celsius)
-	- **Temp Low** (simpleforecast.forecastday[arrIndex].low.fahrenheit, simpleforecast.forecastday[arrIndex].low.celsius)
-	- **Weather Conditions** (simpleforecast.forecastday[arrIndex].conditions)
-
+```
+	{ "txt_forecast" : { "forecastday" : [ { "title" : "Tuesday",
+											  "fcttext" : "Partly cloudy in the morning, then clear. High of 68F. Breezy. Winds from the West at 10 to 25 mph.",
+											  "fcttext_metric" : "Partly cloudy in the morning, then clear. High of 20C. Windy. Winds from the West at 20 to 35 km/h." 
+											}, 
+										    { ... } ] 
+						},
+	  "simpleforecast" : { "forecastday" : [ { "date" : { "epoch" : "1340776800" },
+	  											"high" : { "fahrenheit" : "68",
+	  											           "celsius" : "20" },
+	  											"low" : { "fahrenheit" : "50",
+	  											          "celsius" : "10" },
+	  											"conditions" : "Partly Cloudy" 
+	  										  }, 
+	  										  { ... } ] 
+	  					  }
+	}
+```
 
 ######Example Code:
 	wunderground.getForecast(function(err, resp, data) {
@@ -92,20 +111,29 @@ The *getForecast* method sends an asyncronus request to Wunderground. If the opt
 				server.log(format("%s. %s", forecast.title, forecast.fcttext));
 			}
 		}
-	}, true);
+	});
+		
 
+### getHourly(*cb*)
+The *getHourly* method sends an asyncronus request to Wunderground. If the optional *extended* parameter is set to true, a request for a 10 day hourly forecast will be sent, otherwise the default behavior is (extended set to false) to request a 1 day hourly forcast.  The callback is passed three parameters (error, Wunderground's response, Wunderground's hourly data array).  For a full list of fields included in the response table see [Wunderground's documentation](http://http://www.wunderground.com/weather/api/d/docs?d=data/hourly).  
 
-### getHourly(*cb, [extended]*)
-The *getHourly* method sends an asyncronus request to Wunderground. If the optional *extended* parameter is set to true, a request for a 10 day hourly forecast will be sent, otherwise the default behavior is (extended set to false) to request a 1 day hourly forcast.  The callback is passed three parameters (error, Wunderground's response, Wunderground's hourly data array).  For a full list of fields included in the response table see [Wunderground's documentation](http://http://www.wunderground.com/weather/api/d/docs?d=data/hourly).  For quick reference the hourly data array includes :
+######For quick reference the hourly data array includes (partial list) : 
 
-- **Temperature** ([dataArrayIndex].temp.english, [dataArrayIndex].temp.metric)
-- **"Feels Like" Temperature** ([dataArrayIndex].feelslike.english, [dataArrayIndex].feelslike.metric)
-- **Weather Condition** ([dataArrayIndex].condition)
-- **Humidity** ([dataArrayIndex].humidity)
-- **Wind Direction** ([dataArrayIndex].wdir.dir)
-- **Wind Speed** ([dataArrayIndex].wspd.english, [dataArrayIndex].wspd.metric)
-- **Time/Date** ([dataArrayIndex].FCTTIME.epoch)
-
+```
+	[ { "temp" : { "english" : "66", 
+					"metric" : "19" },
+		"feelslike" : { "english" : "66", 
+					 	"metric" : "19" },
+		"condition" : "Clear",
+		"humidity" : "65", 
+		"wdir" : { "dir" : "West" },
+		"wspd" : { "english" : "5", 
+					"metric" : "8" },
+		"FCTTIME" : { "epoch" : "1341338400" } 
+	  }, 
+	  { ... }
+	]
+```
 
 ######Example Code:
 	wunderground.getHourly(function(err, resp, data) {
@@ -119,16 +147,26 @@ The *getHourly* method sends an asyncronus request to Wunderground. If the optio
 	});
 
 ### getYesterday(*cb*)
-The *getYesterday* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/yesterday).  For quick reference historical data includes :
+The *getYesterday* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/yesterday).  
 
-- **Observations Array** (observations)
-	- **Temperature** (observations.[observationsArrayIndex].tempi, observations.[observationsArrayIndex].tempm)
-	- **Weather Condition** (observations.[observationsArrayIndex].conds)
-	- **Humidity** (observations.[observationsArrayIndex].hum)
-	- **Pressure** (observations.[observationsArrayIndex].pressurei, observations.[observationsArrayIndex].pressurem)
-	- **Wind Direction** ([observations.[observationsArrayIndex].wdire)
-	- **Wind Speed** (observations.[observationsArrayIndex].wspdi, observations.[observationsArrayIndex].wspdm)
-	- **Time/Date** (observations.[observationsArrayIndex].date.pretty)
+######For quick reference historical data includes (partial list) : 
+
+```
+	{ "observations" : [ { "tempi" : "59.0",
+						    "tempm" : "15.0", 
+						    "conds" : "Overcast", 
+						    "hum" : "81", 
+						    "pressurei" : "29.90",
+						    "pressurem" : "1012.3", 
+						    "wdire" : "WSW",
+						    "wspdi" : "5.8",
+						    "wspdm" : "9.3",
+						    "date" : { "pretty" : "12:56 AM PDT on July 02, 2012" } 
+						  },
+						  { ... }
+						] 
+	}
+```
 
 ######Example Code:
 	wunderground.getYesterday(function(err, resp, data) {
@@ -141,28 +179,43 @@ The *getYesterday* method sends an asyncronus request to Wunderground. The callb
     	}
 	});
 
-### getHistory(*cb, date*)
-The *getHistory* method sends an asyncronus request to Wunderground for the date that is passed in. The date needs to be formated YYYYMMDD.  The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/history).  For quick reference historical data includes :
+### getHistory(*date, cb*)
+The *getHistory* method sends an asyncronus request to Wunderground for the date that is passed in. The date needs to be formated YYYYMMDD.  The callback is passed three parameters (error, Wunderground's response, Wunderground's historical data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/history).
 
-- **Observations Array** (observations)
-	- **Temperature** (observations.[observationsArrayIndex].tempi, observations.[observationsArrayIndex].tempm)
-	- **Weather Condition** (observations.[observationsArrayIndex].conds)
-	- **Humidity** (observations.[observationsArrayIndex].hum)
-	- **Pressure** (observations.[observationsArrayIndex].pressurei, observations.[observationsArrayIndex].pressurem)
-	- **Wind Direction** (observations.[observationsArrayIndex].wdire)
-	- **Wind Speed** (observations.[observationsArrayIndex].wspdi, observations.[observationsArrayIndex].wspdm)
-	- **Time/Date** (observations.[observationsArrayIndex].date.pretty)
-- **Daily Summary Array** (dailysummary)
-	- **Temperature** (dailysummary[0].meantempi, dailysummary[0].meantempm)
-	- **Humidity** (dailysummary[0].humidity)
-	- **Pressure** (dailysummary[0].meanpressurei, dailysummary[0].meanpressurem)
-	- **Wind Direction** (dailysummary[0].meanwdire)
-	- **Wind Speed** (dailysummary[0].meanwindspdi, dailysummary[0].meanwindspdm)
-	- **Precipitaion** (dailysummary[0].precipi, dailysummary[0].precipm)
-	- **Time/Date** (dailysummary[0].date.pretty)
+######For quick reference historical data includes (partial list) : 
 
+```
+	{ "observations" : [ { "tempi" : "59.0",
+						    "tempm" : "15.0", 
+						    "conds" : "Overcast", 
+						    "hum" : "81", 
+						    "pressurei" : "29.90",
+						    "pressurem" : "1012.3", 
+						    "wdire" : "WSW",
+						    "wspdi" : "5.8",
+						    "wspdm" : "9.3",
+						    "date" : { "pretty" : "12:56 AM PDT on July 02, 2012" } 
+						  },
+						  { ... }
+						],
+	  "dailysummary" : [ { "meantempi" : "52", 
+	  						"meantempm" : "11", 
+	  						"humidity" : "63", 
+	  						"meanpressurei" : "29.88",
+	  						"meanpressurem" : "1012", 
+	  						"meanwdire" : "ESE" , 
+	  						"meanwindspdi" : "7", 
+	  						"meanwindspdm" : "11",
+	  						"precipi" : "0.27", 
+	  						"precipm" : "6.86", 
+	  						"date" : { "pretty" : "12:00 PM PDT on April 05, 2006" }
+	  					  }
+	  					] 
+	} 
+```
+	
 ######Example Code:
-    wunderground.getHistory(function(err, resp, data) {
+    wunderground.getHistory(20150704, function(err, resp, data) {
         if(err) {
            server.log(err);
         } else {
@@ -170,17 +223,24 @@ The *getHistory* method sends an asyncronus request to Wunderground for the date
               server.log(format("%s %s°C on %s", item.conds, item.tempm, item.date.pretty));
            }
         }
-    }, 20150704);
+    });
 
 ### getAstronomy(*cb*)
-The *getAstronomy* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's moon phase data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/astronomy).  For quick reference moon phase data includes :
+The *getAstronomy* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's moon phase data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/astronomy).  
 
-- **Percent Illuminated** (percentIlluminated)
-- **Age of Moon** (ageOfMoon)
-- **Current Time** (current_time.hour, current_time.minute)
-- **Sunrise** (sunrise.hour, sunrise.minute)
-- **Sunset** (sunset.hour, sunset.minute)
+######For quick reference moon phase data includes (partial list) : 
 
+```
+	{ "percentIlluminated" : "81", 
+	  "ageOfMoon" : "10", 
+	  "current_time" : { "hour" : "9", 
+	  					  "minute" : "56" }, 
+	  "sunrise" : { "hour" : "7", 
+	  			     "minute" : "01" }, 
+	  "sunset" : { "hour" : "16", 
+	  				"minute" : "56" }
+	}
+```
 
 ######Example Code:
     wunderground.getAstronomy(function(err, resp, data) {
@@ -193,17 +253,26 @@ The *getAstronomy* method sends an asyncronus request to Wunderground. The callb
     });
 
 ### getAlmanac(*cb*)
-The *getAlmanac* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's almanac data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/almanac).  For quick reference almanac data includes :
+The *getAlmanac* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's almanac data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/almanac).  
 
-- **Airport Code** (airport_code)
-- **High Temperature** (temp_high)
-	- **Normal** (temp_high.normal.F, temp_high.normal.C)
-	- **Record** (temp_high.record.F, temp_high.record.C)
-	- **Year** (temp_high.recordyear)
-- **Low Temperature** (current_time.hour, current_time.minute)
-	- **Normal** (temp_low.normal.F, temp_low.normal.C)
-	- **Record** (temp_low.record.F, temp_low.record.C)
-	- **Year** (temp_low.recordyear)
+######For quick reference almanac data includes (partial list) : 
+
+```
+	{ "airport_code" : "KSFO", 
+	  "temp_high" : { "normal" : { "F" : "71", 
+	  							    "C" : "22" },  
+	  				   "high" : { "F" : "89", 
+	  							  "C" : "31" },
+	  				   "recordyear" : "1970"
+	  				},
+	  "temp_low" : { "normal" : { "F" : "54", 
+	  							    "C" : "12" },  
+	  				   "high" : { "F" : "48", 
+	  							  "C" : "8" },
+	  				   "recordyear" : "1953"
+	  				}
+	}
+```
 
 ######Example Code:
     wunderground.getAlmanac(function(err, resp, data) {
@@ -216,24 +285,42 @@ The *getAlmanac* method sends an asyncronus request to Wunderground. The callbac
     });
 
 ### getGeoLookup(*cb*)
-The *getGeoLookup* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's location data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/geolookup).  For quick reference location data includes :
+The *getGeoLookup* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's location data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/geolookup).  
 
-- **Location Info** (city, state, country_name, zip, lat, lon)
-- **Nearby Airport Weather Stations Array** (nearby_weather_stations.airport.station)
-	- **City** (nearby_weather_stations.airport.station[arrIndex].city)
-	- **State** (nearby_weather_stations.airport.station[arrIndex].state)
-	- **Country** (nearby_weather_stations.airport.station[arrIndex].country)
-	- **Airport Code** (nearby_weather_stations.airport.station[arrIndex].icao)
-	- **Latitude** (nearby_weather_stations.airport.station[arrIndex].lat)
-	- **Longitude** (nearby_weather_stations.airport.station[arrIndex].lon)
-- **Nearby Personal Weather Stations Array** (nearby_weather_stations.pws.station)
-	- **Neighborhood** (nearby_weather_stations.pws.station[arrIndex].neighborhood)
-	- **City** (nearby_weather_stations.pws.station[arrIndex].city)
-	- **State** (nearby_weather_stations.pws.station[arrIndex].state)
-	- **Country** (nearby_weather_stations.pws.station[arrIndex].country)
-	- **ID** (nearby_weather_stations.pws.station[arrIndex].id)
-	- **Distance** (nearby_weather_stations.pws.station[arrIndex].distance_mi, pws.station[arrIndex].distance_km)
+######For quick reference location data includes (partial list) : 
 
+```
+	{ "city" : "San Francisco", 
+	  "state" : "CA", 
+	  "country_name" : "USA", 
+	  "zip" : "94101", 
+	  "lat" : "37.77500916", 
+	  "lon" : "-122.41825867", 
+	  "nearby_weather_stations" : { "airport" : { "station" : [ { "city" : "San Francisco", 
+	  											                    "state" : "CA", 
+	  											                    "country" : "USA", 
+	  											                    "icao" : "KSFO", 
+	  											                    "lat" : "37.61999893", 
+	  											                    "lon" : "-122.37000275" 
+	  											                  },
+	  											                  { ... } 
+	  											                ] 
+	  											  }
+	  							   },
+	  							   { "pws" : { "station" : [ { "neighborhood" : "SOMA - Near Van Ness", 
+	  							   				                "city" :"San Francisco",
+	  							   				                "state" : "CA", 
+	  											                "country" : "USA", 
+	  											                "id" : "KCASANFR58", 
+	  											                "distance_mi" : 0, 
+	  											                "distance_km" : 0 
+	  											              },
+	  											              { ... } 
+	  											            ] 
+	  										  }
+	  							   }
+	}
+```
 
 ######Example Code:
     wunderground.getGeoLookup(function(err, resp, data) {
@@ -248,40 +335,65 @@ The *getGeoLookup* method sends an asyncronus request to Wunderground. The callb
     });
 
 ### getCurrentHurricane(*cb*)
-The *getCurrentHurricane* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's current hurricane data array).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/currenthurricane).  For quick reference current hurricane data array includes :
+The *getCurrentHurricane* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's current hurricane data array).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/currenthurricane).  
 
-- **Strom Info Table** ([currentHurricaneArrayIndex].stormInfo)
-	- **Strom Name** ([currentHurricaneArrayIndex].stormInfo.stormName, [currentHurricaneArrayIndex].stormInfo.stormName_Nice)
-	- **Storm Number** ([currentHurricaneArrayIndex].stormInfo.stormNumber)
-- **Current Storm Info Table** ([currentHurricaneArrayIndex].Current)
-	- **Category** ([currentHurricaneArrayIndex].Current.SaffirSimpsonCategory, [currentHurricaneArrayIndex].Current.Category)
-	- **Latitude** ([currentHurricaneArrayIndex].Current.lat)
-	- **Latitude** ([currentHurricaneArrayIndex].Current.lon)
-	- **WindSpeed** ([currentHurricaneArrayIndex].Current.WindSpeed.Mph, [currentHurricaneArrayIndex].Current.WindSpeed.Kph)
-	- **WindGust** ([currentHurricaneArrayIndex].Current.WindGust.Mph, [currentHurricaneArrayIndex].Current.WindGust.Kph)
-	- **Speed** ([currentHurricaneArrayIndex].Current.Fspeed.Mph, [currentHurricaneArrayIndex].Current.Fspeed.Kph)
-	- **Direction** ([currentHurricaneArrayIndex].Current.Movement.Text, [currentHurricaneArrayIndex].Current.Movement.Degrees)
-	- **Time** ([currentHurricaneArrayIndex].Current.Time.epoch)
-- **Forecast Array** ([currentHurricaneArrayIndex].forecast)
-	- **Hour in the Future for Projected Forecast Info** ([currentHurricaneArrayIndex].forecast[forecastIndex].ForecastHour)
-	- **Category** ([currentHurricaneArrayIndex].forecast[forecastIndex].SaffirSimpsonCategory, [currentHurricaneArrayIndex].forecast[forecastIndex].Category)
-	- **Latitude** ([currentHurricaneArrayIndex].forecast[forecastIndex].lat)
-	- **Latitude** ([currentHurricaneArrayIndex].forecast[forecastIndex].lon)
-	- **WindSpeed** ([currentHurricaneArrayIndex].forecast[forecastIndex].WindSpeed.Mph, [currentHurricaneArrayIndex].forecast[forecastIndex].WindSpeed.Kph)
-	- **Time** ([currentHurricaneArrayIndex].forecast[forecastIndex].Time.epoch)
-- **Extended Forecast Array** ([currentHurricaneArrayIndex].ExtendedForecast)
-	- **Hour in the Future for Projected Forecast Info** ([currentHurricaneArrayIndex].ExtendedForecast[ExforecastIndex].ForecastHour)
-	- **Category** ([currentHurricaneArrayIndex].ExtendedForecast[ExforecastIndex].SaffirSimpsonCategory, [currentHurricaneArrayIndex].ExtendedForecast[ExforecastIndex].Category)
-	- **Latitude** ([currentHurricaneArrayIndex].ExtendedForecast[ExforecastIndex].lat)
-	- **Latitude** ([currentHurricaneArrayIndex].ExtendedForecast[ExforecastIndex].lon)
-	- **WindSpeed** ([currentHurricaneArrayIndex].ExtendedForecast[ExforecastIndex].WindSpeed.Mph, [currentHurricaneArrayIndex].ExtendedForecast[ExforecastIndex].WindSpeed.Kph)
-	- **Time** ([currentHurricaneArrayIndex].ExtendedForecast[ExforecastIndex].Time.epoch)
-- **Tracking Array** ([currentHurricaneArrayIndex].track)
-	- **Category** ([currentHurricaneArrayIndex].track[trackIndex].SaffirSimpsonCategory, [currentHurricaneArrayIndex].track[trackIndex].Category)
-	- **Latitude** ([currentHurricaneArrayIndex].track[trackIndex].lat)
-	- **Latitude** ([currentHurricaneArrayIndex].track[trackIndex].lon)
-	- **WindSpeed** ([currentHurricaneArrayIndex].track[trackIndex].WindSpeed.Mph, [currentHurricaneArrayIndex].track[trackIndex].WindSpeed.Kph)
-	- **Time** ([currentHurricaneArrayIndex].track[trackIndex].Time.epoch)
+######For quick reference current hurricane data array includes (partial list) : 
+
+```
+	[ { "stormInfo" : { "stormName" : "Daniel",
+						 "stormName_Nice" : "Hurricane Daniel",
+						 "stormNumber" : "ep201204"
+					   },
+		"Current" : { "SaffirSimpsonCategory" : 1, 
+					   "Category" : "Hurricane", 
+					   "lat" : 15.4, 
+					   "lon" : -130.7, 
+					   "WindSpeed" : { "Mph" : 75, 
+					   				    "Kph" : 120 }, 
+					   "WindGust" : { "Mph" : 90, 
+					   				   "Kph" : 120 },  
+					   "Fspeed" : { "Mph" : 16, 
+					   				 "Kph" : 25 }, 
+					   "Movement" : { "Text" : "W", 
+					   				   "Degrees" : "275"}, 
+					   "Time" : { "epoch" : "1341867600" }
+					},
+		"forecast" : [ { "ForecastHour" : "12H", 
+						  "SaffirSimpsonCategory" : 0, 
+						  "Category" : "Tropical Strom", 
+						  "lat" : 15.5, 
+						  "lon" : -133.0, 
+						  "WindSpeed" : { "Mph" : 65, 
+					   				       "Kph" : 100 },
+					   	  "Time" : { "epoch" : "1341900000" }
+						}, 
+						{ ... }
+					  ], 
+		"ExtendedForecast" : [ { "ForecastHour" : "4DAY", 
+						  		  "SaffirSimpsonCategory" : 0, 
+						  		  "Category" : "Tropical Strom", 
+						  		  "lat" : 15.8, 
+						  		  "lon" : 139.3, 
+						  		  "WindSpeed" : { "Mph" : 65, 
+					   				              "Kph" : 25 },
+					   	  		  "Time" : { "epoch" : "1342159200" }
+								}, 
+								{ ... }
+					  		  ], 
+		"track" : [ { "SaffirSimpsonCategory" : 1, 
+					   "Category" : "Hurricane", 
+					   "lat" : 15.2, 
+					   "lon" : -129.4, 
+					   "WindSpeed" : { "Mph" : 75, 
+					   				       "Kph" : 120 },
+					   "Time" : { "epoch" : "1341835200" }
+					 }, 
+					 { ... }
+				   ],
+	  }, 
+	  { ... }
+	]
+```
 
 ######Example Code:
 	wunderground.getCurrentHurricane(function(err, resp, data) {
@@ -296,19 +408,26 @@ The *getCurrentHurricane* method sends an asyncronus request to Wunderground. Th
 	});
 
 ### getTide(*cb*)
-The *getTide* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's tide data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/tide).  For quick reference tide data includes :
+The *getTide* method sends an asyncronus request to Wunderground. The callback is passed three parameters (error, Wunderground's response, Wunderground's tide data).  For a full list of fields included in the response table see [Wunderground's documentation](http://www.wunderground.com/weather/api/d/docs?d=data/tide).  
 
-- **Tide Info Array** (tideInfo)
-	- **Tide Site** (tideInfo[infoIndex].tideSite)
-	- **Latitude** (tideInfo[infoIndex].lat)
-	- **Longitude** (tideInfo[infoIndex].lon)
-- **Tide Summary Array** (tideSummary)
-	- **Time/Date** (tideSummary[summaryIndex].date.epoch)
-	- **Height** (tideSummary[summaryIndex].data.height)
-	- **Type** (tideSummary[summaryIndex].data.type)
-- **Tide Summary Stats Array** (tideSummaryStats)
-	- **Max Height** (tideSummaryStats[statsIndex].maxheight)
-	- **Min Height** (tideSummaryStats[statsIndex].minheight)
+######For quick reference tide data includes (partial list) : 
+
+```
+	{ "tideInfo" : [ { "tideSite" : "Newport Beach, Newport Bay Entrance, Corona del Mar, California",
+					    "lat" : "33.6033", 
+					    "lon" : "-117.883"
+					} ],
+	  "tideSummary" : [ { "date" : { "epoch" : "1341579657" },
+	  					   "data" : { "height" : "-0.79 ft", 
+	  					 			   "type" : "Low Tide" }
+	  					 },
+	  					 { ... } 
+	  				   ], 
+	  "tideSummaryStats" : [ { "maxheight" : 6.870000, 
+	  						    "minheight" : -1.450000
+	  						} ]
+	}
+```
 
 ######Example Code:
     wunderground.getTide(function(err, resp, d) {
