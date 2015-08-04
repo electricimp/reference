@@ -14,11 +14,10 @@ This class requires a simple circuit that uses both an imp PWM and an imp SPI MO
 
 ### Constructor: IRreceiver(*rxPin*, *callback*, *[idle_state]*)
 
-#### Parameters
-
 #### Return
 None (see callback function)
 
+#### Parameters
 | Name    | Type    | Default | Description |
 |---------|---------|---------|-------------|
 | rxPin   | [DIGITAL_IN](https://electricimp.com/docs/api/hardware/pin/) | N/A | The which the IR reciever's data output is connected to. The class constructor will reconfigure this pin to assign it a callback function. |
@@ -88,6 +87,7 @@ Blob containing the binary NEC or Extended NEC packet. Edge transition times are
 
 #### Returns
 Table
+
 | key | type | Description |
 | targetAddr | integer | the 8-bit target address, as received in the NEC packet |
 | invTargetAddr | integer | the 8-bit inverse of the target address, as received in the NEC packet. If targetAddr != ~invTargetAddr, the error key will be present |
@@ -104,6 +104,7 @@ Table
 
 #### Returns
 Table
+
 | key | type | Description |
 | targetAddr | integer | the 16-bit target address, as received in the NEC packet |
 | cmd | integer | the 8-bit command, as received in the NEC packet |
