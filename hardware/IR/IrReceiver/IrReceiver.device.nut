@@ -34,40 +34,15 @@ class IRreceiver {
 	    enable();
 	}
 	
-	function receiveDppm() {
-        local packet = [];
-	    local state = 0;
-	    local last_state = _rd();
-	    local duration = 0;
-	    
-	    local start = _us();
-	    local last_change_time = start;
-	    local now = start;
-	    
-	    while (1) {
-	        // watch for pin state changes
-	        state = _rd();
-	        now = _us();
-	        
-	        // end receive loop if it's been more than the max packet time
-	        if (state == last_state) {
-	            if ((now - last_change_time) > RX_TIMEOUT_US) {
-	                break;
-	            }
-	            continue;
-	        }
-	        
-	        // state change detected
-	        duration = now - last_change_time;
-	        last_state = state;
-			last_change_time = now;
-			packet.push({"level": (state == _idle_state ? 1 : 0), "duration": duration});
-	    }
-
-	    _rxCallback(packet);
+	function enable() {
+	    _rxPin.configure(DIGITAL_IN, _receiveDppm.bindenv(this));
 	}
 	
-	function packetTableToBlob(packet_table) {
+	function disable() {
+	    _rxPin.configure(DIGITAL_IN);
+	}
+	
+	function packetTableToBlob(packet_array) {
 	    local bit_idx = 0;
 	    local byte = 0;
 	    // reserve space for up to a 256-bit IR packet; more allocated as needed
@@ -75,7 +50,7 @@ class IRreceiver {
 	    local threshold_0 = NEC_LOW_TIME_US_0 + NEC_DECODE_MARGIN_US;
 	    local threshold_1 = NEC_LOW_TIME_US_1 + NEC_DECODE_MARGIN_US;
 	    
-	    foreach (event in packet_table) {
+	    foreach (event in packet_array) {
 	        if (event.level == 1) { continue; }
     	    if (event.duration < threshold_0) {
                 byte = byte & ~(0x01 << bit_idx++);
@@ -131,11 +106,37 @@ class IRreceiver {
 	    return decoded;
 	}
 	
-	function enable() {
-	    _rxPin.configure(DIGITAL_IN, receiveDppm.bindenv(this));
-	}
-	
-	function disable() {
-	    _rxPin.configure(DIGITAL_IN);
+	// Private methods ---------------------------------------------------------
+	function _receiveDppm() {
+        local packet = [];
+	    local state = 0;
+	    local last_state = _rd();
+	    local duration = 0;
+	    
+	    local start = _us();
+	    local last_change_time = start;
+	    local now = start;
+	    
+	    while (1) {
+	        // watch for pin state changes
+	        state = _rd();
+	        now = _us();
+	        
+	        // end receive loop if it's been more than the max packet time
+	        if (state == last_state) {
+	            if ((now - last_change_time) > RX_TIMEOUT_US) {
+	                break;
+	            }
+	            continue;
+	        }
+	        
+	        // state change detected
+	        duration = now - last_change_time;
+	        last_state = state;
+			last_change_time = now;
+			packet.push({"level": (state == _idle_state ? 1 : 0), "duration": duration});
+	    }
+
+	    _rxCallback(packet);
 	}
 }
