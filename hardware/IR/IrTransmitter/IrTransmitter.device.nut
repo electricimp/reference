@@ -1,4 +1,9 @@
-// see http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+//
+// Build and transmit NEC or extended NEC IR Packets
+// For info on NEC, see http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
 class IRtransmitter {
     
 	static NEC_START_TIME_HIGH_US 			= 9000.0;
@@ -10,7 +15,7 @@ class IRtransmitter {
 	// PWM carrier frequency (typically 38 kHz in US, some devices use 56 kHz, especially in EU)
 	static CARRIER_FREQ_HZ				= 38000.0;
 	// Carrier Duty Cycle
-	static CARRIER_DC                  = 0.25;
+	static CARRIER_DC                  = 0.5;
 	// target speed to run the SPI at
 	static SPI_CLOCKRATE_KHZ           = 117;
 

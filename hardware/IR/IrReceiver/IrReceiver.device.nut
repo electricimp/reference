@@ -1,4 +1,9 @@
-// see http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+//
+// Receive and decode NEC or extended NEC IR Packets
+// For info on NEC, see http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
 class IRreceiver {
     
     static NEC_START_TIME_HIGH_US 	= 9000.0;
