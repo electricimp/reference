@@ -4,11 +4,11 @@ This class allows the imp to receive and decode IR packets with a simple IR phot
 
 ## Example Usage
 
-For an example project that can build, transmit, receive, and decode NEC packets, see the [TV Remote](../examples/) example. This code can toggle the power on a Sanyo television, as well as capturing and decoding any NEC or Extended NEC packet.
+For an example project that can build, transmit, receive, and decode NEC packets, see the [TV Remote](../Examples/) example. This code can toggle the power on a Sanyo television, as well as capturing and decoding any NEC or Extended NEC packet.
 
 ## Hardware Setup
 
-This class requires a simple circuit that uses both an imp PWM and an imp SPI MOSI to drive an IR LED. The PWM is used to provide a carrier signal, and the SPI is used to modulate that carrier. Currently, the SPI MOSI line must act as an active-high enable for the IR Transmitter. See the [IR Tail](../examples/ir-tail-sch.pdf) schematic for an example circuit.
+This class requires a simple circuit that uses both an imp PWM and an imp SPI MOSI to drive an IR LED. The PWM is used to provide a carrier signal, and the SPI is used to modulate that carrier. Currently, the SPI MOSI line must act as an active-high enable for the IR Transmitter. See the [IR Tail](../Examples/ir-tail-sch.pdf) schematic for an example circuit.
 
 ## Class Usage
 
