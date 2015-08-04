@@ -89,6 +89,7 @@ Blob containing the binary NEC or Extended NEC packet. Edge transition times are
 Table
 
 | key | type | Description |
+|-----|------|-------------|
 | targetAddr | integer | the 8-bit target address, as received in the NEC packet |
 | invTargetAddr | integer | the 8-bit inverse of the target address, as received in the NEC packet. If targetAddr != ~invTargetAddr, the error key will be present |
 | cmd | integer | the 8-bit command, as received in the NEC packet |
@@ -106,6 +107,7 @@ Table
 Table
 
 | key | type | Description |
+|-----|------|-------------|
 | targetAddr | integer | the 16-bit target address, as received in the NEC packet |
 | cmd | integer | the 8-bit command, as received in the NEC packet |
 | invCmd | integer | the 8-bit inverse of hte command, as received in the NEC packet. If cmd != ~invCmd, the error key will be present |
