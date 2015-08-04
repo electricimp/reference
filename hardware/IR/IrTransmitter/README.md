@@ -8,11 +8,11 @@ For an example project that can build, transmit, receive, and decode NEC packets
 
 ## Hardware Setup
 
-This class requires a simple circuit that uses both an imp PWM and an imp SPI MOSI to drive an IR LED. The PWM is used to provide a carrier signal, and the SPI is used to modulate that carrier. Currently, the SPI MOSI line must act as an active-high enable for the IR Transmitter. See the [IR Tail](../ir-tail-sch.pdf) schematic for an example circuit.
+This class requires a simple circuit that uses both an imp PWM and an imp SPI MOSI to drive an IR LED. The PWM is used to provide a carrier signal, and the SPI is used to modulate that carrier. Currently, the SPI MOSI line must act as an active-high enable for the IR Transmitter. See the [IR Tail](../examples/ir-tail-sch.pdf) schematic for an example circuit.
 
 ## Class Usage
 
-### Constructor: IrTransmitter(*spi, pwm*)
+### Constructor: IRTransmitter(*spi*, *pwm*)
 
 #### Parameters
 | Name    | Type    | Default | Description |
@@ -23,7 +23,7 @@ This class requires a simple circuit that uses both an imp PWM and an imp SPI MO
 #### Example
 
 ```squirrel
-class IrTransmitter {...}
+class IRTransmitter {...}
 
 // instantiate an IR transmitter
 irTx <- IRtransmitter(hardware.spi257, hardware.pin8);
