@@ -1,6 +1,19 @@
+// Copyright (c) 2015 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+//
+// Example for the IR Transmitter and Receiver classes based on the Electric Imp IR Tail
+// Transmits / Receives NEC IR Packets
+// For info on NEC, see http://techdocs.altium.com/display/FPGA/NEC+Infrared+Transmission+Protocol
+// 
+// Tested on a Sanyo television at Electric Imp HQ
+
+// include the IR Receiver Class
+// include the IR Transmitter Class
+
 function toggleTVPower() {
     if (btn1.read()) {
-    	// turn off the TV
+        // turn off the TV
         led.write(1);
         server.log("Sending");
         local pkt = irTx.buildNecPacket(0x04, 0x08);
