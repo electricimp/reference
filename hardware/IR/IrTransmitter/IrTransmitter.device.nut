@@ -47,42 +47,6 @@ class IRtransmitter {
         _generateNecSymbols();
 	}
 	
-	function _generateNecSymbols() {
-	    // calculate the number of bytes we need to send each signal
-		local nec_start_bytes_high = (NEC_START_TIME_HIGH_US / _bytetime_us).tointeger();
-		local nec_start_bytes_low =  (NEC_START_TIME_LOW_US / _bytetime_us).tointeger();
-		local nec_pulse_bytes = (NEC_PULSE_TIME_US / _bytetime_us).tointeger();
-		local nec_bytes_1 = (NEC_LOW_TIME_US_1 / _bytetime_us).tointeger();
-		local nec_bytes_0 = (NEC_LOW_TIME_US_0 / _bytetime_us).tointeger();
-		_nec_max_packet_size = nec_start_bytes_high + nec_start_bytes_low + (33 * (nec_pulse_bytes + nec_bytes_0));
-		
-		// generate the start symbol
-		for (local i = 0; i < nec_start_bytes_high; i++) {
-			NEC_START.writen(0xFF, 'b');
-		}
-		for (local i = 0; i < nec_start_bytes_low; i++) {
-			NEC_START.writen(0x00, 'b');
-		}
-		
-		// generate the pulse for the "0" and "1" symbols
-		for (local i = 0; i < nec_pulse_bytes; i++) {
-		    NEC_ONE.writen(0xFF, 'b');
-		    NEC_ZERO.writen(0xFF, 'b');
-		    NEC_PULSE.writen(0xFF, 'b');
-		}
-		// finish the "0" symbol
-		for (local i = 0; i < nec_bytes_0; i++) {
-		    NEC_ZERO.writen(0x00, 'b');
-		}
-		// finish the "1" symbol
-		for (local i = 0; i < nec_bytes_1; i++) {
-		    NEC_ONE.writen(0x00, 'b');
-		}
-		
-		// NEC "repeat" packet shows key is held
-		NEC_REPEAT.writeblob(NEC_START);
-		NEC_REPEAT.writeblob(NEC_PULSE);
-	}
     // Build an NEC Packet 
     // Input:
     //      targetAddr: 8-bit or 16-bit target address
@@ -156,5 +120,46 @@ class IRtransmitter {
 		// set output lines low
 		_pwm.write(0.0);
 		_spi.write("\x00");
+	}
+	
+	// Private methods ---------------------------------------------------------
+	
+	// Called by constructor
+	// Pre-populates blobs used to build NEC packet waveforms
+	function _generateNecSymbols() {
+	    // calculate the number of bytes we need to send each signal
+		local nec_start_bytes_high = (NEC_START_TIME_HIGH_US / _bytetime_us).tointeger();
+		local nec_start_bytes_low =  (NEC_START_TIME_LOW_US / _bytetime_us).tointeger();
+		local nec_pulse_bytes = (NEC_PULSE_TIME_US / _bytetime_us).tointeger();
+		local nec_bytes_1 = (NEC_LOW_TIME_US_1 / _bytetime_us).tointeger();
+		local nec_bytes_0 = (NEC_LOW_TIME_US_0 / _bytetime_us).tointeger();
+		_nec_max_packet_size = nec_start_bytes_high + nec_start_bytes_low + (33 * (nec_pulse_bytes + nec_bytes_0));
+		
+		// generate the start symbol
+		for (local i = 0; i < nec_start_bytes_high; i++) {
+			NEC_START.writen(0xFF, 'b');
+		}
+		for (local i = 0; i < nec_start_bytes_low; i++) {
+			NEC_START.writen(0x00, 'b');
+		}
+		
+		// generate the pulse for the "0" and "1" symbols
+		for (local i = 0; i < nec_pulse_bytes; i++) {
+		    NEC_ONE.writen(0xFF, 'b');
+		    NEC_ZERO.writen(0xFF, 'b');
+		    NEC_PULSE.writen(0xFF, 'b');
+		}
+		// finish the "0" symbol
+		for (local i = 0; i < nec_bytes_0; i++) {
+		    NEC_ZERO.writen(0x00, 'b');
+		}
+		// finish the "1" symbol
+		for (local i = 0; i < nec_bytes_1; i++) {
+		    NEC_ONE.writen(0x00, 'b');
+		}
+		
+		// NEC "repeat" packet shows key is held
+		NEC_REPEAT.writeblob(NEC_START);
+		NEC_REPEAT.writeblob(NEC_PULSE);
 	}
 }
