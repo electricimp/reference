@@ -285,6 +285,12 @@ class HTTPPlusRequest {
         else return oldurl;
     }
     
+    // .........................................................................
+    function setvalidation(validation) {
+        if (_httprequest) {
+            _httprequest.setvalidation(validation);
+        }
+    }
 
 }
 
