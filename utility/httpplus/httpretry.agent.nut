@@ -60,17 +60,31 @@ class HTTPRetry {
             local item = _queue[0];
             _processing = true;
             item.requestobj._sendasyncqueued(function(success, result, retry_delay=0) {
-                _processing = false;
                 if (success) {
+                    _processing = false;
                     _queue.remove(0);
                     item.callback(result);
                     return _dequeue();
                 } else {
-                    imp.wakeup(retry_delay, _dequeue.bindenv(this));
+                    imp.wakeup(retry_delay, function() {
+                        _processing = false;
+                        _dequeue();
+                    }.bindenv(this));
                 }
             }.bindenv(this));
         }
     }
+
+    function _remove(requestobj) {
+        foreach (k,v in _queue) {
+            if (v.requestobj == requestobj) {
+                _queue.remove(k);
+                return k;
+            }
+        }
+        return null;
+    }
+    
 }
 
 
@@ -120,8 +134,10 @@ class HTTPRetryRequest {
                 if (result.statuscode == 429 && "x-agent-rate-limited" in result.headers && "retry-after" in result.headers) {
                     // This is a retryable failure, wait for as long as are told then try again
                     server.error("Too many outbound HTTP requests. We have been throttled.")
-                    imp.sleep(result.headers["retry-after"].tofloat());
-                    sendasync(oncomplete, longpolldata, longpolltimeout);
+                    _retry = imp.wakeup(result.headers["retry-after"].tofloat(), function() {
+                        _retry = null;
+                        sendasync(oncomplete, longpolldata, longpolltimeout);
+                    }.bindenv(this);
                 } else {
                     // This is a success or a reportable failure
                     oncomplete(result);
@@ -154,6 +170,9 @@ class HTTPRetryRequest {
             // Cancel the http request
             _httprequest.cancel();
             _httprequest = null;
+        } else {
+            // Pull it out of the queue
+            _parent._remove(this);
         }
     }
     
