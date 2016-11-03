@@ -3,7 +3,6 @@ class Impeeduino {
 	static version = [0, 0, 0]
 	
 	static BAUD_RATE = 115200;
-	static DIGITAL_READ_TIME = 0.01;
 	
 	static MASK_OP = 0xF0;
 	static OP_CONFIGURE  = 0x80;
@@ -65,18 +64,21 @@ class Impeeduino {
 			} else {
 				// Save ASCII data to function return buffer
 				_funcBuf.seek(0, 'e');
+				if (readByte == 0)
+				    readByte = ' ';
 				_funcBuf.writen(readByte, 'b');
 			}
+		}
+		if (_funcBuf.len() > 0) {
+		    server.log(format("%s", _funcBuf.tostring()));
+		    //server.log(_funcBuf.tostring());
 		}
 	}
 	
 	function uartEvent() {
 		_rxBuf.seek(0, 'e');
 		_rxBuf.writeblob(_serial.readblob());
-		parseRXBuffer();
-		if (_funcBuf[0] == 0)
-		    _funcBuf[0] = 0x20
-		server.log(format("%s", _funcBuf.tostring()));
+		imp.wakeup(0, parseRXBuffer.bindenv(this));
 	}
 	
 	function reset() {
@@ -136,13 +138,13 @@ class Impeeduino {
 		} else {
 			local target = OP_DIGITAL_WRITE_0 | pin; // Search for ops with a digital write pattern and addr = pin
 			local readByte = _serial.read();
-			while (readByte & target != target) {
+			while ((readByte & target) != target) {
 			 	 // Save other data to buffer
 			 	_rxBuf.seek(0, 'e');
 				_rxBuf.writen(readByte, 'b');
 				readByte = _serial.read();
 			}
-			imp.wakeup(0, parseRXBuffer);
+			imp.wakeup(0, parseRXBuffer.bindenv(this));
 			return readByte & MASK_DIGITAL_WRITE ? 1 : 0;
 		}
     }
@@ -167,13 +169,19 @@ class Impeeduino {
 }
 
 impeeduino <- Impeeduino();
-impeeduino.pinMode(7, DIGITAL_OUT);
+impeeduino.pinMode(8, DIGITAL_OUT);
 
 isOn <- false;
 
+count <- 5;
 function loop() {
-	impeeduino.digitalWrite(7, isOn);
+    server.log("Loop " + count)
+	impeeduino.digitalWrite(8, isOn);
+	server.log("Read value: " + impeeduino.digitalRead(6))
 	isOn = !isOn;
-	imp.wakeup(1, loop);
+	if (count > 0) {
+	    count--;
+	    imp.wakeup(1, loop);
+	}
 }
 loop();

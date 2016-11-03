@@ -76,13 +76,17 @@ void loop() {
             rxOp = rxByte & MASK_OP;
             if (rxOp == OP_DIGITAL_READ) {
                 if (digitalRead(rxByte & MASK_DIGITAL_ADDR) == HIGH) {
+                    Serial.println("Digital HIGH");
                     Serial.write((rxByte & MASK_DIGITAL_ADDR) | OP_DIGITAL_WRITE_1); 
                 } else {
+                    Serial.println("Digital LOW");
                     Serial.write((rxByte & MASK_DIGITAL_ADDR) | OP_DIGITAL_WRITE_0); 
                 }
             } else if (rxOp == OP_DIGITAL_WRITE_0) {
+                Serial.println("Writing LOW");
                 digitalWrite(rxByte & MASK_DIGITAL_ADDR, LOW);
             } else if (rxOp == OP_DIGITAL_WRITE_1) {
+                Serial.println("Writing HIGH");
                 digitalWrite(rxByte & MASK_DIGITAL_ADDR, HIGH);
             } else if (rxOp == OP_ANALOG) {
                 if (rxByte & MASK_ANALOG_RW) {
