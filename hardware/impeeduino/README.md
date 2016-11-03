@@ -7,7 +7,7 @@ It parses Intel HEX files delivered via HTTP POST (form) and implements the STK5
 You will need to install the "[optiboot](https://code.google.com/p/optiboot/)" bootloader using an ICSP cable. At the time of writing, the latest version was [v5.0a](https://code.google.com/p/optiboot/downloads/detail?name=optiboot-v5.0a.zip).
 To do this you will need an ISP or use [another Ardiuno as the ISP](http://arduino.cc/en/Tutorial/ArduinoISP) and the ArduinoISP sketch.
 
-You might need to adjust the signature of the ATmega328P in the avrdude configuration to make avrdude think its an ATmega328P.
+You might need to adjust the signature of the ATmega328P in the avrdude configuration to make avrdude think its an ATmega328P. This is on line 8486 on my installation.
 /Applications/Arduino.app/Contents/Resources/Java/hardware/tools/avr/etc/avrdude.conf
 
     From: signature		= 0x1e 0x95 0x0f;
