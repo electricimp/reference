@@ -1,5 +1,7 @@
 #define VERSION "0.0.0"
 
+#define DELAY_WRITE 50
+
 #define MASK_OP 0xF0
 #define OP_CONFIGURE 0x80
 #define OP_DIGITAL_READ 0x90
@@ -76,18 +78,20 @@ void loop() {
             rxOp = rxByte & MASK_OP;
             if (rxOp == OP_DIGITAL_READ) {
                 if (digitalRead(rxByte & MASK_DIGITAL_ADDR) == HIGH) {
-                    Serial.println("Digital HIGH");
+                    //Serial.println("Digital HIGH");
                     Serial.write((rxByte & MASK_DIGITAL_ADDR) | OP_DIGITAL_WRITE_1); 
                 } else {
-                    Serial.println("Digital LOW");
+                    //Serial.println("Digital LOW");
                     Serial.write((rxByte & MASK_DIGITAL_ADDR) | OP_DIGITAL_WRITE_0); 
                 }
             } else if (rxOp == OP_DIGITAL_WRITE_0) {
-                Serial.println("Writing LOW");
+                //Serial.println("Writing LOW");
                 digitalWrite(rxByte & MASK_DIGITAL_ADDR, LOW);
+                delay(DELAY_WRITE);
             } else if (rxOp == OP_DIGITAL_WRITE_1) {
-                Serial.println("Writing HIGH");
+                //Serial.println("Writing HIGH");
                 digitalWrite(rxByte & MASK_DIGITAL_ADDR, HIGH);
+                delay(DELAY_WRITE);
             } else if (rxOp == OP_ANALOG) {
                 if (rxByte & MASK_ANALOG_RW) {
                     analogWrite(rxByte & MASK_ANALOG_ADDR, Serial.read());

@@ -61,6 +61,7 @@ class Impeeduino {
 			readByte = buf.readn('b');
 			if (readByte & 0x80) {
 				// Interpret as Opcode
+				server.log(format("Opcode: 0x%02X", readByte));
 			} else {
 				// Save ASCII data to function return buffer
 				_funcBuf.seek(0, 'e');
@@ -72,10 +73,13 @@ class Impeeduino {
 		if (_funcBuf.len() > 0) {
 		    server.log(format("%s", _funcBuf.tostring()));
 		    //server.log(_funcBuf.tostring());
+		    // TESTING ONLY
+		    _funcBuf = blob();
 		}
 	}
 	
 	function uartEvent() {
+	    server.log("Uart event")
 		_rxBuf.seek(0, 'e');
 		_rxBuf.writeblob(_serial.readblob());
 		imp.wakeup(0, parseRXBuffer.bindenv(this));
@@ -136,15 +140,28 @@ class Impeeduino {
 				cb({ "value": _pinState[pin]});
 			}.bindenv(this));
 		} else {
-			local target = OP_DIGITAL_WRITE_0 | pin; // Search for ops with a digital write pattern and addr = pin
+			local target_low  = OP_DIGITAL_WRITE_0 | pin; // Search for ops with a digital write pattern and addr = pin
+			local target_high = OP_DIGITAL_WRITE_1 | pin;
 			local readByte = _serial.read();
-			while ((readByte & target) != target) {
+			local timeout_count = 0;
+			while (readByte != target_low && readByte != target_high) {
 			 	 // Save other data to buffer
-			 	_rxBuf.seek(0, 'e');
-				_rxBuf.writen(readByte, 'b');
+			    if (readByte != -1) {
+    			 	_rxBuf.seek(0, 'e');
+    				_rxBuf.writen(readByte, 'b');
+			    }
+			    timeout_count++;
+			    if (timeout_count > 100) {
+			        //server.log("Read Timeout, retrying")
+			        timeout_count = 0;
+			        _serial.write(OP_DIGITAL_READ | pin);
+    	            _serial.flush();
+			    }
 				readByte = _serial.read();
 			}
+			server.log(format("0x%02X", readByte));
 			imp.wakeup(0, parseRXBuffer.bindenv(this));
+			
 			return readByte & MASK_DIGITAL_WRITE ? 1 : 0;
 		}
     }
@@ -169,11 +186,14 @@ class Impeeduino {
 }
 
 impeeduino <- Impeeduino();
+
 impeeduino.pinMode(8, DIGITAL_OUT);
+impeeduino.pinMode(6, DIGITAL_IN);
 
 isOn <- false;
 
-count <- 5;
+count <- 7;
+
 function loop() {
     server.log("Loop " + count)
 	impeeduino.digitalWrite(8, isOn);
