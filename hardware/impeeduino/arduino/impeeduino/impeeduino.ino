@@ -1,5 +1,6 @@
-#define VERSION "0.0.0"
+#define VERSION "0.0.1"
 
+#define BAUD_RATE 115200
 #define DELAY_WRITE 50
 
 #define MASK_OP 0xF0
@@ -7,16 +8,20 @@
 #define OP_DIGITAL_READ 0x90
 #define OP_DIGITAL_WRITE_0 0xA0
 #define OP_DIGITAL_WRITE_1 0xB0
-#define OP_ANALOG 0xE0
-#define OP_ARB 0xF0
+#define OP_ANALOG 0xC0
+#define OP_ARB 0xD0
+#define OP_CALL0 0xE0
+#define OP_CALL1 0xF0
 
 #define MASK_CONFIG 0x0F
 #define CONFIG_INPUT 0x00
 #define CONFIG_INPUT_PULLUP 0x01
 #define CONFIG_OUTPUT 0x02
+#define CONFIG_OUTPUT_PWM 0x03
 
 #define MASK_DIGITAL_ADDR 0x0F
-#define MASK_ANALOG_RW 0x08
+#define MASK_DIGITAL_WRITE 0x10
+#define MASK_ANALOG_W 0x08
 #define MASK_ANALOG_ADDR 0x07
 #define MASK_CALL 0x1F
 
@@ -57,12 +62,11 @@ char* function1B(char* buf) { return buf; }
 char* function1C(char* buf) { return buf; }
 char* function1D(char* buf) { return buf; }
 char* function1E(char* buf) { return buf; }
-char* function1F(char* buf) { return buf; }
 
 
 void setup() {
     // put your setup code here, to run once:
-    Serial.begin(115200);
+    Serial.begin(BAUD_RATE);
     Serial.print("Impeeduino Version: ");
     Serial.println(VERSION);
     Serial.flush();
@@ -93,7 +97,7 @@ void loop() {
                 digitalWrite(rxByte & MASK_DIGITAL_ADDR, HIGH);
                 delay(DELAY_WRITE);
             } else if (rxOp == OP_ANALOG) {
-                if (rxByte & MASK_ANALOG_RW) {
+                if (rxByte & MASK_ANALOG_W) {
                     analogWrite(rxByte & MASK_ANALOG_ADDR, Serial.read());
                 } else {
                     analogRead(rxByte & MASK_ANALOG_ADDR);
@@ -150,7 +154,6 @@ void loop() {
                 case 0x1C: Serial.write(function1C(rxbuffer)); break;
                 case 0x1D: Serial.write(function1D(rxbuffer)); break;
                 case 0x1E: Serial.write(function1E(rxbuffer)); break;
-                case 0x1F: Serial.write(function1F(rxbuffer)); break;
                 }
                 Serial.write(rxByte);
                 Serial.flush();

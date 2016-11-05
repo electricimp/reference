@@ -1,6 +1,6 @@
 class Impeeduino {
 	
-	static version = [0, 0, 0]
+	static version = [0, 0, 1]
 	
 	static BAUD_RATE = 115200;
 	
@@ -9,8 +9,10 @@ class Impeeduino {
 	static OP_DIGITAL_READ  = 0x90;
 	static OP_DIGITAL_WRITE_0  = 0xA0;
 	static OP_DIGITAL_WRITE_1 = 0xB0;
-	static OP_ANALOG = 0xE0;
-	static OP_ARB = 0xF0;
+	static OP_ANALOG 0xC0;        
+	static OP_ARB 0xD0;
+	static OP_CALL0 0xE0;
+	static OP_CALL1 0xF0;
 
 	static MASK_CONFIG = 0x0F;
 	static CONFIG_INPUT = 0x00;
