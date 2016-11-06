@@ -1,9 +1,13 @@
 # Impeeduino 0.0.?
 
-This Impeeduino is a mashup of an imp001 and an Arduino. This library provides a simple way to instruct the Arduino side of the Impeeduino to perform basic tasks over UART. 
+The Impeeduino is a combination of an imp001 and an Arduino. This library provides a simple way to instruct the Arduino side of the Impeeduino to perform basic tasks over UART.
+
+The Impeeduino squirrel library contained in `impeeduino.class.nut` pairs with the [impeeduino Arduino project](./arduino/impeeduino). More details on the underlying UART communication scheme and instructions on taking advantage of the user-modifiable function call system can be found in the corresponding [Readme file](./arduino/impeeduino/README.md).
+
+To upload Arduino code onto the Impeeduino's ATmega328, an [Impeeduino Programmer model](./programmer) is provided. This model includes agent and device code for programming the Arduino via an Imp with a HEX file generated from the Arduino IDE.
 
 <!--
-**To add this library to your project, add** `#require "Utilities.nut:1.0.0"` **to the top of your agent or device code.**
+**To add this library to your project, add** `#require "Impeeduino.nut:1.0.0"` **to the top of your device code.**
 -->
 
 ## Class Usage
@@ -156,6 +160,4 @@ impeeduino.functionCall(1, "This is the argument", function(value) {
 
 ## Licence
 
-<!--
-Impeeduino.class.nut is provided under the [license](./LICENSE).
--->
+The Impeeduino library is provided under the [MIT License](./LICENSE).
