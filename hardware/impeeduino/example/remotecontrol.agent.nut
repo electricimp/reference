@@ -10,6 +10,11 @@ function requestHandler(request, response) {
             if (request.query.command == "call") {
             	data.id <- request.query.id.tointeger();
             	data.arg <- request.query.arg;
+            } else if (request.query.command == "analogWrite") {
+            	data.pin <- request.query.pin.tointeger();
+            	data.val <- request.query.val.tofloat();
+            	if (data.val > 1.0)
+            		data.val = data.val.tointeger();
             } else {
 				data.pin <- request.query.pin.tointeger();
 				if ("val" in request.query) {

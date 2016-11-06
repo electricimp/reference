@@ -116,16 +116,22 @@ class Impeeduino {
     // Writes an analog value (PWM wave) to a pin. value represents the duty cycle and ranges between 0 (off) and 255 (always on).
     function analogWrite(pin, value) {
     	assert (typeof pin == "integer");
-    	assert (typeof value == "integer");
-    	assert (value <= 255);
-    	assert (value >= 0);
     	if (PWM_PINMAP[pin] == -1) throw "Pin " + pin + " does not have PWM capability";
+    	
+    	local writeVal = 0;
+    	if (typeof value == "integer") {
+			if (value < 0 || value > 255) throw "Integer analogWrite values must be between 0 and 255";
+			writeVal = value;
+		} else if (typeof value == "float") {
+			if (value < 0.0 || value > 1.0) throw "Float analogWrite values must be between 0.0 and 1.0";
+			writeVal = (value * 255).tointeger();
+		}
     	
 		_serial.write(OP_ANALOG | MASK_ANALOG_W | PWM_PINMAP[pin]);
 		// Lowest order bits (3-0)
-		_serial.write(OP_ARB | (value & 0x0000000F));
+		_serial.write(OP_ARB | (writeVal & 0x0000000F));
 		// Higest order bits (7-4)
-		_serial.write(OP_ARB | ((value & 0x000000F0) >> 4));
+		_serial.write(OP_ARB | ((writeVal & 0x000000F0) >> 4));
 		_serial.flush();
     }
     
@@ -362,7 +368,6 @@ agent.on("digitalRead", function(data) {
     } else {
     	server.log("Pin " + data.pin + " = " + impeeduino.digitalRead(data.pin));
     }
-    
     activityLED.write(0);
 });
 agent.on("analogRead", function(data) {
