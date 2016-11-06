@@ -96,8 +96,8 @@ class Impeeduino {
 					break;
 				case OP_CALL:
 					local addr = readByte & MASK_CALL;
-					local buf = _rxBuf;
-					_rxBuf = blob();
+					local buf = _funcBuf;
+					_funcBuf = blob();
 					buf.seek(0, 'b');
 					if (addr in _functioncb) {
 						imp.wakeup(0, function() {
@@ -117,9 +117,6 @@ class Impeeduino {
 		}
 		if (_funcBuf.len() > 0) {
 		    server.log(format("%s", _funcBuf.tostring()));
-		    //server.log(_funcBuf.tostring());
-		    // TESTING ONLY
-		    _funcBuf = blob();
 		}
 	}
 	
@@ -355,6 +352,14 @@ agent.on("analogRead", function(data) {
     //server.log("Pin A" + data.pin + " = " + impeeduino.analogRead(data.pin));
     impeeduino.analogRead(data.pin, function(value) {
 		server.log("Pin A" + data.pin + " = " + value);
+    });
+    activityLED.write(0);
+});
+agent.on("call", function(data) {
+    activityLED.write(1);
+    server.log("Calling function " + data.id);
+    impeeduino.functionCall(data.id, data.arg, function(value) {
+		server.log("Function " + data.id + " returned with value: " + value);
     });
     activityLED.write(0);
 });

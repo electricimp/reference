@@ -135,7 +135,7 @@ void loop() {
             } else if (rxOp == OP_ARB) {
                 
             } else {
-                // Call Function Op: 10X
+                // Call Function Op: 111X
                 rxbuffer[rxbufferindex] = '\0';
                 switch (rxByte & MASK_CALL) {
                 case 0x00: Serial.write(function00(rxbuffer)); break;

@@ -2,9 +2,14 @@ function requestHandler(request, response) {
     try {
         if ("command" in request.query) {
             local data = {};
-            data.pin <- request.query.pin.tointeger();
-            if ("val" in request.query) {
-                data.val <- request.query.val.tointeger();
+            if (request.query.command == "call") {
+            	data.id <- request.query.id.tointeger();
+            	data.arg <- request.query.arg;
+            } else {
+				data.pin <- request.query.pin.tointeger();
+				if ("val" in request.query) {
+					data.val <- request.query.val.tointeger();
+				}
             }
             device.send(request.query.command, data);
         }
