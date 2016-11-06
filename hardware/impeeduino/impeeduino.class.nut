@@ -14,8 +14,7 @@ class Impeeduino {
 	static OP_DIGITAL_WRITE_1 = 0xB0;
 	static OP_ANALOG = 0xC0;        
 	static OP_ARB = 0xD0;
-	static OP_CALL0 = 0xE0;
-	static OP_CALL1 = 0xF0;
+	static OP_CALL = 0xE0;
 
 	static MASK_CONFIG = 0x0F;
 	static CONFIG_INPUT = 0x00;
@@ -29,10 +28,15 @@ class Impeeduino {
 	static MASK_ANALOG_ADDR = 0x07;
 	static MASK_CALL = 0x1F;
     
-    _rxBuf   = null; // Buffer for incoming data
-    _funcBuf = null; // Buffer for function return values
 	_serial  = null; // UART bus to communicate with AVR
     _reset   = null; // AVR reset pin
+    
+    _rxBuf   = null; // Buffer for incoming data
+    _funcBuf = null; // Buffer for function return values
+    
+    _functioncb = null; // Table of function return callbacks
+    _digitalReadcb = null; // Table of digital read return callbacks
+    _analogReadcb = null; // Table of analog read return callbacks
     
     constructor(serial = hardware.uart57, reset = hardware.pin1) {
     	_serial = serial;
@@ -44,6 +48,10 @@ class Impeeduino {
 	    _funcBuf = blob();
 	    _rxBuf = blob();
 	    
+	    _functioncb = {};
+	    _digitalReadcb = {};
+	    _analogReadcb = {};
+	    
 	    this.reset();
 	}
 	
@@ -52,11 +60,53 @@ class Impeeduino {
 		_rxBuf = blob();
 		buf.seek(0, 'b');
 		local readByte = 0;
+		
 		while (!buf.eos()) {
 			readByte = buf.readn('b');
 			if (readByte & 0x80) {
 				// Interpret as Opcode
 				server.log(format("Opcode: 0x%02X", readByte));
+				switch (readByte & MASK_OP) {
+				case OP_DIGITAL_WRITE_0:
+					local addr = readByte & MASK_DIGITAL_ADDR;
+					if (addr in _digitalReadcb) {
+						imp.wakeup(0, function() {
+							(delete _digitalReadcb[addr])(0);
+						}.bindenv(this));
+					}
+					break;
+				case OP_DIGITAL_WRITE_1:
+					local addr = readByte & MASK_DIGITAL_ADDR;
+					if (addr in _digitalReadcb) {
+						imp.wakeup(0, function() {
+							(delete _digitalReadcb[addr])(1);
+						}.bindenv(this));
+					}
+					break;
+				case OP_ANALOG:
+					local addr = readByte & MASK_ANALOG_ADDR;
+					local value = blob(2);
+					value[0] = (buf.readn('b') & 0x0F) | ((buf.readn('b') & 0x0F) << 4);
+					value[1] = buf.readn('b') & 0x0F;
+					if (addr in _analogReadcb) {
+						imp.wakeup(0, function() {
+							(delete _analogReadcb[addr])(value);
+						}.bindenv(this));
+					}
+					break;
+				case OP_CALL:
+					local addr = readByte & MASK_CALL;
+					local buf = _rxBuf;
+					_rxBuf = blob();
+					buf.seek(0, 'b');
+					if (addr in _functioncb) {
+						imp.wakeup(0, function() {
+							(delete _functioncb[addr])(buf);
+						}.bindenv(this));
+					}
+					break;
+				}
+				
 			} else {
 				// Save ASCII data to function return buffer
 				_funcBuf.seek(0, 'e');
@@ -89,6 +139,7 @@ class Impeeduino {
     
     // Configures the specified GPIO pin to behave either as an input or an output.
     function pinMode(pin, mode) {
+    	assert (typeof pin == "integer");
         assert (pin != 0 && pin != 1); // Do not reconfigure UART bus pins
     	_serial.write(OP_CONFIGURE | pin);
     	server.log("Configuring " + pin);
@@ -116,6 +167,7 @@ class Impeeduino {
     
     // Writes a value to a digital pin
     function digitalWrite(pin, value) {
+    	assert (typeof pin == "integer");
     	assert (typeof value == "integer" || typeof value == "bool");
     	if (value) {
 			_serial.write(OP_DIGITAL_WRITE_1 | pin);
@@ -127,10 +179,11 @@ class Impeeduino {
     
     // Writes an analog value (PWM wave) to a pin. value represents the duty cycle and ranges between 0 (off) and 255 (always on).
     function analogWrite(pin, value) {
+    	assert (typeof pin == "integer");
     	assert (typeof value == "integer");
     	assert (value <= 255);
     	assert (value >= 0);
-    	assert (PWM_PINMAP[pin] != -1);
+    	if (PWM_PINMAP[pin] == -1) throw "Pin " + pin + " does not have PWM capability";
     	
 		_serial.write(OP_ANALOG | MASK_ANALOG_W | PWM_PINMAP[pin]);
 		// Lowest order bits (3-0)
@@ -142,13 +195,12 @@ class Impeeduino {
     
     // Reads the value from a specified digital pin
     function digitalRead(pin, cb = null) {
+    	assert (typeof pin == "integer");
     	_serial.write(OP_DIGITAL_READ | pin);
     	_serial.flush();
     	
     	if (cb) {
-			imp.wakeup(DIGITAL_READ_TIME, function() {
-				cb({ "value": _pinState[pin]});
-			}.bindenv(this));
+			_digitalReadcb[pin] <- cb;
 		} else {
 			local target_low  = OP_DIGITAL_WRITE_0 | pin; // Search for ops with a digital write pattern and addr = pin
 			local target_high = OP_DIGITAL_WRITE_1 | pin;
@@ -161,7 +213,7 @@ class Impeeduino {
     				_rxBuf.writen(readByte, 'b');
 			    }
 			    timeout_count++;
-			    if (timeout_count > 100) {
+			    if (timeout_count > 200) {
 			        //server.log("Read Timeout, retrying")
 			        timeout_count = 0;
 			        _serial.write(OP_DIGITAL_READ | pin);
@@ -177,38 +229,92 @@ class Impeeduino {
     }
     
     // Reads the value from the specified analog pin. The Arduino board contains a 6 channel , 10-bit analog to digital converter.
-    function analogRead(pin) {
-    	_serial.write(OP_ANALOG | _pinsPWM[pin]);
+    function analogRead(pin, cb = null) {
+    	assert (typeof pin == "integer");
+    	if (pin < 0 || pin > 5) throw "Invalid analog input number: " + pin;
+    	_serial.write(OP_ANALOG | pin);
     	_serial.flush();
+    	imp.sleep(0.000015);
     	if (cb) {
-			imp.wakeup(DIGITAL_READ_TIME, function() {
-				cb({ "value": _pinState[pin]});
-			}.bindenv(this));
+			_analogReadcb[pin] <- cb;
 		} else {
-			local target_low  = OP_DIGITAL_WRITE_0 | pin; // Search for ops with a digital write pattern and addr = pin
-			local target_high = OP_DIGITAL_WRITE_1 | pin;
-			local readByte = _serial.read();
+			local target  = OP_ANALOG | pin;
+			local readByte = 0;
 			local timeout_count = 0;
-			while (readByte != target_low && readByte != target_high) {
+			local value = blob(2);
+			// Wait for Arduino to send back result
+			do {
+				readByte = _serial.read();
 			 	 // Save other data to buffer
 			    if (readByte != -1) {
     			 	_rxBuf.seek(0, 'e');
     				_rxBuf.writen(readByte, 'b');
 			    }
 			    timeout_count++;
-			    if (timeout_count > 100) {
+			    if (timeout_count > 500) {
 			        //server.log("Read Timeout, retrying")
 			        timeout_count = 0;
-			        _serial.write(OP_DIGITAL_READ | pin);
+			        _serial.write(OP_ANALOG | pin);
     	            _serial.flush();
-			    }
+    	        }
+			} while (readByte != target)
+			
+			// Wait for 1st word (bits 3:0)
+			do {
 				readByte = _serial.read();
-			}
-			server.log(format("0x%02X", readByte));
+			 	 // Save other data to buffer
+			    if (readByte != -1) {
+    			 	_rxBuf.seek(0, 'e');
+    				_rxBuf.writen(readByte, 'b');
+			    }
+			} while ((readByte & MASK_OP) != OP_ARB)
+			value[0] = readByte & 0x0F;
+			
+			// Wait for 2nd word (bits 7:4)
+			do {
+				readByte = _serial.read();
+			 	 // Save other data to buffer
+			    if (readByte != -1) {
+    			 	_rxBuf.seek(0, 'e');
+    				_rxBuf.writen(readByte, 'b');
+			    }
+			} while ((readByte & MASK_OP) != OP_ARB)
+			value[0] = value[0] | ((readByte & 0x0F) << 4);
+			
+			// Wait for 3rd word (bits 9:8)
+			do {
+				readByte = _serial.read();
+			 	 // Save other data to buffer
+			    if (readByte != -1) {
+    			 	_rxBuf.seek(0, 'e');
+    				_rxBuf.writen(readByte, 'b');
+			    }
+			} while ((readByte & MASK_OP) != OP_ARB)
+			value[1] = readByte & 0x0F;
+			
+			//server.log(format("0x%04X", value.readn('w'))); value.seek(0, 'b');
 			imp.wakeup(0, parseRXBuffer.bindenv(this));
 			
-			return readByte & MASK_DIGITAL_WRITE ? 1 : 0;
+			return value.readn('w');
 		}
+    }
+    function functionCall(id, arg = "", cb = null) {
+    	assert (typeof id == "integer");
+    	if (typeof arg != "string") throw "Function call argument must be type string";
+    	if (id < 1 || id > 30) throw "Invalid function id: " + id;
+    	
+    	// Clear Arduino function buffer
+    	_serial.write(OP_CALL);
+    	_serial.flush();
+    	// Send function argument
+    	_serial.write(arg);
+    	// Initiate function call
+    	_serial.write(OP_CALL | id);
+    	// Register callback
+    	if (cb != null) {
+    		_functioncb[id] <- cb;
+    	}
+    	_serial.flush();
     }
 }
 
@@ -238,11 +344,17 @@ agent.on("analogWrite", function(data) {
 });
 agent.on("digitalRead", function(data) {
     activityLED.write(1);
-    server.log("Pin " + data.pin + " = " + impeeduino.digitalRead(data.pin));
+    //server.log("Pin " + data.pin + " = " + impeeduino.digitalRead(data.pin));
+    impeeduino.digitalRead(data.pin, function(value) {
+		server.log("Pin " + data.pin + " = " + value);
+    });
     activityLED.write(0);
 });
 agent.on("analogRead", function(data) {
     activityLED.write(1);
-    server.log("Pin A" + data.pin + " = " + impeeduino.analogRead(data.pin));
+    //server.log("Pin A" + data.pin + " = " + impeeduino.analogRead(data.pin));
+    impeeduino.analogRead(data.pin, function(value) {
+		server.log("Pin A" + data.pin + " = " + value);
+    });
     activityLED.write(0);
 });
