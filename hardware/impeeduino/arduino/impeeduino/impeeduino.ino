@@ -98,10 +98,22 @@ void loop() {
                 delay(DELAY_WRITE);
             } else if (rxOp == OP_ANALOG) {
                 if (rxByte & MASK_ANALOG_W) {
-                    analogWrite(rxByte & MASK_ANALOG_ADDR, Serial.read());
+                    int addr = rxByte & MASK_ANALOG_ADDR;
+                    // Lowest order bits (3-0)
+                    int value = Serial.read() & 0x0F;
+                    // Higest order bits (7-4)
+                    value = value | ((Serial.read() & 0x0F) << 4);
+                    
+                    analogWrite(addr, value);
                 } else {
-                    analogRead(rxByte & MASK_ANALOG_ADDR);
-                    // return 10 bit val, TBD
+                    Serial.write(rxByte);
+                    int analogvalue = analogRead(rxByte & MASK_ANALOG_ADDR);
+                    // Lowest order bits (3-0)
+                    Serial.write(OP_ARB | (analogvalue & 0x0F));
+                    // Middle bits (7-4)
+                    Serial.write(OP_ARB | ((analogvalue >> 4) & 0x0F));
+                    // Highest order bits (9-8)
+                    Serial.write(OP_ARB | ((analogvalue >> 8) & 0x0F));
                 }
                 
             } else if (rxOp == OP_CONFIGURE) {

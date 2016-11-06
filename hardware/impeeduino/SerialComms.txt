@@ -26,10 +26,12 @@ Instruction format: 1[op (3b)][addr (4b)]
 	pin 11: 5
 	
 	(0xC8 | addr) Analog Write: Must pass 1 byte argument 0-255 for PWM duty cycle
-		- Full instruction is 1100 1[addr (3b)], 1101[MSB (4b)], 1101[LSB (4b)]
+		- Full instruction is 1100 1[addr (3b)], 1101[LSB (4b)], 1101[MSB (4b)]
 	
-	(0xC0 | addr) Analog Read: Arduino responds w/ copy of op and 10-bit ADC value split into 3 bytes
-		- 1100 0[addr (3b)], 1101 00[ADC(9:8)], 1101 [ADC(7:4)], 1101 [ADC(3:0)]
+	(0xC0 | addr) Analog Read: Arduino responds w/ copy of op and 10-bit ADC value split into 3 bytes.
+		- 1100 0[addr (3b)],  1101 [ADC(3:0)], 1101 [ADC(7:4)], 1101 00[ADC(9:8)]
+		
+	Note imp is little-endian.
 	
 101 (0xD0) Arb data/Reserved
 	
