@@ -2,6 +2,11 @@ function requestHandler(request, response) {
     try {
         if ("command" in request.query) {
             local data = {};
+            if ("async" in request.query && request.query.async == "true") {
+        		data.async <- true;
+        	} else {
+        		data.async <- false;
+        	}
             if (request.query.command == "call") {
             	data.id <- request.query.id.tointeger();
             	data.arg <- request.query.arg;

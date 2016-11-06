@@ -341,18 +341,25 @@ agent.on("analogWrite", function(data) {
 });
 agent.on("digitalRead", function(data) {
     activityLED.write(1);
-    //server.log("Pin " + data.pin + " = " + impeeduino.digitalRead(data.pin));
-    impeeduino.digitalRead(data.pin, function(value) {
-		server.log("Pin " + data.pin + " = " + value);
-    });
+    if (data.async) {
+    	impeeduino.digitalRead(data.pin, function(value) {
+			server.log("Async: Pin " + data.pin + " = " + value);
+		});
+    } else {
+    	server.log("Pin " + data.pin + " = " + impeeduino.digitalRead(data.pin));
+    }
+    
     activityLED.write(0);
 });
 agent.on("analogRead", function(data) {
     activityLED.write(1);
-    //server.log("Pin A" + data.pin + " = " + impeeduino.analogRead(data.pin));
-    impeeduino.analogRead(data.pin, function(value) {
-		server.log("Pin A" + data.pin + " = " + value);
-    });
+    if (data.async) {
+		impeeduino.analogRead(data.pin, function(value) {
+			server.log("Async: Pin A" + data.pin + " = " + value);
+		});
+    } else {
+    	server.log("Pin A" + data.pin + " = " + impeeduino.analogRead(data.pin));
+    }
     activityLED.write(0);
 });
 agent.on("call", function(data) {
