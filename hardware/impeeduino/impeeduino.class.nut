@@ -90,7 +90,7 @@ class Impeeduino {
 					value[1] = buf.readn('b') & 0x0F;
 					if (addr in _analogReadcb) {
 						imp.wakeup(0, function() {
-							(delete _analogReadcb[addr])(value);
+							(delete _analogReadcb[addr])(value.readn('w'));
 						}.bindenv(this));
 					}
 					break;
