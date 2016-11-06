@@ -36,3 +36,7 @@ logic of the RESET pin. Where you see RESET.write(1), change it to RESET.write(0
 
 - Aron
 - Sunny (Update documentation)
+
+## License
+
+The Impeeduino programmer is provided under the [MIT License](../LICENSE).
