@@ -25,6 +25,8 @@
 #define MASK_ANALOG_ADDR 0x07
 #define MASK_CALL 0x1F
 
+const int PWM_PINMAP[6] = {3, 5, 6, 9, 10, 11};
+
 unsigned int rxByte = 0;
 unsigned int rxOp = 0;
 char rxbuffer[128];
@@ -106,7 +108,7 @@ void loop() {
                     // Higest order bits (7-4)
                     value = value | ((Serial.read() & 0x0F) << 4);
                     //Serial.write(value);
-                    analogWrite(addr, value);
+                    analogWrite(PWM_PINMAP[addr], value);
                 } else {
                     Serial.write(rxByte);
                     int analogvalue = analogRead(rxByte & MASK_ANALOG_ADDR);
