@@ -28,6 +28,8 @@ class Impeeduino {
 	static MASK_ANALOG_ADDR = 0x07;
 	static MASK_CALL = 0x1F;
     
+	// -------------------- PRIVATE PROPERTIES -------------------- //
+	
 	_serial  = null; // UART bus to communicate with AVR
     _reset   = null; // AVR reset pin
     
@@ -38,9 +40,16 @@ class Impeeduino {
     _digitalReadcb = null; // Table of digital read return callbacks
     _analogReadcb = null; // Table of analog read return callbacks
     
+    // -------------------- CONSTRUCTOR -------------------- //
+    /* 
+     * The constructor takes two arguments to instantiate the class: a 
+     * non-configured UART bus and a GPIO pin connected to the Arduino's reset 
+     * line. These default to the configuration used on the Impeeduino rev2, 
+     * using `uart57` for serial communications and `pin1` for the reset line.
+     */
     constructor(serial = hardware.uart57, reset = hardware.pin1) {
     	_serial = serial;
-    	_serial.configure(BAUD_RATE, 8, PARITY_NONE, 1, NO_CTSRTS, uartEvent.bindenv(this));
+    	_serial.configure(BAUD_RATE, 8, PARITY_NONE, 1, NO_CTSRTS, _uartEvent.bindenv(this));
     	
     	_reset = reset;
 	    _reset.configure(DIGITAL_OUT);
@@ -55,78 +64,8 @@ class Impeeduino {
 	    this.reset();
 	}
 	
-	function parseRXBuffer() {
-		local buf = _rxBuf;
-		_rxBuf = blob();
-		buf.seek(0, 'b');
-		local readByte = 0;
-		
-		while (!buf.eos()) {
-			readByte = buf.readn('b');
-			if (readByte & 0x80) {
-				// Interpret as Opcode
-				server.log(format("Opcode: 0x%02X", readByte));
-				switch (readByte & MASK_OP) {
-				case OP_DIGITAL_WRITE_0:
-					local addr = readByte & MASK_DIGITAL_ADDR;
-					if (addr in _digitalReadcb) {
-						imp.wakeup(0, function() {
-							(delete _digitalReadcb[addr])(0);
-						}.bindenv(this));
-					}
-					break;
-				case OP_DIGITAL_WRITE_1:
-					local addr = readByte & MASK_DIGITAL_ADDR;
-					if (addr in _digitalReadcb) {
-						imp.wakeup(0, function() {
-							(delete _digitalReadcb[addr])(1);
-						}.bindenv(this));
-					}
-					break;
-				case OP_ANALOG:
-					local addr = readByte & MASK_ANALOG_ADDR;
-					local value = blob(2);
-					value[0] = (buf.readn('b') & 0x0F) | ((buf.readn('b') & 0x0F) << 4);
-					value[1] = buf.readn('b') & 0x0F;
-					if (addr in _analogReadcb) {
-						imp.wakeup(0, function() {
-							(delete _analogReadcb[addr])(value.readn('w'));
-						}.bindenv(this));
-					}
-					break;
-				case OP_CALL:
-					local addr = readByte & MASK_CALL;
-					local buf = _funcBuf;
-					_funcBuf = blob();
-					buf.seek(0, 'b');
-					if (addr in _functioncb) {
-						imp.wakeup(0, function() {
-							(delete _functioncb[addr])(buf);
-						}.bindenv(this));
-					}
-					break;
-				}
-				
-			} else {
-				// Save ASCII data to function return buffer
-				_funcBuf.seek(0, 'e');
-				if (readByte == 0)
-				    readByte = ' ';
-				_funcBuf.writen(readByte, 'b');
-			}
-		}
-		if (_funcBuf.len() > 0) {
-		    server.log(format("%s", _funcBuf.tostring()));
-		}
-	}
-	
-	function uartEvent() {
-	    server.log("Uart event")
-		_rxBuf.seek(0, 'e');
-		_rxBuf.writeblob(_serial.readblob());
-		imp.wakeup(0, parseRXBuffer.bindenv(this));
-	}
-	
+	// -------------------- PUBLIC METHODS -------------------- //
+	/* Resets the ATMega processor. */
 	function reset() {
         server.log("Resetting Duino...")
         _reset.write(1);
@@ -134,7 +73,7 @@ class Impeeduino {
         _reset.write(0);
     }
     
-    // Configures the specified GPIO pin to behave either as an input or an output.
+    /* Configures the specified GPIO pin to behave either as an input or an output. */
     function pinMode(pin, mode) {
     	assert (typeof pin == "integer");
         assert (pin != 0 && pin != 1); // Do not reconfigure UART bus pins
@@ -219,7 +158,7 @@ class Impeeduino {
 				readByte = _serial.read();
 			}
 			server.log(format("0x%02X", readByte));
-			imp.wakeup(0, parseRXBuffer.bindenv(this));
+			imp.wakeup(0, _parseRXBuffer.bindenv(this));
 			
 			return readByte & MASK_DIGITAL_WRITE ? 1 : 0;
 		}
@@ -290,11 +229,12 @@ class Impeeduino {
 			value[1] = readByte & 0x0F;
 			
 			//server.log(format("0x%04X", value.readn('w'))); value.seek(0, 'b');
-			imp.wakeup(0, parseRXBuffer.bindenv(this));
+			imp.wakeup(0, _parseRXBuffer.bindenv(this));
 			
 			return value.readn('w');
 		}
     }
+    /* Calls function */
     function functionCall(id, arg = "", cb = null) {
     	assert (typeof id == "integer");
     	if (typeof arg != "string") throw "Function call argument must be type string";
@@ -313,6 +253,80 @@ class Impeeduino {
     	}
     	_serial.flush();
     }
+    
+    // -------------------- PRIVATE METHODS -------------------- //
+    
+    function _parseRXBuffer() {
+		local buf = _rxBuf;
+		_rxBuf = blob();
+		buf.seek(0, 'b');
+		local readByte = 0;
+		
+		while (!buf.eos()) {
+			readByte = buf.readn('b');
+			if (readByte & 0x80) {
+				// Interpret as Opcode
+				server.log(format("Opcode: 0x%02X", readByte));
+				switch (readByte & MASK_OP) {
+				case OP_DIGITAL_WRITE_0:
+					local addr = readByte & MASK_DIGITAL_ADDR;
+					if (addr in _digitalReadcb) {
+						imp.wakeup(0, function() {
+							(delete _digitalReadcb[addr])(0);
+						}.bindenv(this));
+					}
+					break;
+				case OP_DIGITAL_WRITE_1:
+					local addr = readByte & MASK_DIGITAL_ADDR;
+					if (addr in _digitalReadcb) {
+						imp.wakeup(0, function() {
+							(delete _digitalReadcb[addr])(1);
+						}.bindenv(this));
+					}
+					break;
+				case OP_ANALOG:
+					local addr = readByte & MASK_ANALOG_ADDR;
+					local value = blob(2);
+					value[0] = (buf.readn('b') & 0x0F) | ((buf.readn('b') & 0x0F) << 4);
+					value[1] = buf.readn('b') & 0x0F;
+					if (addr in _analogReadcb) {
+						imp.wakeup(0, function() {
+							(delete _analogReadcb[addr])(value.readn('w'));
+						}.bindenv(this));
+					}
+					break;
+				case OP_CALL:
+					local addr = readByte & MASK_CALL;
+					local buf = _funcBuf;
+					_funcBuf = blob();
+					buf.seek(0, 'b');
+					if (addr in _functioncb) {
+						imp.wakeup(0, function() {
+							(delete _functioncb[addr])(buf);
+						}.bindenv(this));
+					}
+					break;
+				}
+				
+			} else {
+				// Save ASCII data to function return buffer
+				_funcBuf.seek(0, 'e');
+				if (readByte == 0)
+				    readByte = ' ';
+				_funcBuf.writen(readByte, 'b');
+			}
+		}
+		if (_funcBuf.len() > 0) {
+		    server.log(format("%s", _funcBuf.tostring()));
+		}
+	}
+	
+	function _uartEvent() {
+	    server.log("Uart event")
+		_rxBuf.seek(0, 'e');
+		_rxBuf.writeblob(_serial.readblob());
+		imp.wakeup(0, _parseRXBuffer.bindenv(this));
+	}
 }
 
 activityLED <- hardware.pin2;
