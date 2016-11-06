@@ -99,11 +99,13 @@ void loop() {
             } else if (rxOp == OP_ANALOG) {
                 if (rxByte & MASK_ANALOG_W) {
                     int addr = rxByte & MASK_ANALOG_ADDR;
+                    // Wait for value bytes to arrive
+                    while(Serial.available() < 2);
                     // Lowest order bits (3-0)
-                    int value = Serial.read() & 0x0F;
+                    char value = Serial.read() & 0x0F;
                     // Higest order bits (7-4)
                     value = value | ((Serial.read() & 0x0F) << 4);
-                    
+                    //Serial.write(value);
                     analogWrite(addr, value);
                 } else {
                     Serial.write(rxByte);
