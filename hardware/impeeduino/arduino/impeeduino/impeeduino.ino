@@ -1,4 +1,4 @@
-#define VERSION "0.0.1"
+#define VERSION "0.0.2"
 
 #define BAUD_RATE 115200
 #define DELAY_WRITE 50
