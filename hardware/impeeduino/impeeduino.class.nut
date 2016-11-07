@@ -4,7 +4,7 @@ class Impeeduino {
 	
 	static BAUD_RATE = 115200;
 	
-	// PWM enabled pins. -1: No PWM, otherwise 
+	// PWM enabled pins. -1: No PWM, otherwise gives address mapping
 	static PWM_PINMAP = [-1, -1, -1, 0, -1, 1, 2, -1, -1, 3, 4, 5, -1, -1];
 	
 	static MASK_OP = 0xF0;
