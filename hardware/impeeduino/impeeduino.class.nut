@@ -1,6 +1,6 @@
 class Impeeduino {
 	
-	static version = [0, 0, 2]
+	static version = [0, 0, 3]
 	
 	static BAUD_RATE = 115200;
 	
@@ -58,6 +58,7 @@ class Impeeduino {
 	    _rxBuf = blob();
 	    
 	    _functioncb = {};
+	    _functioncb[0] <- _versionCheck;
 	    _digitalReadcb = {};
 	    _analogReadcb = {};
 	    
@@ -332,6 +333,15 @@ class Impeeduino {
 		_rxBuf.seek(0, 'e');
 		_rxBuf.writeblob(_serial.readblob());
 		imp.wakeup(0, _parseRXBuffer.bindenv(this));
+	}
+	
+	function _versionCheck(data) {
+		local versionString = format("%s", data.tostring());
+		server.log(versionString);
+		if (!versionString.find(version[0] + "." + version[1] + "." + version[2])) {
+		    server.log("Library version " + version[0] + "." + version[1] + "." + version[2])
+			server.error("Impeeduino version mismatch!");
+		}
 	}
 }
 
