@@ -66,7 +66,10 @@ class Impeeduino {
 	}
 	
 	// -------------------- PUBLIC METHODS -------------------- //
-	/* Resets the ATMega processor. */
+	/* 
+	 * Resets the ATMega processor by bouncing the reset pin. Note that reseting
+	 * will block the imp for about 0.2 seconds.  
+	 */
 	function reset() {
         server.log("Resetting Duino...")
         _reset.write(1);
@@ -74,12 +77,14 @@ class Impeeduino {
         _reset.write(0);
     }
     
-    /* Configures the specified GPIO pin to behave either as an input or an output. */
+    /* 
+     * Configures the specified GPIO pin to the specified mode. Possible 
+     * configurations are DIGITAL_IN, DIGITAL_IN_PULLUP, DIGITAL_OUT, and PWM_OUT
+     */
     function pinMode(pin, mode) {
     	assert (typeof pin == "integer");
         assert (pin != 0 && pin != 1); // Do not reconfigure UART bus pins
     	_serial.write(OP_CONFIGURE | pin);
-    	//server.log("Configuring " + pin);
     	switch (mode) {
     	case DIGITAL_IN:
     		_serial.write(OP_ARB | CONFIG_INPUT);
@@ -88,7 +93,6 @@ class Impeeduino {
     		_serial.write(OP_ARB | CONFIG_INPUT_PULLUP);
     		break;
     	case DIGITAL_OUT:
-    		//server.log("to Output");
     		_serial.write(OP_ARB | CONFIG_OUTPUT);
     		break;
     	case PWM_OUT:
@@ -102,7 +106,12 @@ class Impeeduino {
     	}
     }
     
-    // Writes a value to a digital pin
+    /*
+     * Writes a value to the specified digital pin. Value can be either a 
+     * boolean or an integer value. For boolean values, true corresponding to 
+     * high and false to low. For integers, non-zero values correspond to high 
+     * and zero corresponds to false.
+     */
     function digitalWrite(pin, value) {
     	assert (typeof pin == "integer");
     	assert (typeof value == "integer" || typeof value == "bool");
@@ -114,7 +123,13 @@ class Impeeduino {
 		_serial.flush();
     }
     
-    // Writes an analog value (PWM wave) to a pin. value represents the duty cycle and ranges between 0 (off) and 255 (always on).
+    /*
+     * Writes an analog value (PWM wave) to a pin. *value* is an integer value 
+     * representing the duty cycle and ranges between 0 (off) and 255 
+     * (always on). For compatibility with imp code, value may also be a 
+     * floating point duty ratio from 0.0 to 1.0. This is then rounded to the 
+     * nearest available value.
+     */
     function analogWrite(pin, value) {
     	assert (typeof pin == "integer");
     	if (PWM_PINMAP[pin] == -1) throw "Pin " + pin + " does not have PWM capability";
@@ -136,7 +151,11 @@ class Impeeduino {
 		_serial.flush();
     }
     
-    // Reads the value from a specified digital pin
+    /* 
+     * Reads the logical value of the specified digital pin and returns it as 
+     * an integer. A value of 0 corresponds to digital low, a value of 1 
+     * corresponds to digital high.
+     */
     function digitalRead(pin, cb = null) {
     	assert (typeof pin == "integer");
     	_serial.write(OP_DIGITAL_READ | pin);
@@ -171,7 +190,10 @@ class Impeeduino {
 		}
     }
     
-    // Reads the value from the specified analog pin. The Arduino board contains a 6 channel , 10-bit analog to digital converter.
+    /*
+     * Reads the value of the specified analog pin and returns it as an integer.
+     * The Arduino has a 10-bit ADC, so returned values will range from 0 to 1023.
+     */
     function analogRead(pin, cb = null) {
     	assert (typeof pin == "integer");
     	if (pin < 0 || pin > 5) throw "Invalid analog input number: " + pin;
@@ -241,7 +263,12 @@ class Impeeduino {
 			return value.readn('w');
 		}
     }
-    /* Calls function */
+    /* 
+     * Performs a function call on the Arduino. This is intended as a way to 
+     * trigger additional functionality on the Arduino. There are 30 
+     * user-modifiable custom functions available in the Arduino code, with id 
+     * numbers 1-30. 
+     */
     function functionCall(id, arg = "", cb = null) {
     	assert (typeof id == "integer");
     	if (typeof arg != "string") throw "Function call argument must be type string";
@@ -262,7 +289,10 @@ class Impeeduino {
     }
     
     // -------------------- PRIVATE METHODS -------------------- //
-    
+    /*
+     * Processes the buffer of pending received data. ASCII data is transcribed
+     * to the function return value buffer, while opcodes are executed.
+     */
     function _parseRXBuffer() {
 		local buf = _rxBuf;
 		_rxBuf = blob();
@@ -277,6 +307,7 @@ class Impeeduino {
 				switch (readByte & MASK_OP) {
 				case OP_DIGITAL_WRITE_0:
 					local addr = readByte & MASK_DIGITAL_ADDR;
+					// Call callback if one has been assigned
 					if (addr in _digitalReadcb) {
 						imp.wakeup(0, function() {
 							(delete _digitalReadcb[addr])(0);
@@ -285,6 +316,7 @@ class Impeeduino {
 					break;
 				case OP_DIGITAL_WRITE_1:
 					local addr = readByte & MASK_DIGITAL_ADDR;
+					// Call callback if one has been assigned
 					if (addr in _digitalReadcb) {
 						imp.wakeup(0, function() {
 							(delete _digitalReadcb[addr])(1);
@@ -296,6 +328,7 @@ class Impeeduino {
 					local value = blob(2);
 					value[0] = (buf.readn('b') & 0x0F) | ((buf.readn('b') & 0x0F) << 4);
 					value[1] = buf.readn('b') & 0x0F;
+					// Call callback if one has been assigned
 					if (addr in _analogReadcb) {
 						imp.wakeup(0, function() {
 							(delete _analogReadcb[addr])(value.readn('w'));
@@ -307,6 +340,7 @@ class Impeeduino {
 					local buf = _funcBuf;
 					_funcBuf = blob();
 					buf.seek(0, 'b');
+					// Call callback if one has been assigned
 					if (addr in _functioncb) {
 						imp.wakeup(0, function() {
 							(delete _functioncb[addr])(buf);
@@ -324,13 +358,22 @@ class Impeeduino {
 			}
 		}
 	}
-	
+	/*
+	 * UART data available event handler. Copies any available data to rxBuf,
+	 * then calls _parseRXBuffer to interpret it.
+	 */
 	function _uartEvent() {
 		_rxBuf.seek(0, 'e');
 		_rxBuf.writeblob(_serial.readblob());
 		imp.wakeup(0, _parseRXBuffer.bindenv(this));
 	}
 	
+	/*
+	 * Compares the version string sent from the Arduino to a target version.
+	 * By default, the Arduino sketch transmits its version on startup and then
+	 * calls function 0 (0xE0). Assigning _versionCheck as the callback for
+	 * functioncb[0] will perform a check on that version string.
+	 */
 	function _versionCheck(data) {
 		local versionString = format("%s", data.tostring());
 		server.log(versionString);
