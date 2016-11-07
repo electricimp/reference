@@ -31,7 +31,6 @@ agent.on("digitalRead", function(data) {
     } else {
     	server.log("Pin " + data.pin + " = " + impeeduino.digitalRead(data.pin));
     }
-    
     activityLED.write(0);
 });
 agent.on("analogRead", function(data) {

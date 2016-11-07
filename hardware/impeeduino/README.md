@@ -1,4 +1,4 @@
-# Impeeduino 0.0.?
+# Impeeduino 1.0.0
 
 The Impeeduino is a combination of an imp001 and an Arduino. This library provides a simple way to instruct the Arduino side of the Impeeduino to perform basic tasks over UART.
 
