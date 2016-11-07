@@ -1,3 +1,7 @@
+// Copyright (c) 2016 Electric Imp
+// This file is licensed under the MIT License
+// http://opensource.org/licenses/MIT
+
 #define VERSION "1.0.0"
 
 #define BAUD_RATE 115200

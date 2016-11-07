@@ -75,3 +75,7 @@ function 31 `(0xFF)` is not allowed to avoid confusion with -1.
 9. Imp places received characters into buffer
 10. Arduino sends *call 0xXX* to indicate function return
 11. If a callback has been set, Imp calls it with the returned value as an argument.
+
+## License
+
+The Impeeduino Arduino sketch and associated materials are provided under the [MIT License](../../LICENSE).
