@@ -1,4 +1,4 @@
-#define VERSION "0.0.2"
+#define VERSION "0.0.3"
 
 #define BAUD_RATE 115200
 #define DELAY_WRITE 50
@@ -32,45 +32,47 @@ unsigned int rxOp = 0;
 char rxbuffer[128];
 int rxbufferindex = 0;
 
-char* function00(char* buf) { return buf; }
-char* function01(char* buf) { return buf; }
-char* function02(char* buf) { return buf; }
-char* function03(char* buf) { return buf; }
-char* function04(char* buf) { return buf; }
-char* function05(char* buf) { return buf; }
-char* function06(char* buf) { return buf; }
-char* function07(char* buf) { return buf; }
-char* function08(char* buf) { return buf; }
-char* function09(char* buf) { return buf; }
-char* function0A(char* buf) { return buf; }
-char* function0B(char* buf) { return buf; }
-char* function0C(char* buf) { return buf; }
-char* function0D(char* buf) { return buf; }
-char* function0E(char* buf) { return buf; }
-char* function0F(char* buf) { return buf; }
+// ========== USER-DEFINED FUNCTIONS ========== //
+const char* function01(char* buf) { 
+  return String(millis()).c_str();
+}
+const char* function02(char* buf) { return buf; }
+const char* function03(char* buf) { return buf; }
+const char* function04(char* buf) { return buf; }
+const char* function05(char* buf) { return buf; }
+const char* function06(char* buf) { return buf; }
+const char* function07(char* buf) { return buf; }
+const char* function08(char* buf) { return buf; }
+const char* function09(char* buf) { return buf; }
+const char* function0A(char* buf) { return buf; }
+const char* function0B(char* buf) { return buf; }
+const char* function0C(char* buf) { return buf; }
+const char* function0D(char* buf) { return buf; }
+const char* function0E(char* buf) { return buf; }
+const char* function0F(char* buf) { return buf; }
 
-char* function10(char* buf) { return buf; }
-char* function11(char* buf) { return buf; }    
-char* function12(char* buf) { return buf; }
-char* function13(char* buf) { return buf; }
-char* function14(char* buf) { return buf; }
-char* function15(char* buf) { return buf; }
-char* function16(char* buf) { return buf; }
-char* function17(char* buf) { return buf; }
-char* function18(char* buf) { return buf; }
-char* function19(char* buf) { return buf; }
-char* function1A(char* buf) { return buf; }
-char* function1B(char* buf) { return buf; }
-char* function1C(char* buf) { return buf; }
-char* function1D(char* buf) { return buf; }
-char* function1E(char* buf) { return buf; }
+const char* function10(char* buf) { return buf; }
+const char* function11(char* buf) { return buf; }    
+const char* function12(char* buf) { return buf; }
+const char* function13(char* buf) { return buf; }
+const char* function14(char* buf) { return buf; }
+const char* function15(char* buf) { return buf; }
+const char* function16(char* buf) { return buf; }
+const char* function17(char* buf) { return buf; }
+const char* function18(char* buf) { return buf; }
+const char* function19(char* buf) { return buf; }
+const char* function1A(char* buf) { return buf; }
+const char* function1B(char* buf) { return buf; }
+const char* function1C(char* buf) { return buf; }
+const char* function1D(char* buf) { return buf; }
+const char* function1E(char* buf) { return buf; }
 
 
 void setup() {
-    // put your setup code here, to run once:
     Serial.begin(BAUD_RATE);
     Serial.print("Impeeduino Version: ");
     Serial.println(VERSION);
+    Serial.write(OP_CALL0);
     Serial.flush();
 }
 
@@ -138,7 +140,7 @@ void loop() {
                 // Call Function Op: 111X
                 rxbuffer[rxbufferindex] = '\0';
                 switch (rxByte & MASK_CALL) {
-                case 0x00: Serial.write(function00(rxbuffer)); break;
+                case 0x00: Serial.write(rxbuffer); break;
                 case 0x01: Serial.write(function01(rxbuffer)); break;
                 case 0x02: Serial.write(function02(rxbuffer)); break;
                 case 0x03: Serial.write(function03(rxbuffer)); break;
