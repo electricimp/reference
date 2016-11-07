@@ -58,7 +58,7 @@ class Impeeduino {
 	    _rxBuf = blob();
 	    
 	    _functioncb = {};
-	    _functioncb[0] <- _versionCheck;
+	    //_functioncb[0] <- _versionCheck;
 	    _digitalReadcb = {};
 	    _analogReadcb = {};
 	    
@@ -79,7 +79,7 @@ class Impeeduino {
     	assert (typeof pin == "integer");
         assert (pin != 0 && pin != 1); // Do not reconfigure UART bus pins
     	_serial.write(OP_CONFIGURE | pin);
-    	server.log("Configuring " + pin);
+    	//server.log("Configuring " + pin);
     	switch (mode) {
     	case DIGITAL_IN:
     		_serial.write(OP_ARB | CONFIG_INPUT);
@@ -88,7 +88,7 @@ class Impeeduino {
     		_serial.write(OP_ARB | CONFIG_INPUT_PULLUP);
     		break;
     	case DIGITAL_OUT:
-    		server.log("to Output");
+    		//server.log("to Output");
     		_serial.write(OP_ARB | CONFIG_OUTPUT);
     		break;
     	case PWM_OUT:
@@ -164,7 +164,7 @@ class Impeeduino {
 			    }
 				readByte = _serial.read();
 			}
-			server.log(format("0x%02X", readByte));
+			//server.log(format("0x%02X", readByte));
 			imp.wakeup(0, _parseRXBuffer.bindenv(this));
 			
 			return readByte & MASK_DIGITAL_WRITE ? 1 : 0;
@@ -273,7 +273,7 @@ class Impeeduino {
 			readByte = buf.readn('b');
 			if (readByte & 0x80) {
 				// Interpret as Opcode
-				server.log(format("Opcode: 0x%02X", readByte));
+				//server.log(format("Opcode: 0x%02X", readByte));
 				switch (readByte & MASK_OP) {
 				case OP_DIGITAL_WRITE_0:
 					local addr = readByte & MASK_DIGITAL_ADDR;
@@ -323,13 +323,9 @@ class Impeeduino {
 				_funcBuf.writen(readByte, 'b');
 			}
 		}
-		if (_funcBuf.len() > 0) {
-		    server.log(format("%s", _funcBuf.tostring()));
-		}
 	}
 	
 	function _uartEvent() {
-	    server.log("Uart event")
 		_rxBuf.seek(0, 'e');
 		_rxBuf.writeblob(_serial.readblob());
 		imp.wakeup(0, _parseRXBuffer.bindenv(this));
