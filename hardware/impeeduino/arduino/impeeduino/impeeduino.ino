@@ -79,6 +79,9 @@ void setup() {
     Serial.println(VERSION);
     Serial.write(OP_CALL0);
     Serial.flush();
+    digitalWrite(7, HIGH);
+    delay(500);
+    digitalWrite(7,LOW);
 }
 
 void loop() {
