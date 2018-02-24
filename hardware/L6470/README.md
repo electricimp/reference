@@ -212,7 +212,7 @@ motor.softReset();
 #### getStatus( )
 Reads the L6470 status register. Returns the 2-byte value as an integer. See datasheet section 9.1.22 for full description.
 
-![L6470 Status Register](images/l6470_status)
+![L6470 Status Register](images/l6470_status.png)
 
 ```
 server.log(format("Status Register: 0x%04x", motor.getStatus()));
@@ -239,7 +239,7 @@ motor.setConfig(CONFIG_INT_OSC | CONFIG_PWMMULT_2_000);
 #### getConfig()
 Reads the L6470 config register. Returns the 2-byte value as an integer. See datasheet section 9.1.21 for full description.
 
-![L6470 Config Register](images/l6470_config)
+![L6470 Config Register](images/l6470_config.png)
 
 ```
 server.log(format("Config Register: 0x%04x", motor.getConfig()));
