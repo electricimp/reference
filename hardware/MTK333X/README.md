@@ -1,12 +1,17 @@
-#Driver Class for the PA6H GPS Module
+# Driver Class for the MTK333X GPS Module Family
 
 Author: [Tom Byrne](https://github.com/ersatzavian/)
 
-The [PA6H](http://www.adafruit.com/datasheets/GlobalTop-FGPMMOPA6H-Datasheet-V0A.pdf) is a GPS module wiht integrated antenna and UART interface, [available on a breakout from Adafruit](http://www.adafruit.com/product/746) and other retailers. This module has a great deal of built-in functionality and can track satellites on 66 channels.
+The MTK333X is a family of Global Navigation Satellite System (GNSS) modules that are repackaged and sold under different part numbers by basically every hobbyist and robotics vendor out there. For instance: 
+* [Adafruit "Ultimate GPS Breakout", aka PA6H (MTK3339)](https://www.adafruit.com/product/746)
+** Also available as a [module, without the breakout board](https://www.adafruit.com/product/790?gclid=EAIaIQobChMIjZblr-u-2QIVhIuzCh2EKw7qEAQYAyABEgLvnPD_BwE).
+* [Sparkfun "Qwiic" XA1110, aka GTOP Titan X1, aka Mediatek MT3333](https://www.sparkfun.com/products/14414).
+** This module supports I2C, a feature this class doesn't include yet but could be extended to include. 
+* [Sparkfun GPS Logger, aka GP3906-TLP, aka Mediatek MT3339](https://www.sparkfun.com/products/13750)
 
 ## Hardware Setup
 
-| PA6H Breakout Pin | Imp Breakout Pin | Notes |
+| GPS Breakout Pin | Imp Breakout Pin | Notes |
 | ----------------- | ---------------- | ----- |
 | Vin | 3V3 | Power |
 | GND | GND |  |
@@ -29,104 +34,108 @@ en <- hardware.pin9;
 fix.configure(DIGITAL_IN);
 en.configure(DIGITAL_OUT,0);
 
-gps <- PA6H(uart, en, fix);
+gnss <- MTK333X(uart, en, fix);
 ```
+
+## General Interface
+
+The MTK333X family of GNSS modules all use standard NMEA 0183 command sequences in ASCII over UART (or in some cases I2C). This class lazily uses pre-built command strings with pre-calculated checksums. If you want to add new commands, you can build them pretty simply by reviewing the [PMTK command datasheet](https://cdn-shop.adafruit.com/datasheets/PMTK_A11.pdf) (or another NMEA command reference guide), and then using a checksum calculator such as the one at [https://en.wikipedia.org/wiki/NMEA_0183](https://en.wikipedia.org/wiki/NMEA_0183).
 
 ## Usage
 
 ### Basic System Functions
 
 #### enable( )
-Drive the enable line high to enable the PA6H, if an enable pin was provided to the constructor.
+Drive the enable line high to enable the GNSS module, if an enable pin was provided to the constructor.
 
 ```
-gps.enable();
+gnss.enable();
 ```
 
 #### disable( )
-Drive the enable line low to disable the PA6H, if an enable pin was provided to the constructor.
+Drive the enable line low to disable the GNSS module, if an enable pin was provided to the constructor.
 
 ```
-gps.disable();
+gnss.disable();
 ```
 
 #### wakeup( )
-Send a single byte to wake the PA6H from standby mode.
+Send a single byte to wake the GNSS module from standby mode.
 
 ```
-gps.wakeup();
+gnss.wakeup();
 ```
 
 #### standby( )
-Send the standby mode to put the PA6H into a low-power state. No updated position information will be generated until gps.wakeup() is called.
+Send the standby mode to put the GNSS module into a low-power state. No updated position information will be generated until wakeup() is called.
 
 ```
-gps.standby();
+gnss.standby();
 ```
 
 #### setBaud( baud )
-Set the baud rate used to communicate with the PA6H. Supported rates are 9600 (default) and 57600. Reconfigures the imp's UART with the given baud. This function checks to ensure the requested baud rate is valid and will throw an error if an invalid baud is given.
+Set the baud rate used to communicate with the module. Supported rates are 9600 (default), 57600, and 115200. Reconfigures the imp's UART with the given baud. This function checks to ensure the requested baud rate is valid and will throw an error if an invalid baud is given.
 
 ```
-gps.setBaud(57600);
+gnss.setBaud(115200);
 ```
 
 #### hasFix( )
 Reads the value of the FIX pin and returns it. Returns null if a FIX pin was not provided to the constructor.
 
 ```
-if (gps.hasFix()) server.log("GPS fix established");
+if (gnss.hasFix()) server.log("GPS fix established");
 ```
 
-### GPS Modes
+### GNSS Modes
 
-The PA6H can calculate and report several different types of position and navigation data:
+The GNSS module can calculate and report several different types of position and navigation data:
 
 | Mode | Description |
 | ---- | ----------- |
 | GGA | Time, position and fix |
-| GSA | GPS receiver operating mode, active satellites used in the position solution and Dilution of Precision (DOP) values |
-| GSV | The number of GPS satellites in view, satellite ID numbers, elevation, azimuth, and Signal-to-Noise (SNR) values |
+| GSA | GNSS receiver operating mode, active satellites used in the position solution and Dilution of Precision (DOP) values |
+| GSV | The number of GNSS satellites in view, satellite ID numbers, elevation, azimuth, and Signal-to-Noise (SNR) values |
 | RMC | Time, date, position, course and speed data. Recommended Minimum Navigation Information. |
 | VTG | Course and speed information relative to the ground |
 
 
 #### setModeRMCGGA( )
-Set the PA6H to report updates to Minimum Navigational Data (RMC) and Positional Data (GGA). 
+Set the module to report updates to Minimum Navigational Data (RMC) and Positional Data (GGA). 
 
 ```
-gps.setModeRMCGGA();
+gnss.setModeRMCGGA();
 ```
 
 #### setModeRMC( ) 
-Set the PA6H to report updates to RMC data only. Best for minimal spurious output.
+Set the module to report updates to RMC data only. Best for minimal spurious output.
 
 ```
-gps.setModeRMC();
+gnss.setModeRMC();
 ```
 
 #### setModeAll( )
-Set the PA6H to report updates to any and all navigational data (GGA, GSA, GSV, RMC, and VTG)
+Set the module to report updates to any and all navigational data (GGA, GSA, GSV, RMC, and VTG)
 
 ```
-gps.setModeAll();
+gnss.setModeAll();
 ```
 
 #### setReportingRate( rateSeconds )
 Set the time period between navigational data reports, in seconds. Note that this does not change the rate at which this data is calculated (use setUpdateRate to change the time between GPS solutions). Accepts reporting period in seconds, and will round up to the nearest supported reporting period. Supported periods are 0.1s, 0.2s, 1s, and 10s. 
 
 ```
-gps.setReportingRate(10.0);
+gnss.setReportingRate(10.0);
 ```
 
 #### setUpdateRate( rateSeconds )
-Set the time period between GPS solutions, in seconds. Will round up to the nearest supported update period. Supported periods are 0.2s, 1s, and 10s.
+Set the time period between GNSS solutions, in seconds. Will round up to the nearest supported update period. Supported periods are 0.2s, 1s, and 10s.
 
 ```
-gps.setUpdateRate(10.0);
+gnss.setUpdateRate(10.0);
 ```
 
-### GPS Data
+### GNSS Data
 Example:
 
 ```
@@ -179,14 +188,14 @@ _last_pos_data = {
 Returns the latest values in the _last_pos_data table. See example above for fields.
 
 ```
-agent.send("navdata", gps.getPosition());
+agent.send("navdata", gnss.getPosition());
 ```
 
 #### setPositionCallback( callback )
 Assign a callback to be called when Position (GGA) data is updated.
 
 ```
-gps.setPositionCallback(function(pos_data) {
+gnss.setPositionCallback(function(pos_data) {
 	// Send updated lat and lon to the agent
 	agent.send("location", {"lat" = pos_data.lat, "lon" = pos_data.lon});
 });
@@ -196,7 +205,7 @@ gps.setPositionCallback(function(pos_data) {
 Assign a callback to be called when Dilution-of-Precision data is updated.
 
 ```
-gps.setDopCallback( function(dop_data) {
+gnss.setDopCallback( function(dop_data) {
 	// Send updated horizontal-dilution-of-precision data to the the agent
 	agent.send("hdop", dop_data.hdop);
 });
@@ -206,7 +215,7 @@ gps.setDopCallback( function(dop_data) {
 Assign a callback to be called when Satellite data is updated.
 
 ```
-gps.setSatsCallback( function(sats_data) {
+gnss.setSatsCallback( function(sats_data) {
 	// Send the updated number of satellites in view to the agent
 	agent.send("sats", sats_data.sats_in_view));
 });
@@ -216,7 +225,7 @@ gps.setSatsCallback( function(sats_data) {
 Assign a callback to be called when minimum navigational data is updated.
 
 ```
-gps.setRmcCallback( function(rmc_data) {
+gnss.setRmcCallback( function(rmc_data) {
 	// send updated ground speed to the agent
 	agent.send("ground_speed", rmc_data.gs_knots);
 });
@@ -225,7 +234,7 @@ gps.setRmcCallback( function(rmc_data) {
 Assign a callback to be called when course-over-ground data is updated.
 
 ```
-gps.setVtgCallback( function(vtg_data) {
+gnss.setVtgCallback( function(vtg_data) {
 	// send updated true course to the agent
 	agent.send("course", vtg_data.true_course);
 });
@@ -235,7 +244,7 @@ gps.setVtgCallback( function(vtg_data) {
 Assign a callback to be called when antenna status is updated.
 
 ```
-gps.setAntStatusCallback( function(ant_data) ) {
+gnss.setAntStatusCallback( function(ant_data) ) {
 	if (ant_data.ant_status == 2) {
 		server.log("Internal Antenna in Use");
 	}
