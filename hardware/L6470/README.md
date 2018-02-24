@@ -55,15 +55,15 @@ motor <- L6470(spi, cs_l, rst_l, flag_l);
 
 When the class is first instantiated, several properties need to be configured in order for the class methods to operate the motor properly: 
 
-# Set microstepping mode.
-# Configure oscillator source and PWM multiplier.
-# Read the Status Register to clear the Overcurrent bit.
+1. Set microstepping mode.
+1. Configure oscillator source and PWM multiplier.
+1. Read the Status Register to clear the Overcurrent bit.
 
 Other items may also need to be configured or adjusted to produce smooth operation: 
 
-# Set max speed / full-stepping speed. 
-# Set maximum acceleration and deceleration speeds. 
-# Set K-Values.
+1. Set max speed / full-stepping speed. 
+1. Set maximum acceleration and deceleration speeds. 
+1. Set K-Values.
 
 #### Steps Per Motor Revolution
 
@@ -86,7 +86,8 @@ Use `setStepMode(const)` to configure the microstepping mode. The L6470 supports
 
 ##### Parameters
 
-|| Constant || Description ||
+| Constant | Description |
+| -------- | ----------- |
 | STEP_MODE_SYNC | Synchronous Mode; uses external Sync pin to control stepping. |
 | STEP_SEL_FULL | Full-step mode. |
 | STEP_SEL_HALF | Half-step mode. |
@@ -107,7 +108,7 @@ motor.setStepMode(STEP_SEL_1_64);
 
 The config register bitfield has been mapped with OR-able constants for convienience. The bitfield description is in section 9.1.21 of the L6470 datasheet.
 
-![L6470 Config Register](images/l6470_config)
+![L6470 Config Register](images/l6470_config.png)
 
 #### Example: 
 
@@ -122,14 +123,16 @@ The L6470 can be clocked with either an internal 16 MHz RC oscillator, an extern
 
 Only the internal oscillator option is mapped to a constant. By default, when the L6470 powers up, the internal 16 MHz oscillator is used and a 2 MHz clock is supplied on the OSCOUT pin.
 
-|| Constant || Description ||
+| Constant | Description |
+| -------- | ----------- |
 | CONFIG_INT_OSC | Use internal 16 MHz Oscillator. |
 
 ##### Set PWM Configuration 
 
 Phases are PWMed to control the voltage applied to the motor phases at each mode of operation (a brushless DC motor is equivalent to a Buck regulator over periods of time much less than one electrical phase). The PWM frequency can be changed by setting an divisor and multiplier to determine the number of base clocks per PWM period. PWM Multiplier and Divisor values are ORable constants that can be supplied to the `setConfig` method.
 
-|| Constant || Description ||
+| Constant | Description |
+| -------- | ----------- |
 | CONFIG_PWMDIV_1 | Divide Base Clock By 1. |
 | CONFIG_PWMDIV_2 | Divide Base Clock By 2. |
 | CONFIG_PWMDIV_3 | Divide Base Clock By 3. |
@@ -150,7 +153,8 @@ Phases are PWMed to control the voltage applied to the motor phases at each mode
 
 The L6470 has a number of other features that can be controlled using consts supplied to the `setConfig` method. See datasheet section 9.1.21 for more details. 
 
-|| Constant || Description ||
+| Constant | Description |
+| -------- | ----------- |
 | CONFIG_OC_SD | Shut down driver bridges if overcurrent event occurs. |
 | CONFIG_SR_75 | Slew-rate limit driver bridges to 75 V/µs. |
 | CONFIG_SR_110 | Slew-rate limit driver bridges to 110 V/µs. |
@@ -178,8 +182,8 @@ I(phase) = [ V(applied) - V(back-emf) ] / R(winding).
 
 During operation, the L6470 does two basic things: 
 
-# Tracks the position of the motor poles and switches the phases appropriately as the motor turns.
-# During each phase, switches the phases on and off rapidly to regulate the voltage applied to the motor phases. 
+1. Tracks the position of the motor poles and switches the phases appropriately as the motor turns.
+1. During each phase, switches the phases on and off rapidly to regulate the voltage applied to the motor phases. 
 
 A very cool feature of the L6470 is that it allows you to control the maximum V(applied) for each state of operation (running, accelerating, or holding position). This lets you control the speed even when you're operating below the value in the max speed register, as well as manage the power dissipation and therefore heat generated inside the motor for each phase of operation. 
 
@@ -251,7 +255,8 @@ motor.setStepMode(STEP_SEL_1_64);
 #### getStepMode( )
 Reads the current microstepping mode and returns the divisor as an integer (or 0 for synchronous mode). Returns -1 on error. 
 
-|| Return Value || Mode ||
+| Return Value | Mode |
+| ------------ | ---- |
 | 0 | Synchronous | 
 | 1 | Full Step |
 | 2 | 1/2 Step |
