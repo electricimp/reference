@@ -4,9 +4,9 @@ Author: [Tom Byrne](https://github.com/ersatzavian/)
 
 The MTK333X is a family of Global Navigation Satellite System (GNSS) modules that are repackaged and sold under different part numbers by basically every hobbyist and robotics vendor out there. For instance: 
 * [Adafruit "Ultimate GPS Breakout", aka PA6H (MTK3339)](https://www.adafruit.com/product/746)
-** Also available as a [module, without the breakout board](https://www.adafruit.com/product/790?gclid=EAIaIQobChMIjZblr-u-2QIVhIuzCh2EKw7qEAQYAyABEgLvnPD_BwE).
+  * Also available as a [module, without the breakout board](https://www.adafruit.com/product/790?gclid=EAIaIQobChMIjZblr-u-2QIVhIuzCh2EKw7qEAQYAyABEgLvnPD_BwE).
 * [Sparkfun "Qwiic" XA1110, aka GTOP Titan X1, aka Mediatek MT3333](https://www.sparkfun.com/products/14414).
-** This module supports I2C, a feature this class doesn't include yet but could be extended to include. 
+  * This module supports I2C, a feature this class doesn't include yet but could be extended to include. 
 * [Sparkfun GPS Logger, aka GP3906-TLP, aka Mediatek MT3339](https://www.sparkfun.com/products/13750)
 
 ## Hardware Setup
