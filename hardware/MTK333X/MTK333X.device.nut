@@ -1,9 +1,8 @@
-// Driver class for the PA6H GPS module
-// http://www.adafruit.com/datasheets/GlobalTop-FGPMMOPA6H-Datasheet-V0A.pdf
-// Used in V3 of the Adafruit "Ultimate" GPS Breakout
-// https://www.adafruit.com/products/746
-class PA6H {
-    
+// https://cdn.sparkfun.com/assets/parts/1/2/2/8/0/GlobalTop_Titan_X1_Datasheet.pdf
+// https://cdn-shop.adafruit.com/datasheets/PMTK_A11.pdf
+// https://cdn.sparkfun.com/assets/parts/1/2/2/8/0/GTOP_NMEA_over_I2C_Application_Note.pdf
+class MTK333X {
+
     // GGA: Time, position and fix type data.
     // GSA: GPS receiver operating mode, active satellites used in the
     //      position solution and DOP values.
@@ -26,6 +25,7 @@ class PA6H {
     static PMTK_API_SET_FIX_CTL_5HZ                 = "$PMTK300,200,0,0,0,0*2F";
     // Can't fix position faster than 5 times a second!
     
+    static PMTK_SET_BAUD_115200                     = "$PMTK251,115200*1F";
     static PMTK_SET_BAUD_57600                      = "$PMTK251,57600*2C";
     static PMTK_SET_BAUD_9600                       = "$PMTK251,9600*17";
     
@@ -64,17 +64,17 @@ class PA6H {
     static PGCMD_NOANTENNA                          = "$PGCMD,33,0*6D"; 
     
     static DEFAULT_BAUD  = 9600;
+    static _VERBOSE = false;
 
     // pins and hardware
     _uart   = null;
-    _fix    = null;
-    _en     = null;
-    
+
     _uart_baud = null;
     _uart_buffer = "";
     
     // vars
     _last_pos_data = {};
+    // TODO: add all keys to the pos data table in init routine so the class caller doesn't have to check if they exist
     
     _position_update_cb = null;
     _dop_update_cb      = null;
@@ -88,15 +88,16 @@ class PA6H {
         _uart   = uart;
         _en     = en;
         _fix    = fix;
-        
+
         _uart_baud = DEFAULT_BAUD;
-        _uart.configure(_uart_baud, 8, PARITY_NONE, 2, NO_CTSRTS, _uartCallback.bindenv(this));
+        _uart.configure(_uart_baud, 8, PARITY_NONE, 1, NO_CTSRTS, _uartCallback.bindenv(this));
     }
     
     // -------------------------------------------------------------------------
     function _sendCmd(cmdStr) {
+        // TODO: Calculate checksums directly.
         _uart.write(cmdStr);
-        _uart.write("\x0D\x0A");
+        _uart.write("\r\n");
         _uart.flush();
     }   
     
@@ -115,10 +116,24 @@ class PA6H {
     // Parse a lat/lon coordinate from
     // 
     // ddmm.mmmm or dddmm.mmmm
-    //
-    // uhh.. this is a stub right now
-    function _parseCoordinate(coordinatestring) {
-        return coordinatestring;
+    // returns coodinate in degrees as a floating-point number
+    function _parseCoordinate(str) {
+      local deg = 0;
+      local min = 0;
+      
+      // degrees aren't justified with leading zeros
+      // handle three-digit whole degrees
+      if (split(str, ".")[0].len() == 4) {
+        deg = str.slice(0,2).tointeger();  
+        min = str.slice(2,str.len()).tofloat();
+      } else {
+        deg = str.slice(0,3).tointeger();
+        min = str.slice(3,str.len()).tofloat();
+      }
+      
+      local result = deg + min / 60.0;
+      //server.log(str + "->" + deg + " deg, " + min + " min = " + result);
+      return result;
     }
     
     // -------------------------------------------------------------------------
@@ -134,8 +149,10 @@ class PA6H {
                     _parse(packets[i]);
                     _uart_buffer = _uart_buffer.slice(len + 1,_uart_buffer.len());
                 } catch (err) {
-                   _uart_buffer = "";
-                   server.log(err+", Pkt: "+packets[i]);
+                  _uart_buffer = "";
+                  if (_VERBOSE) {
+                    log("[GPS] "+err+", Pkt: "+packets[i]);
+                  }
                 }
             }
         }
@@ -148,7 +165,8 @@ class PA6H {
         if (packetstr_raw.find("PMTK") != null) { return }
         packetstr_raw = split(strip(packetstr_raw),"*");
         local packetstr = packetstr_raw[0];
-        //server.log(packetstr);
+        //log("Parsing: "+packetstr);
+        // TODO: Verify checksum
         local checksum = packetstr_raw[1];
         //server.log(checksum);
         
@@ -169,169 +187,251 @@ class PA6H {
         
         local hdr = fields[0];
         switch (hdr) {
+            // lots of cases, few commands
+            // "GP-" = GPS
+            // "GN-" = GLONASS
+            // "GL-" = GPS + GLONASS
             case "GPGGA":
-                // time, position, and fix data
-                // Ex: "$GPGGA,064951.000,2307.1256,N,12016.4438,E,1,8,0.95,39.9,M,17.8,M,,*65 "
-                // UTC Time 064951.000 hhmmss.sss
-                _last_pos_data.time <- _parseUTC(fields[1]);
-                // Latitude 2307.1256 ddmm.mmmm
-                _last_pos_data.lat <- _parseCoordinate(fields[2]);
-                // N/S Indicator N N=north or S=south
-                _last_pos_data.ns <- fields[3];
-                // Longitude 12016.4438 dddmm.mmmm
-                _last_pos_data.lon <- _parseCoordinate(fields[4]);
-                // E/W Indicator E E=east or W=west
-                _last_pos_data.ew <- fields[5];
-                // Position Fix
-                _last_pos_data.fix <- fields[6];
-                // Satellites Used 8 Range 0 to 14
-                _last_pos_data.sats_used <- fields[7].tointeger();
-                // HDOP 0.95 Horizontal Dilution of Precision
-                _last_pos_data.hdop <- fields[8].tofloat();
-                // MSL Altitude 39.9 meters Antenna Altitude above/below mean-sea-level
-                _last_pos_data.msl <- fields[9].tofloat();
-                // Units M meters Units of antenna altitude
-                _last_pos_data.units_alt <- fields[10].tofloat();
-                // Geoidal Separation 17.8 meters
-                _last_pos_data.geoidal_sep <- fields[11].tofloat();
-                // Units M meters Units of geoids separation
-                _last_pos_data.units_sep <- fields[12];
-                // Age of Diff. Corr. second Null fields when DGPS is not used
-                _last_pos_data.diff_corr <- fields[13];
-
-                if (_position_update_cb) _position_update_cb(_last_pos_data);
+                _handleGGA(fields);
+                break;
+            case "GNGGA": 
+                _handleGGA(fields);
                 break;
             case "GPGSA":
-                // DOP and Active Satellites Data
-                // Ex: "$GPGSA,A,3,29,21,26,15,18,09,06,10,,,,,2.32,0.95,2.11*00 "
-                // "M" = manual (forced into 2D or 3D mode)
-                // "A" = 2C Automatic, allowed to auto-switch 2D/3D
-                _last_pos_data.mode1 <- fields[1];
-                // "1" = Fix not available
-                // "2" = 2D (<4 SVs used)
-                // "3" = 3D (>= 4 SVs used)
-                _last_pos_data.mode2 <- fields[2];
-                // Satellites Used on Channel 1
-                _last_pos_data.sats_used_1 <- fields[3].tointeger();
-                _last_pos_data.sats_used_2 <- fields[4].tointeger();
-                _last_pos_data.sats_used_3 <- fields[5].tointeger();
-                _last_pos_data.sats_used_4 <- fields[6].tointeger();                
-                _last_pos_data.sats_used_5 <- fields[7].tointeger();
-                _last_pos_data.sats_used_6 <- fields[8].tointeger();                
-                _last_pos_data.sats_used_7 <- fields[9].tointeger();
-                _last_pos_data.sats_used_8 <- fields[10].tointeger();
-                _last_pos_data.sats_used_9 <- fields[11].tointeger();
-                _last_pos_data.sats_used_10 <- fields[12].tointeger();                
-                _last_pos_data.sats_used_11 <- fields[13].tointeger();
-                _last_pos_data.sats_used_12 <- fields[14].tointeger();
-                // Positional Dilution of Precision
-                _last_pos_data.pdop <- fields[15].tofloat();
-                // Horizontal Dilution of Precision
-                _last_pos_data.hdop <- fields[16].tofloat();
-                // Vertical Dilution of Precision
-                _last_pos_data.vdop <- fields[17].tofloat();
-
-                if (_dop_update_cb) _dop_update_cb(_last_pos_data);
+                _handleGSA(fields);
+                break;
+            case "GNGSA":
+                _handleGSA(fields);
+                break;
+            case "GLGSA":
+                _handleGSA(fields);
                 break;
             case "GPGSV":
-                // GNSS Satellites in View
-                // Ex: "$GPGSV,3,1,09,29,36,029,42,21,46,314,43,26,44,020,43,15,21,321,39*7D"
-                // Number of Messages (3)
-                local num_messages = fields[1].tointeger();
-                local message_number = fields[2].tointeger();
-                _last_pos_data.sats_in_view <- fields[3].tointeger();
-                if (!"sats" in _last_pos_data) _last_pos_data.sats <- [];
-                local i = 4; // current index in fields
-                while (i < (fields.len() - 4)) {
-                    local sat = {};
-                    sat.id <- fields[i++].tointeger();
-                    sat.elevation <- fields[i++].tofloat();
-                    sat.azimuth <- fields[i++].tofloat();
-                    sat.snr <- fields[i++].tofloat();
-                    _last_pos_data.sats.push(sat);
-                }
-
-                if (_sats_update_cb) _sats_update_cb(_last_pos_data);
+                _handleGSV(fields);
+                break;
+            case "GLGSV":
+                _handleGSV(fields);
+                break;
+            case "GNGSV":
+                _handleGSV(fields);
                 break;
             case "GPRMC":
-                // Minimum Recommended Navigation Information
-                // Ex: "$GPRMC,064951.000,A,2307.1256,N,12016.4438,E,0.03,165.48,260406,3.05,W,A*2C "
-                // UTC time hhmmss.sss
-                _last_pos_data.time <- _parseUTC(fields[1]);
-                // Status A=Valid V=Not Valid
-                _last_pos_data.status <- fields[2];
-                // ddmm.mmmm
-                _last_pos_data.lat <- _parseCoordinate(fields[3]);
-                // N/S Indicator
-                _last_pos_data.ns <- fields[4];
-                // ddmm.mmmm
-                _last_pos_data.lon <- _parseCoordinate(fields[5]);
-                // E/W Indicator
-                _last_pos_data.ew <- fields[6];
-                // Ground speed in knots
-                _last_pos_data.gs_knots <- fields[7].tofloat();
-                // Course over Ground, Degrees True
-                _last_pos_data.true_course <- fields[8].tofloat();
-                // Date, ddmmyy
-                _last_pos_data.date <- fields[9];
-                // Magnetic Variation (Not available)
-                _last_pos_data.mag_var <- fields[10];
-                // Mode (A = Autonomous, D = Differential, E = Estimated)
-                _last_pos_data.mode <- fields[11];
-                
-                if (_rmc_update_cb) _rmc_update_cb(_last_pos_data);
+                _handleRMC(fields);
+                break;
+            case "GNRMC":
+                _handleRMC(fields);
                 break;
             case "GPVTG":
-                // Course and Speed information relative to ground
-                // Ex: "$GPVTG,165.48,T,,M,0.03,N,0.06,K,A*37 "
-                // Measured Heading, Degrees
-                _last_pos_data.true_course <- fields[1].tofloat();
-                // Course Reference (T = True, M = Magnetic)
-                _last_pos_data.course_ref <- fields[2];
-                // _last_pos_data.course_2 <- fields[3];
-                // _last_pos_data.ref_2 <- fields[4];
-                // Ground Speed in Knots
-                _last_pos_data.gs_knots <- fields[5].tofloat();
-                // Ground Speed Units, N = Knots
-                //_last_pos_data.gs_units_1 <- fields[6];
-                // Ground Speed in km/hr
-                _last_pos_data.gs_kmph <- fields[7].tofloat();
-                // Ground Speed Units, K = Km/Hr
-                //_last_pos_data.gs_units_2 <- fields[8];
-                // Mode (A = Autonomous, D = Differential, E = Estimated)
-                _last_pos_data.mode <- fields[9];
-
-                if (_vtg_update_cb) _vtg_update_cb(_last_pos_data);
+                _handleVTG(fields);
+                break;
+            case "GNVTG":
+                _handleVTG(fields);
                 break;
             case "PGTOP":
-                // Antenna Status Information
-                // Ex: "$PGTOP,11,3 *6F"
-                // Function Type (??)
-                //_last_pos_data.function_type <- fields[1];
-                // Antenna Status
-                // 1 = Active Antenna Shorted
-                // 2 = Using Internal Antenna
-                // 3 = Using Active Antenna
-                _last_pos_data.ant_status <- fields[2].tointeger();
-                
-                if (_ant_status_update_cb) _ant_status_update_cb(_last_pos_data);
-                break;
-            case "PGSA": 
-                // ???
+                _handlePGTOP(fields)
                 break;
             case "PGACK":
                 // command ACK
-                // do nothing ...?
+                // TODO: Allow command callbacks to verify good ACK
                 server.log("ACK: "+packetstr);
                 break;
-            case "GPGLL":
-                // no idea what this is
-                break;
             default:
-                throw "Unrecognized Header";
-            }
+                if (_VERBOSE) {
+                  server.log("[GPS] Unrecognized Header: "+packetstr);
+                }
+        }
     }   
     
+    // -------------------------------------------------------------------------
+    // Handle GxGGA packet: time, position, and fix data
+    // Ex: "$GPGGA,064951.000,2307.1256,N,12016.4438,E,1,8,0.95,39.9,M,17.8,M,,*65 "
+    // UTC Time 064951.000 hhmmss.sss
+    function _handleGGA(fields) {
+      _last_pos_data.time <- _parseUTC(fields[1]);
+      // Latitude 2307.1256 ddmm.mmmm
+      _last_pos_data.lat <- _parseCoordinate(fields[2]);
+      // N/S Indicator N N=north or S=south
+      _last_pos_data.ns <- fields[3];
+      if (_last_pos_data.ns == "S") {
+        _last_pos_data.lat = -1 * _last_pos_data.lat;
+      }
+      // Longitude 12016.4438 dddmm.mmmm
+      _last_pos_data.lon <- _parseCoordinate(fields[4]);
+      // E/W Indicator E E=east or W=west
+      _last_pos_data.ew <- fields[5];
+      if (_last_pos_data.ew == "W") {
+        _last_pos_data.lon = -1 * _last_pos_data.lon;
+      }
+      // Position Fix
+      _last_pos_data.fix <- fields[6];
+      // Satellites Used 8 Range 0 to 14
+      _last_pos_data.sats_used <- fields[7] ? fields[7].tointeger() : null;
+      // HDOP 0.95 Horizontal Dilution of Precision
+      _last_pos_data.hdop <- fields[8] != "" ? fields[8].tofloat() : null;
+      // MSL Altitude 39.9 meters Antenna Altitude above/below mean-sea-level
+      _last_pos_data.msl <- fields[9] != "" ? fields[9].tofloat() : null;
+      // Units M meters Units of antenna altitude
+      _last_pos_data.units_alt <- fields[10];
+      // Geoidal Separation 17.8 meters
+      _last_pos_data.geoidal_sep <- fields[11] != "" ? fields[11].tofloat() : null;
+      // Units M meters Units of geoids separation
+      _last_pos_data.units_sep <- fields[12];
+      // Age of Diff. Corr. second Null fields when DGPS is not used
+      _last_pos_data.diff_corr <- fields[13];
+      
+      if (_position_update_cb) _position_update_cb(_last_pos_data);
+    }
+    
+    // -------------------------------------------------------------------------
+    // Handle GxGSA Packet: DOP and Active Satellites Data
+    // Ex: "$GPGSA,A,3,29,21,26,15,18,09,06,10,,,,,2.32,0.95,2.11*00 "
+    // "M" = manual (forced into 2D or 3D mode)
+    // "A" = 2C Automatic, allowed to auto-switch 2D/3D
+    function _handleGSA(fields) {
+      _last_pos_data.mode1 <- fields[1];
+      // "1" = Fix not available
+      // "2" = 2D (<4 SVs used)
+      // "3" = 3D (>= 4 SVs used)
+      _last_pos_data.mode2 <- fields[2];
+      // Satellites Used on Channel 1
+      _last_pos_data.sats_used_1 <- fields[3] != "" ? fields[3].tointeger() : 0;
+      _last_pos_data.sats_used_2 <- fields[4] != "" ? fields[4].tointeger() : 0;
+      _last_pos_data.sats_used_3 <- fields[5] != "" ? fields[5].tointeger() : 0;
+      _last_pos_data.sats_used_4 <- fields[6] != "" ? fields[6].tointeger() : 0;
+      _last_pos_data.sats_used_5 <- fields[7] != "" ? fields[7].tointeger() : 0;
+      _last_pos_data.sats_used_6 <- fields[8] != "" ? fields[8].tointeger() : 0;
+      _last_pos_data.sats_used_7 <- fields[9] != "" ? fields[9].tointeger() : 0;
+      _last_pos_data.sats_used_8 <- fields[10] != "" ? fields[10].tointeger() : 0;
+      _last_pos_data.sats_used_9 <- fields[11] != "" ? fields[11].tointeger() : 0;
+      _last_pos_data.sats_used_10 <- fields[12] != "" ? fields[12].tointeger() : 0;
+      _last_pos_data.sats_used_11 <- fields[13] != "" ? fields[13].tointeger() : 0;
+      _last_pos_data.sats_used_12 <- fields[14] != "" ? fields[14].tointeger() : 0;
+      // Positional Dilution of Precision
+      _last_pos_data.pdop <- fields[15].tofloat();
+      // Horizontal Dilution of Precision
+      _last_pos_data.hdop <- fields[16].tofloat();
+      // Vertical Dilution of Precision
+      _last_pos_data.vdop <- fields[17].tofloat();
+  
+      if (_dop_update_cb) _dop_update_cb(_last_pos_data);      
+    }
+    
+    // -------------------------------------------------------------------------
+    // Handle GxGSV Packet: GNSS Satellites in View
+    // Ex: "$GPGSV,3,1,09,29,36,029,42,21,46,314,43,26,44,020,43,15,21,321,39*7D"
+    // Number of Messages (3)
+    function _handleGSV(fields) {
+      local num_messages = fields[1].tointeger();
+      local message_number = fields[2].tointeger();
+      _last_pos_data.sats_in_view <- fields[3].tointeger();
+      if ("sats" in _last_pos_data) {
+        // hi
+      } else {
+        _last_pos_data.sats <- [];
+      }
+      local i = 4; // current index in fields
+      while (i < (fields.len() - 4)) {
+        local sat = {};
+        sat.id <- fields[i] != "" ? fields[i].tointeger() : null;
+        sat.elevation <- fields[++i] != "" ? fields[i].tofloat() : null;
+        sat.azimuth <- fields[++i] != "" ? fields[i].tofloat() : null;
+        sat.snr <- fields[++i] != "" ? fields[i].tofloat() : null;
+        if (sat.id != null) {
+          local new_sat = true;
+          for (sat_idx = 0; sat_idx < _last_pos_data.sats.len(); sat_idx++) {
+            if (_last_pos_data.sats[sat_idx].id == sat.id) {
+              // we've seen this one before; update the relevant fields
+              new_sat = false;
+              _last_pos_data.sats[sat_idx].elevation = sat.elevation;
+              _last_pos_data.sats[sat_idx].azimuth = sat.azimuth;
+              _last_pos_data.sats[sat_idx].snr = sat.snr;
+            } 
+          }
+          if (new_sat) {
+            // new bird, add to the list
+            _last_pos_data.sats.push(sat);
+          }
+        }
+      }
+  
+      if (_sats_update_cb) _sats_update_cb(_last_pos_data);
+    }
+    
+    // -------------------------------------------------------------------------
+    // Handle GxRMC Packet: Minimum Recommended Navigation Information
+    // Ex: "$GPRMC,064951.000,A,2307.1256,N,12016.4438,E,0.03,165.48,260406,3.05,W,A*2C "
+    // UTC time hhmmss.sss
+    function _handleRMC(fields) {
+      _last_pos_data.time <- _parseUTC(fields[1]);
+      // Status A=Valid V=Not Valid
+      _last_pos_data.status <- fields[2];
+      // ddmm.mmmm
+      _last_pos_data.lat <- _parseCoordinate(fields[3]);
+      // N/S Indicator
+      _last_pos_data.ns <- fields[4];
+      if (_last_pos_data.ns == "S") {
+        _last_pos_data.lat = -1 * _last_pos_data.lat;
+      }
+      // ddmm.mmmm
+      _last_pos_data.lon <- _parseCoordinate(fields[5]);
+      // E/W Indicator
+      _last_pos_data.ew <- fields[6];
+        if (_last_pos_data.ew == "W") {
+        _last_pos_data.lon = -1 * _last_pos_data.lon;
+      }
+      // Ground speed in knots
+      _last_pos_data.gs_knots <- fields[7].tofloat();
+      // Course over Ground, Degrees True
+      _last_pos_data.true_course <- fields[8].tofloat();
+      // Date, ddmmyy
+      _last_pos_data.date <- fields[9];
+      // Magnetic Variation (Not available)
+      _last_pos_data.mag_var <- fields[10];
+      // Mode (A = Autonomous, D = Differential, E = Estimated)
+      _last_pos_data.mode <- fields[11];
+      
+      if (_rmc_update_cb) _rmc_update_cb(_last_pos_data);
+    }
+    
+    // -------------------------------------------------------------------------
+    // Handle GxVTG Packet: Course and Speed information relative to ground
+    // Ex: "$GPVTG,165.48,T,,M,0.03,N,0.06,K,A*37 "
+    // Measured Heading, Degrees
+    function _handleVTG(fields) {
+      _last_pos_data.true_course <- fields[1].tofloat();
+      // Course Reference (T = True, M = Magnetic)
+      _last_pos_data.course_ref <- fields[2];
+      // _last_pos_data.course_2 <- fields[3];
+      // _last_pos_data.ref_2 <- fields[4];
+      // Ground Speed in Knots
+      _last_pos_data.gs_knots <- fields[5].tofloat();
+      // Ground Speed Units, N = Knots
+      //_last_pos_data.gs_units_1 <- fields[6];
+      // Ground Speed in km/hr
+      _last_pos_data.gs_kmph <- fields[7].tofloat();
+      // Ground Speed Units, K = Km/Hr
+      //_last_pos_data.gs_units_2 <- fields[8];
+      // Mode (A = Autonomous, D = Differential, E = Estimated)
+      _last_pos_data.mode <- fields[9];
+  
+      if (_vtg_update_cb) _vtg_update_cb(_last_pos_data);
+    }
+
+    // -------------------------------------------------------------------------
+    // Handle PGTOP Packet: Antenna Status Information
+    // Ex: "$PGTOP,11,3 *6F"
+    // Function Type (??)
+    //_last_pos_data.function_type <- fields[1];
+    // Antenna Status
+    // 1 = Active Antenna Shorted
+    // 2 = Using Internal Antenna
+    // 3 = Using Active Antenna
+    function _handlePGTOP(fields) {
+      _last_pos_data.ant_status <- fields[2].tointeger();
+    
+      if (_ant_status_update_cb) _ant_status_update_cb(_last_pos_data);
+    }
+
     // -------------------------------------------------------------------------
     function enable() {
         if (_en) _en.write(1);
@@ -346,25 +446,27 @@ class PA6H {
     function standby() {
        _sendCmd(PMTK_STANDBY);
     }
-     
+
     // -------------------------------------------------------------------------
     function disable() {
         if (_en) _en.write(0);
     }
-    
+     
     // -------------------------------------------------------------------------
+    
     function setBaud(baud) {
         if (baud == _uart_baud) return;
-        if ((baud != 9600) && (baud != 57600)) throw format("Unsupported baud (%d); supported rates are 9600 and 57600",baud);
-        if (baud == 57600) _sendCmd(PMTK_SET_BAUD_57600);
-        else _sendCmd(PMTK_SET_BAUD_9600);
+        if (baud == 9600) _sendCmd(PMTK_SET_BAUD_9600);
+        else if (baud == 57600) _sendCmd(PMTK_SET_BAUD_57600);
+        else if (baud == 115200) _sendCmd(PMTK_SET_BAUD_115200);
+        else throw format("Unsupported baud (%d); supported rates are 9600, 57600, 115200",baud);
         _uart_baud = baud;
         _uart.configure(_uart_baud, 8, PARITY_NONE, 1, NO_CTSRTS, _uartCallback.bindenv(this));
     }
-    
+
     // -------------------------------------------------------------------------
     function hasFix() {
-        if (!_fix) throw "hasFix called but no Fix Pin provided to PA6H constructor" 
+        if (!_fix) throw "hasFix called but no Fix Pin provided to GPS constructor" 
         return _fix.read();
     }
     
@@ -462,11 +564,11 @@ class PA6H {
 // fix <- hardware.pin8;
 // en <- hardware.pin9;
 
-// // don't need to configure the UART because the PA6H class will reconfigure it anyway
+// // don't need to configure the UART because the MTK333X class will reconfigure it anyway
 // fix.configure(DIGITAL_IN);
 // en.configure(DIGITAL_OUT,0);
 
-// gps <- PA6H(uart, en, fix);
+// gps <- MTK333X(uart, en, fix);
 
 // Ex Usage
 
