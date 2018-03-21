@@ -17,8 +17,8 @@ This class requires a simple circuit that uses both an imp PWM and an imp SPI MO
 #### Parameters
 | Name    | Type    | Default | Description |
 |---------|---------|---------|-------------|
-| spi     | [spi](https://electricimp.com/docs/api/hardware/spi/) | N/A | The SPI interface the IR transmitter is connected to. The IR transmitter must be connected to the SPI MOSI pin. The constructor will reconfigure the SPI MOSI pin. Other SPI pins in the SPI interface provided are not used. |
-| pwm | [pwm](https://electricimp.com/docs/api/hardware/pwm/) | N/A | The imp PWM pin used to provide the carrier signal. The constructor will reconfigure the PWM pin. |
+| spi     | [spi](https://developer.electricimp.com/api/hardware/spi) | N/A | The SPI interface the IR transmitter is connected to. The IR transmitter must be connected to the SPI MOSI pin. The constructor will reconfigure the SPI MOSI pin. Other SPI pins in the SPI interface provided are not used. |
+| pwm | [pwm](https://developer.electricimp.com/api/hardware/pin/configure) | N/A | The imp PWM pin used to provide the carrier signal. The constructor will reconfigure the PWM pin. |
 
 #### Example
 
