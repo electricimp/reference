@@ -135,9 +135,10 @@ class DHT22 {
         //server.log(format("parsed: 0x %02x%02x %02x%02x %02x",result[0],result[1],result[2],result[3],result[4]));
         humid = ((result[0] << 8) + result[1]) / 10.0;
         temp = ((result[2] << 8) + result[3]);
-        if (temp & 0x8000) {
-            temp = (~temp & 0xffff) + 1;
-        }
+        
+        // Sign extend temperature
+        temp = (temp << 16) >> 16;
+
         temp = temp / 10.0;
         if (((result[0] + result[1] + result[2] + result[3]) & 0xff) != result[4]) {
             return {"rh":0,"temp":0};
