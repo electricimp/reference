@@ -136,8 +136,10 @@ class DHT22 {
         humid = ((result[0] << 8) + result[1]) / 10.0;
         temp = ((result[2] << 8) + result[3]);
         
-        // Sign extend temperature
-        temp = (temp << 16) >> 16;
+        // Temperature is not 2's complement; the top bit is a sign bit
+        if (temp & 0x8000) {
+            temp = -(temp & 0x7fff);
+        }
 
         temp = temp / 10.0;
         if (((result[0] + result[1] + result[2] + result[3]) & 0xff) != result[4]) {
